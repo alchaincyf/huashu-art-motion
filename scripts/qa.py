@@ -30,6 +30,8 @@
 产物：<out>/qa.json（全部数字）、<out>/qa.md（表）、<out>/<id>.jpg（4 帧拼图＋运动热图）。
 """
 import argparse, base64, functools, http.server, io, json, socketserver, threading, urllib.parse
+socketserver.ThreadingTCPServer.request_queue_size = 128
+socketserver.ThreadingTCPServer.daemon_threads = True
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
@@ -66,7 +68,7 @@ class Q(http.server.SimpleHTTPRequestHandler):
             f = urllib.parse.unquote(path[len('/__file__/'):].split('?')[0])
             return f if f in ALLOWED else '/nonexistent'
         return super().translate_path(path)
-srv = socketserver.TCPServer(('127.0.0.1', 0), functools.partial(Q, directory=str(root))); port = srv.server_address[1]
+srv = socketserver.ThreadingTCPServer(('127.0.0.1', 0), functools.partial(Q, directory=str(root))); port = srv.server_address[1]
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 
 # 框景检查：包一层 fillText/strokeText，记下画在「整屏大小的画布」上的字的屏幕外框（经过当前变换）

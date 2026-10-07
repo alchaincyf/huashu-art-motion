@@ -10,6 +10,8 @@ uv run --with playwright python render.py --spec clip.json --out 片段.mp4 [--a
 页面里有 pageerror 或 console.error（场景报错、缺字形）→ 渲完后非零退出。
 """
 import argparse, base64, http.server, json, socketserver, subprocess, threading, functools, time, urllib.parse
+socketserver.ThreadingTCPServer.request_queue_size = 128
+socketserver.ThreadingTCPServer.daemon_threads = True
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -49,7 +51,7 @@ class Q(http.server.SimpleHTTPRequestHandler):
             f = urllib.parse.unquote(path[len('/__file__/'):].split('?')[0])
             return f if spec and f in ALLOWED else '/nonexistent'
         return super().translate_path(path)
-srv = socketserver.TCPServer(('127.0.0.1', 0), functools.partial(Q, directory=str(root)))
+srv = socketserver.ThreadingTCPServer(('127.0.0.1', 0), functools.partial(Q, directory=str(root)))
 port = srv.server_address[1]
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 
