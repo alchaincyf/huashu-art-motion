@@ -49,7 +49,13 @@ class Q(http.server.SimpleHTTPRequestHandler):
             f = urllib.parse.unquote(path[len('/__file__/'):].split('?')[0])
             return f if spec and f in ALLOWED else '/nonexistent'
         return super().translate_path(path)
-srv = socketserver.TCPServer(('127.0.0.1', 0), functools.partial(Q, directory=str(root)))
+# 浏览器会并行拉十几个 lib/*.js；单线程 TCPServer 一次只服务一个连接，多余连接被拒
+# （Chromium 报 net::ERR_CONNECTION_REFUSED，随机丢掉某个库脚本 → 该语法整段渲不出，
+#   或页面永不 ready、120s 超时）。改多线程即根治。
+class _Srv(socketserver.ThreadingTCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+srv = _Srv(('127.0.0.1', 0), functools.partial(Q, directory=str(root)))
 port = srv.server_address[1]
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 
