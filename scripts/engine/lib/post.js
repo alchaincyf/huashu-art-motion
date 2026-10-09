@@ -11,7 +11,7 @@
 //   P.fade(c, opt)                      褪色/单色化：saturation 混合去色＋multiply 染色（壁画褪色、胶片单色）
 //   P.vignette(c, opt)                  径向暗角
 (() => {
-const W = 1920, H = 1080;
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
 const P = window.PAINT;
 const { rng } = U;
 

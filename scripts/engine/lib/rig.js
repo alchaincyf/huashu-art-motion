@@ -323,10 +323,10 @@ R.drawCatLines = (c, K, pal) => {
 R._lc = {};
 R.visibleLines = (key, drawWith, lineColor, box, thresh = 90) => {
   const [x0, y0, x1, y1] = box.map(Math.round), w = x1 - x0, h = y1 - y0;
-  const mk = n => R._lc[key + n] || (R._lc[key + n] = (() => { const c = document.createElement('canvas'); c.width = 1920; c.height = 1080; return c; })());
+  const mk = n => R._lc[key + n] || (R._lc[key + n] = (() => { const c = document.createElement('canvas'); c.width = window.STAGE.W; c.height = window.STAGE.H; return c; })());
   const A = mk('a'), B = mk('b'), O = mk('o');
   const ga = A.getContext('2d', { willReadFrequently: true }), gb = B.getContext('2d', { willReadFrequently: true }), go = O.getContext('2d');
-  ga.clearRect(0, 0, 1920, 1080); gb.clearRect(0, 0, 1920, 1080); go.clearRect(0, 0, 1920, 1080);
+  ga.clearRect(0, 0, ga.canvas.width, ga.canvas.height); gb.clearRect(0, 0, gb.canvas.width, gb.canvas.height); go.clearRect(0, 0, go.canvas.width, go.canvas.height);
   drawWith(ga, lineColor); drawWith(gb, '#ffffff');
   const da = ga.getImageData(x0, y0, w, h), db = gb.getImageData(x0, y0, w, h).data, d = da.data;
   for (let i = 0; i < d.length; i += 4) {

@@ -127,6 +127,7 @@
   - `CL.tornEdge`：撕边。
   - `DG.hand / DG.drawPartial / DG.cum`：手画线，按长度描出。
   - `CAM.motionBlur`：沿速度方向叠帧。
+  - 新片的真实素材件：`MD.print`（冲印件：白边、旧纸色、投影、胶带，可按焦点裁）、`MD.label`（黑底撕边标签，12fps 打字）、`MD.cover`（满幅铺开＋焦点＋推近，硬切到实拍时用）；镜头用 `CAM.track` 的横移、快推。参数化片段 y2 已经换成这一套：照片占画面八九成，镜头 0.30 秒横移到下一件、highlight 快推 0.28 秒，不慢推。
   - `MO.bezier`：长尾缓动 `(.33,0,.2,1)`。
 - 示范片自己的（`demos/y2_vox/vox.js`；`slideIn / highlight / stringPts` 已进库为 `CL.slideIn / CL.highlight / CL.stringPts`）：
   - `slideIn`：倾斜滑入放平。

@@ -20,7 +20,7 @@ SCENES['s3_react'] = {
       const R = 360;
       const blink = (lts >= 0.62 && lts < 0.62 + 0.125) ? 1 : 0;            // 慢眨眼：3 帧@24fps（比平时多 1 帧，读作「无语」）
       const twitch = lts > 0.78 ? 'worry' : 'blank';                         // 第二声蟋蟀后 0.15s 眉毛一垮（声画同一件事）
-      const info = TOON.bean(c, { x: 960, y: 560 + R * 2.1 + 40, s: R, pose: TOON.POSES.stiff, expr: twitch, mouth: 0, blink, look: [0, 0], lw: 12 });
+      const info = TOON.bean(c, { char: 'author', x: 960, y: 560 + R * 2.1 + 40, s: R, pose: TOON.POSES.stiff, expr: twitch, mouth: 0, blink, look: [0, 0], lw: 12 });
       // 镜片反光：一条白色斜带从左扫到右（0.15–0.45s）
       const g = MO.at(lts, 0.15, 0.3);
       if (g > 0 && g < 1) {

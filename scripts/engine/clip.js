@@ -1,7 +1,9 @@
 // 参数化片段运行时：一份 spec（JSON）→ 一段时长严格等于 spec.duration 的动画。给口播视频管线当「动画段」用。
 // 契约见 references/09-视频动画语法.md「片段契约」。和 engine.js 的区别：没有段落表/转场，一个语法一个 draw(c, t, ctx)，画布尺寸从 spec 读（竖屏也行）。
 //
-// spec = { grammar, duration, fps=30, width=1920, height=1080, safe?: {top,bottom,left,right（px，留给字幕/平台 UI）, fill?（让开的边涂这个色）}, theme?, alpha?, data?, cues: [{at, kind, text?, sub?, data?, image?, dur?}] }
+// spec = { grammar, duration, fps=30, width=1920, height=1080, safe?: {top,bottom,left,right（px，留给字幕/平台 UI）, fill?（让开的边涂这个色）}, theme?, alpha?, data?, cues: [{at, kind, text?, sub?, data?, image?, frames?, fps?, dur?}] }
+// 素材路径（render.py 用 spec_assets.py 核存在并改写）：cue.image、cue.frames（帧序列：目录或路径数组）、data.image、data.character.frames（y4 帧库）。
+// 任何一张加载失败 → 启动失败、拒绝渲染（不出空白帧）。语法里取素材：ctx.still(q) = 这条 cue 的静态图（有 frames 时是第一帧），ctx.frame(q, t) = t 时刻该画的那一帧。
 // 语法文件 clips/<grammar>.js 注册 CLIPS[grammar] = { init?(ctx), draw(c, t, ctx), safe?: true（按 ctx.safe / ctx.box 排版了才写，否则 spec.safe 会告警） }。
 // 对齐约定（CLIP.lt）：cue 的「揭开那一帧」= at 所在的那一帧——元素在 t = at 这一帧第一次可见，动画内部时间从 at − 1 帧起算。
 (() => {
@@ -29,9 +31,10 @@ async function boot() {
     if (!u) return fail('没有 spec：render.py --spec 会注入 window.CLIP_SPEC；预览用 clip.html?spec=examples/<名>.json');
     spec = await (await fetch(u)).json();
     const base = u.replace(/[^/]*$/, '');
-    const fix = p => p && !/^(data:|https?:|\/)/.test(p) ? base + p : p;
-    (spec.cues || []).forEach(q => { if (q.image) q.image = fix(q.image); });
+    const fix = p => p && !/^(data:|https?:|\/)/.test(p) ? base + p : p;   // 预览模式：frames 要写成路径数组（浏览器列不了目录），帧库要写 {frames: {姿势: 路径}}
+    (spec.cues || []).forEach(q => { if (q.image) q.image = fix(q.image); if (Array.isArray(q.frames)) q.frames = q.frames.map(fix); });
     if (spec.data && spec.data.image) spec.data.image = fix(spec.data.image);
+    const ch = spec.data && spec.data.character; if (ch && typeof ch === 'object' && ch.frames && typeof ch.frames === 'object') for (const k in ch.frames) ch.frames[k] = fix(ch.frames[k]);
   }
   if (location.search.includes('render=1')) document.body.classList.add('render');
   const W = spec.width || 1920, H = spec.height || 1080, FPS = spec.fps || 30;
@@ -46,7 +49,14 @@ async function boot() {
   const G = CLIPS[spec.grammar]; if (!G || typeof G.draw !== 'function') return fail(`clips/${spec.grammar}.js 没注册 CLIPS['${spec.grammar}'] = { draw }`);
   // 图片
   const IMG = {}, urls = new Set();
-  (spec.cues || []).forEach(q => q.image && urls.add(q.image)); if (spec.data && spec.data.image) urls.add(spec.data.image);
+  for (const q of (spec.cues || [])) {
+    if (q.image) urls.add(q.image);
+    if (q.frames != null) { if (!Array.isArray(q.frames) || !q.frames.length) return fail(`cue ${q.kind} at=${q.at} 的 frames 要是非空的路径数组（render.py 会把目录展开成数组；预览模式只认数组）`); q.frames.forEach(f => urls.add(f)); }
+  }
+  if (spec.data && spec.data.image) urls.add(spec.data.image);
+  const chr = spec.data && spec.data.character;
+  if (chr && typeof chr === 'object') { if (!chr.frames || typeof chr.frames !== 'object' || Array.isArray(chr.frames)) return fail('data.character 写成对象时要有 frames: {姿势名: 图片路径}（或在 render.py 里给一个帧库目录）');
+    Object.values(chr.frames).forEach(f => urls.add(f)); }
   try { await Promise.all([...urls].map(u => new Promise((res, rej) => { const im = new Image(); im.onload = () => { IMG[u] = im; res(); }; im.onerror = () => rej(u); im.src = u; }))); }
   catch (u) { return fail('图片加载失败：' + u); }
   // 字体＋字形检查（spec 里的字缺字形只警告：回退系统字体照样能渲，但换台机器会变样）
@@ -60,7 +70,10 @@ async function boot() {
   const safe = { top: 0, bottom: 0, left: 0, right: 0, ...(spec.safe || {}) };   // 让开的边（px）：管线烧录字幕、平台 UI 压在这里，带字的语法不往里排
   const box = { x: safe.left, y: safe.top, w: W - safe.left - safe.right, h: H - safe.top - safe.bottom };   // 让开之后的内容框，语法排版用它（ctx.box）
   const ctx = { spec, data: spec.data || {}, theme: spec.theme || {}, cues, W, H, FPS, u: Math.min(W, H) / 1080, portrait: H > W, alpha: !!spec.alpha, IMG, dur: spec.duration, safe, box,
-    of: (...kinds) => cues.filter(q => kinds.includes(q.kind)), lt: (t, at) => C.lt(t, at, FPS), p: (t, at, d) => C.p(t, at, d, FPS) };
+    of: (...kinds) => cues.filter(q => kinds.includes(q.kind)), lt: (t, at) => C.lt(t, at, FPS), p: (t, at, d) => C.p(t, at, d, FPS),
+    // 素材：still = 定版式用的那张（image，或 frames 的第一帧）；frame = t 时刻画哪一帧（frames 从 at 起按 q.fps（默认 30）播，播完停在最后一帧，q.loop 循环）
+    still: q => q && (q.image ? IMG[q.image] : q.frames ? IMG[q.frames[0]] : null),
+    frame: (q, t) => !q ? null : q.frames ? MD.frameAt(q.frames.map(f => IMG[f]), t - q.at, q.fps || 30, !!q.loop) : q.image ? IMG[q.image] : null };
   if (G.fonts) { const txt = cues.map(q => [q.text, q.sub, q.data && q.data.text].filter(Boolean).join('')).join('') + JSON.stringify(spec.data || {});
     for (const fam of G.fonts) { const miss = U.missingGlyphs(fam, [...txt].filter(ch => ch.codePointAt(0) >= 0x2E80).join(''));   /* 只查汉字与全角符号：拉丁/希腊/数学符号各语法另有字体 */ if (miss.length) console.warn(`字体「${fam}」缺字：${miss.join('')}（会回退系统字体；常用字已在 GB2312 子集里，生僻字用 scripts/font_subset.py --text 补）`); } }
   if (spec.safe && (safe.top || safe.bottom || safe.left || safe.right) && !G.safe)

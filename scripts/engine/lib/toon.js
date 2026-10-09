@@ -1,7 +1,7 @@
-// 卡通与扁平插画 TOON：Kurzgesagt 式「无描边、双色分面」、柔光；故事型（storytime）极简角色「豆子花叔」、
+// 卡通与扁平插画 TOON：Kurzgesagt 式「无描边、双色分面」、柔光；故事型（storytime）极简豆子角色（默认中性造型，可换预设），
 // pose-to-pose 换姿势（快切＋身体挤压回弹）、眨眼时刻表、口型读口播包络（一拍二）、汗滴、漫画符号。
 (() => {
-const W = 1920, H = 1080;
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
 const { clamp, lerp } = U;
 const TOON = window.TOON = {};
 
@@ -26,12 +26,28 @@ TOON.ellipse = (x, y, rx, ry, a = 0) => { const p = new Path2D(); p.ellipse(x, y
 TOON.env = t => { const E = window.VO_ENV; if (!E) return 0; const i = Math.round(t * E.fps); return i < 0 || i >= E.a.length ? 0 : E.a[i]; };
 TOON.mouth = (t, fps = 12) => { const v = TOON.env(MO.step(t, fps)); return v < 0.06 ? 0 : v < 0.22 ? 1 : 2; };   // 0 闭 1 半 2 张
 
-// ---------- 豆子花叔（故事型极简角色） ----------
-// 正面、圆头、豆子身体、面条手臂。标志物：纯白渔夫帽、圆框黑眼镜（另：白T、卡其短裤、黑手表）。
-// o: { x, y(脚底), s(头半径 px), pose:{l,r}(手臂目标点，相对肩，头半径单位), expr, mouth(0/1/2), blink, look:[dx,dy],
+// ---------- 豆子角色（故事型极简角色） ----------
+// 正面、圆头、豆子身体、面条手臂。造型由 o.char 决定（预设名或对象），默认 'neutral'：
+//   neutral  短发、蓝 T、深色裤子，不戴帽子和眼镜——给任何人的故事当主角
+//   bun      丸子头、芥黄 T、深色裤子
+//   author   本 skill 作者的卡通形象（纯白渔夫帽、圆框黑眼镜、白 T、卡其短裤、黑手表）。只在讲作者自己的故事时显式指定；
+//            作者形象不随 MIT 授权（见 README）
+//   对象：{ base: 预设名, skin, hair, shirt, pants, shoe, hairStyle: 'short'|'bun'|'none', hat: true/false, glasses: true/false, watch: true/false } 覆盖预设里的项
+// o: { x, y(脚底), s(头半径 px), char, pose:{l,r}(手臂目标点，相对肩，头半径单位), expr, mouth(0/1/2), blink, look:[dx,dy](眼珠方向),
 //      squash(竖向缩放，以脚底为轴，体积守恒), tilt(头歪), bob(头下沉), browUp, lw }
 // expr: 'talk' | 'happy' | 'blank'(死鱼眼) | 'worry' | 'shock'。返回 { hl, hr(两手位置), head:[x,y] }
-const SK = '#FFE2CC', LINE = '#1B1B1F', HAT = '#FFFFFF', BAND = '#E4E4E8', SHIRT = '#FFFFFF', SHORTS = '#CDBB97', HAIR = '#1B1B1F';
+const LINE = '#1B1B1F', BAND = '#E4E4E8', HATC = '#FFFFFF';
+TOON.LOOKS = {
+  neutral: { skin: '#F3CDAE', hair: '#2A2420', hairStyle: 'short', shirt: '#6E9CCB', pants: '#3E4656', shoe: '#FAFAF6', hat: false, glasses: false, watch: false },
+  bun:     { skin: '#E9B994', hair: '#3B2A22', hairStyle: 'bun', shirt: '#E2B33C', pants: '#3E4656', shoe: '#FAFAF6', hat: false, glasses: false, watch: false },
+  author:  { skin: '#FFE2CC', hair: '#1B1B1F', hairStyle: 'none', shirt: '#FFFFFF', pants: '#CDBB97', shoe: '#FAFAF6', hat: true, glasses: true, watch: true },
+};
+// 预设名或对象 → 完整造型；不认识的预设名 console.error（qa / render 判失败），不悄悄换成别的
+TOON.look = ch => {
+  if (ch == null) return TOON.LOOKS.neutral;
+  if (typeof ch === 'string') { if (TOON.LOOKS[ch]) return TOON.LOOKS[ch]; console.error(`TOON：没有这个角色预设「${ch}」（可选 ${Object.keys(TOON.LOOKS).join(' / ')}，或传造型对象）`); return TOON.LOOKS.neutral; }
+  return { ...(TOON.LOOKS[ch.base] || TOON.LOOKS.neutral), ...ch };
+};
 TOON.POSES = {
   rest:  { l: [-0.95, 1.05], r: [0.95, 1.05] },
   talk:  { l: [-0.95, 1.05], r: [1.05, 0.55] },          // 一只手微抬，口播默认
@@ -41,7 +57,8 @@ TOON.POSES = {
   stiff: { l: [-0.78, 1.25], r: [0.78, 1.25] },          // 僵住
 };
 TOON.bean = (c, o) => {
-  const R = o.s, x = o.x, y = o.y, lw = o.lw || Math.max(4, R * 0.05), sq = o.squash || 1;
+  const R = o.s, x = o.x, y = o.y, lw = o.lw || Math.max(4, R * 0.05), sq = o.squash || 1, LK = TOON.look(o.char);
+  const SK = LK.skin, SHIRT = LK.shirt, SHORTS = LK.pants, HAIR = LK.hair;
   const pose = o.pose || TOON.POSES.rest;
   c.save(); c.translate(x, y); c.scale(1 / Math.sqrt(sq), sq);
   c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = LINE; c.lineWidth = lw;
@@ -49,7 +66,7 @@ TOON.bean = (c, o) => {
   const shoulderY = bodyTop + R * 0.32, shL = [-R * 0.42, shoulderY], shR = [R * 0.42, shoulderY];
   for (const sx of [-1, 1]) {                                          // 腿：两截短圆柱＋白鞋
     c.fillStyle = SK; c.beginPath(); c.roundRect(sx * R * 0.2 - R * 0.09, -R * 0.24, R * 0.18, R * 0.2, R * 0.05); c.fill(); c.stroke();
-    c.fillStyle = '#FAFAF6'; c.beginPath(); c.ellipse(sx * R * 0.22, -R * 0.03, R * 0.17, R * 0.08, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = LK.shoe; c.beginPath(); c.ellipse(sx * R * 0.22, -R * 0.03, R * 0.17, R * 0.08, 0, 0, Math.PI * 2); c.fill(); c.stroke();
   }
   const body = new Path2D();                                           // 身体（豆子）
   body.moveTo(-R * 0.5, -R * 0.2);
@@ -70,7 +87,7 @@ TOON.bean = (c, o) => {
     c.beginPath(); c.moveTo(sh[0], sh[1]); const q = 0.28; c.lineTo(lerp(sh[0], mx, q * 2), lerp(sh[1], my, q * 2));
     c.strokeStyle = LINE; c.lineWidth = R * 0.26 + lw; c.stroke(); c.strokeStyle = SHIRT; c.lineWidth = R * 0.26; c.stroke();
     c.fillStyle = SK; c.strokeStyle = LINE; c.lineWidth = lw; c.beginPath(); c.arc(hx, hy, R * 0.13, 0, Math.PI * 2); c.fill(); c.stroke();
-    if (side > 0) {                                                    // 近侧（画右）手腕黑手表
+    if (side > 0 && LK.watch) {                                        // 近侧（画右）手腕黑手表
       const ang = Math.atan2(hy - my, hx - mx), wx = hx - Math.cos(ang) * R * 0.17, wy = hy - Math.sin(ang) * R * 0.17;
       c.save(); c.translate(wx, wy); c.rotate(ang + Math.PI / 2); c.fillStyle = '#1D1F22'; c.fillRect(-R * 0.1, -R * 0.04, R * 0.2, R * 0.08); c.restore();
     }
@@ -83,17 +100,27 @@ TOON.bean = (c, o) => {
   c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = LINE; c.lineWidth = lw;
   const hy = bodyTop - R * 0.78 + (o.bob || 0);
   c.translate(0, hy); c.rotate(o.tilt || 0);
-  c.fillStyle = HAIR;                                                  // 鬓角（帽檐下露一点黑发）
-  for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * R * 0.86, -R * 0.12, R * 0.16, R * 0.3, sx * 0.2, 0, Math.PI * 2); c.fill(); }
+  if (LK.hairStyle === 'bun') { c.fillStyle = HAIR; c.beginPath(); c.arc(0, -R * 0.98, R * 0.34, 0, Math.PI * 2); c.fill(); c.stroke(); }   // 丸子（压在头后面）
+  if (LK.hat) { c.fillStyle = HAIR;                                    // 鬓角（帽檐下露一点黑发）
+    for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * R * 0.86, -R * 0.12, R * 0.16, R * 0.3, sx * 0.2, 0, Math.PI * 2); c.fill(); } }
   c.fillStyle = SK; c.beginPath(); c.ellipse(0, 0, R * 1.0, R * 0.93, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  if (LK.hairStyle === 'short' || LK.hairStyle === 'bun') {           // 头发：比头略大的一顶，前沿是一道带分缝的刘海，两侧盖到耳朵上沿
+    const edge = new Path2D(); edge.moveTo(-R * 1.2, R * 0.05);
+    for (let i = 0; i <= 24; i++) { const k = i / 24, xx = -R * 1.05 + k * R * 2.1, ax = Math.abs(xx) / R, side = U.ss(0.55, 0.98, ax);
+      edge.lineTo(xx, -R * 0.42 + R * 0.06 * Math.cos(k * Math.PI * 3) * (1 - side) + side * R * (LK.hairStyle === 'bun' ? 0.32 : 0.45) + (xx > R * 0.15 && xx < R * 0.35 ? -R * 0.08 : 0)); }
+    edge.lineTo(R * 1.2, R * 0.05); edge.lineTo(R * 1.2, -R * 1.4); edge.lineTo(-R * 1.2, -R * 1.4); edge.closePath();
+    c.save(); c.clip(edge); c.fillStyle = HAIR; c.beginPath(); c.ellipse(0, -R * 0.05, R * 1.05, R * 0.99, 0, 0, Math.PI * 2); c.fill(); c.stroke(); c.restore();
+  }
+  if (LK.hat) {
   // 帽子：帽冠＋帽带＋往下斜的帽檐
   const crown = new Path2D(); crown.moveTo(-R * 0.78, -R * 0.42); crown.bezierCurveTo(-R * 0.8, -R * 1.25, R * 0.8, -R * 1.25, R * 0.78, -R * 0.42); crown.closePath();
-  c.fillStyle = HAT; c.fill(crown); c.stroke(crown);
+  c.fillStyle = HATC; c.fill(crown); c.stroke(crown);
   c.save(); c.clip(crown); c.fillStyle = BAND; c.fillRect(-R, -R * 0.62, R * 2, R * 0.18); c.restore();
   c.beginPath(); c.moveTo(-R * 0.79, -R * 0.62); c.quadraticCurveTo(0, -R * 0.7, R * 0.79, -R * 0.62); c.lineWidth = lw * 0.7; c.stroke(); c.lineWidth = lw;
   const brim = new Path2D(); brim.moveTo(-R * 1.18, -R * 0.24); brim.quadraticCurveTo(0, -R * 0.66, R * 1.18, -R * 0.24);
   brim.quadraticCurveTo(R * 1.22, -R * 0.12, R * 1.08, -R * 0.12); brim.quadraticCurveTo(0, -R * 0.44, -R * 1.08, -R * 0.12); brim.quadraticCurveTo(-R * 1.22, -R * 0.12, -R * 1.18, -R * 0.24); brim.closePath();
-  c.fillStyle = HAT; c.fill(brim); c.stroke(brim);
+  c.fillStyle = HATC; c.fill(brim); c.stroke(brim);
+  }
   // 眉毛（表情主载体）：[整体上下, 内端相对外端的高差]（负 = 内端抬高 = 担心/委屈）
   const ex = o.expr || 'talk', lk = o.look || [0, 0];
   const brow = { talk: [0, 0], happy: [-0.05, 0.03], blank: [0.03, 0], worry: [-0.02, -0.11], shock: [-0.11, 0.02] }[ex] || [0, 0];
@@ -101,19 +128,19 @@ TOON.bean = (c, o) => {
   c.lineWidth = lw * 1.4;
   for (const sx of [-1, 1]) { const by = -R * 0.13 + brow[0] * R; c.beginPath(); c.moveTo(sx * R * 0.52, by); c.lineTo(sx * R * 0.2, by + brow[1] * R); c.stroke(); }
   c.lineWidth = lw;
-  // 眼镜：两只圆框（标志物，线比轮廓粗 1.4 倍）＋鼻梁；眼睛是黑点
+  // 眼睛是黑点；戴眼镜的造型（author）加两只圆框（线比轮廓粗 1.5 倍）＋鼻梁
   const gy = R * 0.2, gr = R * 0.27;
   for (const sx of [-1, 1]) {
     const gx = sx * R * 0.37;
-    c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(gx, gy, gr, 0, Math.PI * 2); c.fill();
-    const pr = ex === 'blank' ? R * 0.035 : ex === 'shock' ? R * 0.05 : R * 0.075;
+    if (LK.glasses) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.arc(gx, gy, gr, 0, Math.PI * 2); c.fill(); }
+    const pr = (ex === 'blank' ? R * 0.035 : ex === 'shock' ? R * 0.05 : R * 0.075) * (LK.glasses ? 1 : 1.15);
     c.fillStyle = LINE;
     if (o.blink) { c.beginPath(); c.moveTo(gx - R * 0.08 + lk[0] * R * 0.08, gy + lk[1] * R * 0.06); c.lineTo(gx + R * 0.08 + lk[0] * R * 0.08, gy + lk[1] * R * 0.06); c.lineWidth = lw; c.stroke(); }
     else { c.beginPath(); c.ellipse(gx + lk[0] * R * 0.09, gy + lk[1] * R * 0.07, pr, pr * (ex === 'blank' ? 1 : 1.25), 0, 0, Math.PI * 2); c.fill();
       if (ex !== 'blank') { c.fillStyle = '#fff'; c.beginPath(); c.arc(gx + lk[0] * R * 0.09 - pr * 0.35, gy + lk[1] * R * 0.07 - pr * 0.45, pr * 0.32, 0, Math.PI * 2); c.fill(); } }
-    c.lineWidth = lw * 1.5; c.strokeStyle = LINE; c.beginPath(); c.arc(gx, gy, gr, 0, Math.PI * 2); c.stroke();
+    if (LK.glasses) { c.lineWidth = lw * 1.5; c.strokeStyle = LINE; c.beginPath(); c.arc(gx, gy, gr, 0, Math.PI * 2); c.stroke(); }
   }
-  c.beginPath(); c.moveTo(-R * 0.1, gy - R * 0.02); c.quadraticCurveTo(0, gy - R * 0.08, R * 0.1, gy - R * 0.02); c.stroke();
+  if (LK.glasses) { c.beginPath(); c.moveTo(-R * 0.1, gy - R * 0.02); c.quadraticCurveTo(0, gy - R * 0.08, R * 0.1, gy - R * 0.02); c.stroke(); }
   c.lineWidth = lw;
   c.fillStyle = 'rgba(255,140,120,0.35)'; for (const sx of [-1, 1]) { c.beginPath(); c.ellipse(sx * R * 0.68, R * 0.5, R * 0.11, R * 0.06, 0, 0, Math.PI * 2); c.fill(); }
   // 嘴

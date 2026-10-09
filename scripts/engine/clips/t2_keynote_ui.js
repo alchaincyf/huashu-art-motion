@@ -1,12 +1,15 @@
-// 片段 · 发布会式界面（t2），做教程、功能、参数最顺手：深色光斑底，一屏一件事；字从模糊里浮出，卡片是毛玻璃、轻回弹落位。
-// data: { eyebrow?（标题上方小字）, title?, subtitle?, accent?:'#3d6bff' }
+// 片段 · 发布会式界面（t2），做教程、功能、参数最顺手：一屏一件事。有截图就让截图当主画面：满幅铺开，口播点到哪块就快推到哪块。
+// data: { eyebrow?（标题上方小字）, title?, subtitle?, accent?:'#3d6bff', frame?: 'full'（默认）| 'glass' }
 // cues：title（at 这一帧标题开始从模糊里浮出；text/sub 覆盖 data）
-//       card | step | image（一张卡：text 卡标题，sub 说明，image 截图路径；at 这一帧卡片开始弹入；步骤号按出现顺序 01、02…，data.step 可指定）
-//         · 有 image：一屏一张，截图等比放进卡里（contain，不裁）。横图横卡；竖图（手机截图）在横屏里是「左字右图」，图撑满高度
+//       card | step | image（一张卡：text 卡标题，sub 说明，image 截图路径（或 frames 录屏帧序列）；at 这一帧出现；步骤号按出现顺序 01、02…，data.step 可指定）
+//         · 有 image，默认 frame 'full'：截图满幅（等比放进内容框、不裁；data.fit:'cover' 才按焦点 data.focus=[fx,fy] 裁满），
+//           四周垫一层同图的压暗模糊放大版，不留死背景；text / sub 是左下角的黑底撕边标签（12fps 打字）。at 这一帧硬切进来（0.17s 轻砸），
+//           上一屏也是满幅截图时改成同倍率横移 0.30s 换过去。highlight 这一刻快推 0.28s 到那块（推到框占画面约 42%，至少推近 18%、最多 2.6 倍），连着的 highlight 横移过去。
+//         · data.frame:'glass'（或 spec 级 data.frame）：旧版毛玻璃卡——截图等比放进卡里，横图横卡；竖图在横屏里是「左字右图」。光斑、玻璃是可选包装，慎用
 //         · 没有 image：功能卡。连着的几张（最多 3 张）并排站在一屏里，新卡进来时旧卡让位（像示范片的三卡并列）；
 //           卡上有图标（data.icon：wave memory agent clock phone layers chart code check play bolt lock，不写就画步骤号）、
 //           大标题、说明，可选一个大数字（data.value / prefix / suffix / decimals ＋ data.label，卡片落定后计数）
-//       highlight（框出当前截图卡里的一块：data.rect = [x, y, w, h]，相对截图的 0..1；text 可选标签）
+//       highlight（框出当前截图里的一块：data.rect = [x, y, w, h]，相对截图的 0..1；text 可选标签；满幅模式下镜头同时快推过去，data.fill 改推近后框占画面的比例）
 //       number（大数字单独一屏：data {value, prefix, suffix, decimals, label?（数字上方小字）}；at = 数字落定时刻，提前 0.9s 开始计数，
 //               上一屏这时开始退场，不叠在卡片上；说明写 text 或 sub 都认）
 // 竖屏：第一张卡进来时标题缩成页眉留在顶上（不让上下大片空着）；卡片按剩余高度放大。safe：版面只排在 top..H−bottom 之间。
@@ -52,17 +55,34 @@ return {
     slides = []; let k = 0;
     for (const q of ctx.cues) {
       if (['card', 'step', 'image'].includes(q.kind)) {
-        const n = q.data && q.data.step != null ? q.data.step : ++k, im = q.image && ctx.IMG[q.image], cd = { q, n, im };
-        const last = slides[slides.length - 1];
+        const n = q.data && q.data.step != null ? q.data.step : ++k, im = ctx.still(q), cd = { q, n, im };
+        const last = slides[slides.length - 1], full = im && ((q.data && q.data.frame) || ctx.data.frame || 'full') !== 'glass';
         if (!im && last && last.type === 'cards' && last.cards.length < 3) last.cards.push(cd);
-        else slides.push({ type: im ? 'img' : 'cards', cards: [cd], start: q.at });
+        else slides.push({ type: im ? 'img' : 'cards', cards: [cd], start: q.at, full });
       } else if (q.kind === 'number') slides.push({ type: 'num', q, start: q.at - 0.9 });
     }
-    slides.forEach((s, i) => { s.next = slides[i + 1] ? slides[i + 1].start : 1e9; });
+    slides.forEach((s, i) => { s.next = slides[i + 1] ? slides[i + 1].start : 1e9; s.panIn = s.full && i > 0 && slides[i - 1].full; s.panOut = s.full && !!slides[i + 1] && slides[i + 1].full; });
+    // 满幅截图：内容框（让开 safe，四边留一点）、截图的几何、这一屏的脉冲镜头（highlight 快推 / 横移）
+    for (const s of slides) if (s.full) {
+      const cd = s.cards[0], q = cd.q, m = 24 * u, bx = { x: ctx.box.x + m, y: ctx.box.y + m, w: ctx.box.w - 2 * m, h: ctx.box.h - 2 * m };
+      const fit = (q.data && q.data.fit) === 'cover' ? 'cover' : 'contain', fo = (q.data && q.data.focus) || [0.5, 0.5];
+      s.geo = { box: bx, fit, fx: fo[0], fy: fo[1] };
+      const [iw, ih] = MD.size(cd.im), s0 = (fit === 'cover' ? Math.max : Math.min)(bx.w / iw, bx.h / ih), dw = iw * s0, dh = ih * s0;
+      const ix = fit === 'cover' ? clamp(bx.x + bx.w * fo[0] - dw * fo[0], bx.x + bx.w - dw, bx.x) : bx.x + (bx.w - dw) / 2, iy = fit === 'cover' ? clamp(bx.y + bx.h * fo[1] - dh * fo[1], bx.y + bx.h - dh, bx.y) : bx.y + (bx.h - dh) / 2;
+      s.f = { x: ix, y: iy, w: dw, h: dh };
+      const bcx = bx.x + bx.w / 2, bcy = bx.y + bx.h / 2; s.base = { x: W / 2, y: H / 2, z: 1 }; s.events = []; let zoomed = false;
+      for (const qh of ctx.of('highlight')) {
+        if (qh.at < s.start || qh.at >= s.next || !qh.data || !qh.data.rect) continue;
+        const R = CLIP.sub(qh.data.rect, s.f), fill = qh.data.fill || 0.42, z = clamp(Math.min(bx.w * fill / R.w, bx.h * fill / R.h), 1.18, 2.6);   // 下限 18%；框太小时最多推到 2.6 倍
+        const tx = R.x + R.w / 2 - (bcx - W / 2) / z, ty = R.y + R.h / 2 - (bcy - H / 2) / z;   // 框中心落到内容框中心（让开 safe）
+        s.events.push({ at: qh.at, kind: 'to', x: tx, y: ty, z, dur: zoomed ? MO.PULSE.pan : MO.PULSE.punch });
+        zoomed = true;
+      }
+    }
     // 截图卡的版式：标题行 ＋ 截图区；截图区按截图比例定。竖图在横屏里改成「左字右图」
     const maxW = W * (ctx.portrait ? 0.9 : 0.8), maxH = G.bh * (ctx.portrait ? 0.92 : 0.86), head = (ctx.portrait ? 230 : 130) * u, pad = 36 * u;
-    for (const s of slides) if (s.type === 'img') {
-      const cd = s.cards[0], ar = cd.im.width / cd.im.height;
+    for (const s of slides) if (s.type === 'img' && !s.full) {
+      const cd = s.cards[0], [iw0, ih0] = MD.size(cd.im), ar = iw0 / ih0;
       if (!ctx.portrait && ar < 0.9) {                                         // 横屏放竖图：左字右图，图撑满卡高
         const ih = maxH - 2 * pad, iw = ih * ar, tw = 560 * u;
         cd.box = { w: tw + iw + 3 * pad, h: maxH, img: { x: tw + 2 * pad, y: pad, w: iw, h: ih }, side: tw };
@@ -77,7 +97,8 @@ return {
     const { W, H, u, data: d } = ctx, acc = d.accent || '#3d6bff';
     // ---- 底：光斑（只依赖片段时间，连续） ----
     let bd = null;
-    if (!ctx.alpha) {
+    const covered = slides.some(s => s.full && t >= s.start + (s.panIn ? MO.PULSE.pan : 0) - 1e-6 && t < s.next - 1e-6);   // 满幅截图整屏盖住时不画光斑底（省 2/3 的渲染时间）
+    if (!ctx.alpha && !covered) {
       const bgc = UI.scratch('clip_t2bg', W, H), g = bgc.getContext('2d'); g.clearRect(0, 0, W, H);   // 先清空：不清的话上一帧的残留会透过半透明边缘，同一时刻先后渲出来差 1 个色阶（qa 确定性 ✗）
       UI.mesh(g, t, { base: '#050508', blobs: BL, blur: 90, scale: 0.25, grain: 0.035, key: 'clip_t2mesh' });
       const vg = g.createRadialGradient(W / 2, H / 2, 100 * u, W / 2, H / 2, Math.max(W, H) * 0.55); vg.addColorStop(0, 'rgba(0,0,0,0.38)'); vg.addColorStop(1, 'rgba(0,0,0,0.1)');
@@ -111,6 +132,7 @@ return {
     slides.forEach((s, si) => {
       if (t < s.start - 1e-6) return;
       const nx = slides[si + 1], leave = MO.appleOut(MO.seg(t, s.next - 0.15, s.next + (nx && nx.type === 'num' ? 0.3 : 0.5))); if (leave >= 1) return;
+      if (s.full) return drawFull(c, s, t, ctx, acc);
       if (s.type === 'num') return drawNumber(c, s, t, leave, ctx, shadowText);
       if (s.type === 'img') return drawCard(c, s.cards[0], 0, t, leave, ctx, bd, cardGeoImg(s.cards[0], ctx), 'i' + si);
       // 无图卡并排：n 张时的位置；新卡进来时旧卡按弹簧挪到新位置
@@ -122,6 +144,50 @@ return {
     });
   },
 };
+// 满幅截图一屏：底是同图的压暗模糊放大版（缓存一次），截图等比铺满内容框，镜头按 s.events 脉冲；左上角黑底撕边标签。
+// 进场：上一屏也是满幅截图 → 同倍率横移 0.30s（at 这一帧露出第一条边）；否则硬切＋0.17s 轻砸。离场：下一屏是满幅截图就让它横移盖过来，否则在下一屏开始时硬切掉
+function drawFull(c, s, t, ctx, acc) {
+  const { W, H, u } = ctx, cd = s.cards[0], q = cd.q;
+  if (t < s.start - 1e-6) return;
+  const nx = slides[slides.indexOf(s) + 1], P = MO.PULSE;
+  if (nx && t >= s.next + (s.panOut ? P.pan : 0) - 1e-6) return;
+  const panIn = s.panIn ? MO.pulse(ctx.lt(t, s.start), 0, P.pan) : 1, panOut = s.panOut ? MO.pulse(ctx.lt(t, s.next), 0, P.pan) : 0;
+  const dx = (1 - panIn) * W - panOut * W;
+  const slam = s.panIn ? 1 : MO.slamK(ctx.lt(t, s.start) / P.slam, 1.06, 0.985);
+  const cam = CAM.track(s.base, s.events, t), im = ctx.frame(q, t);
+  c.save(); c.translate(dx, 0);
+  if (!ctx.alpha) { c.fillStyle = '#0b0b0f'; c.fillRect(0, 0, W, H); }
+  CAM.with(c, { x: cam.x, y: cam.y, z: cam.z * slam }, g => {
+    if (!ctx.alpha) { const bg = PAINT.cached('t2full_bg_' + slides.indexOf(s) + '_' + W + 'x' + H, W, H, gg => { gg.filter = 'blur(48px) brightness(0.42) saturate(0.8)'; MD.cover(gg, cd.im, { x: -80, y: -80, w: W + 160, h: H + 160, clip: false }); gg.filter = 'none'; });
+      g.drawImage(bg, -W * 0.5, -H * 0.5, W * 2, H * 2); }
+    const f = s.f;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 40 * u; g.shadowOffsetY = 14 * u; g.fillStyle = '#000'; g.fillRect(f.x, f.y, f.w, f.h); g.restore();
+    if (s.geo.fit === 'cover') MD.cover(g, im, { ...s.geo.box, fx: s.geo.fx, fy: s.geo.fy });
+    else g.drawImage(im, f.x, f.y, f.w, f.h);
+    hlOn(g, cd, f, t, ctx, acc, u, s.next);
+  });
+  // 标签：屏幕层，不跟镜头；压在内容框左下角（截图自己的标题多在上面，不挡它），at 这一帧出现、12fps 打字
+  const size = (ctx.portrait ? 54 : 46) * u, ss = size * 0.66, lx = ctx.box.x + 56 * u, yb = ctx.box.y + ctx.box.h - (ctx.portrait ? 110 : 60) * u;
+  const ySub = yb - ss * 0.75, yMain = q.sub ? ySub - ss * 0.75 - 12 * u - size * 0.75 : yb - size * 0.75;
+  if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size });
+  if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, fam: 'PuHui-Bold', bg: acc, fg: '#ffffff' });
+  c.restore();
+}
+// 截图上的 highlight：at 这一帧框开始弹出，其余压暗，一道光扫过框内；只认落在这一屏在屏期间的 highlight
+function hlOn(g, cd, f, t, ctx, acc, u, until) {
+  const q = cd.q;
+  for (const qh of ctx.of('highlight')) {
+    if (qh.at < q.at || qh.at >= until || !qh.data || !qh.data.rect) continue;
+    const hl = ctx.lt(t, qh.at); if (hl <= 0) continue;
+    const R = CLIP.sub(qh.data.rect, f), s = MO.spring(hl, { duration: 0.45, bounce: 0.25 }), e = 8 * u * (1 - s);
+    g.save(); g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.rect(f.x, f.y, f.w, f.h); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.globalAlpha = clamp(hl / 0.3); g.fill('evenodd'); g.restore();
+    g.save(); g.strokeStyle = acc; g.lineWidth = 5 * u; g.shadowColor = acc; g.shadowBlur = 18 * u * 0.85; g.globalAlpha = clamp(hl / 0.15);
+    g.beginPath(); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.stroke(); g.restore();
+    UI.sheen(g, UI.rrPath(R.x, R.y, R.w, R.h, 10 * u), MO.seg(hl, 0.25, 1.0), { x0: R.x, x1: R.x + R.w, width: Math.max(60 * u, R.w * 0.2), alpha: 0.35 });
+    if (qh.text) { g.font = `600 ${30 * u}px ${ZHB}`; const lw = g.measureText(qh.text).width + 36 * u, ly = R.y + R.h + 16 * u + 48 * u > f.y + f.h ? R.y - 64 * u : R.y + R.h + 16 * u;
+      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(clamp(R.x, f.x, f.x + f.w - lw), ly, lw, 48 * u, 24 * u); g.fill(); g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(qh.text, clamp(R.x, f.x, f.x + f.w - lw) + 18 * u, ly + 25 * u); g.restore(); }
+  }
+}
 // 截图卡的屏幕几何
 function cardGeoImg(cd, ctx) { return { cx: ctx.W / 2, cy: G.cy, w: cd.box.w, h: cd.box.h, focus: 1 }; }
 // 无图卡：横屏排一行（1 张时宽一点），竖屏叠成一列；total = 这一屏最终有几张（排版按当前张数，但尺寸上限按最终张数，挪位时不忽大忽小）
@@ -135,8 +201,8 @@ function rowGeo(j, n, ctx, total) {
 function drawCard(c, cd, i, t, leave, ctx, bd, geo, key) {
   const { u, data: d } = ctx, q = cd.q, lt = ctx.lt(t, q.at); if (lt <= 0) return;
   const sp = MO.spring(lt, { duration: 0.7, bounce: 0.15 }), acc = d.accent || '#3d6bff';
-  const Bw = geo.w, Bh = geo.h, cx = geo.cx - leave * ctx.W * 0.35, cy = geo.cy + (1 - sp) * 170 * u + MO.float(t, 5 * u, 3.6, i);
-  const sc = (0.9 + 0.1 * sp) * (1 - 0.12 * leave) * lerp(0.97, 1, geo.focus), ry = (1 - sp) * -0.45 + 0.03 * Math.sin(t * 0.9 + i) - 0.35 * leave, a = clamp(lt / 0.2) * (1 - leave) * lerp(0.6, 1, geo.focus);
+  const Bw = geo.w, Bh = geo.h, cx = geo.cx - leave * ctx.W * 0.35, cy = geo.cy + (1 - sp) * 170 * u;   // 落定后停住：不漂浮、不摇
+  const sc = (0.9 + 0.1 * sp) * (1 - 0.12 * leave) * lerp(0.97, 1, geo.focus), ry = (1 - sp) * -0.45 - 0.35 * leave, a = clamp(lt / 0.2) * (1 - leave) * lerp(0.6, 1, geo.focus);
   const pad = 60, tex = scr[key] || (scr[key] = document.createElement('canvas')); tex.width = Math.ceil(Bw + 2 * pad); tex.height = Math.ceil(Bh + 2 * pad);
   const g = tex.getContext('2d'); g.reset();
   const sw = Bw * sc, sh = Bh * sc;
@@ -177,23 +243,13 @@ function imgContent(g, cd, Bw, Bh, t, ctx, acc) {
     if (q.sub) { const sl = TY.fit(g, q.sub, tw, 28 * u, 'PuHui-Medium', { maxLines: 1 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.62)'; g.fillText(sl.lines[0] || '', tx, hp + 74 * u); }
     }
   }
-  const f = CLIP.fit(cd.im.width, cd.im.height, I.x, I.y, I.w, I.h);
+  const [iw, ih] = MD.size(cd.im), f = CLIP.fit(iw, ih, I.x, I.y, I.w, I.h);
   g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 30 * u; g.shadowOffsetY = 12 * u; g.fillStyle = '#000'; g.beginPath(); g.roundRect(f.x, f.y, f.w, f.h, 10 * u); g.fill(); g.restore();
-  g.save(); g.beginPath(); g.roundRect(f.x, f.y, f.w, f.h, 10 * u); g.clip(); g.drawImage(cd.im, f.x, f.y, f.w, f.h); g.restore();
+  g.save(); g.beginPath(); g.roundRect(f.x, f.y, f.w, f.h, 10 * u); g.clip(); g.drawImage(ctx.frame(q, t), f.x, f.y, f.w, f.h); g.restore();
   g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(f.x + .75, f.y + .75, f.w - 1.5, f.h - 1.5, 10 * u); g.stroke();
-  // 框出重点：at 这一帧框开始弹出，之后呼吸；一道光扫过框内（只认落在这张卡在屏期间的 highlight）
+  // 框出重点（和满幅模式同一套）：只认落在这张卡在屏期间的 highlight
   const nxAt = (() => { const i = ctx.cues.indexOf(q); const n = ctx.cues.slice(i + 1).find(z => ['card', 'step', 'image', 'number'].includes(z.kind)); return n ? (n.kind === 'number' ? n.at - 0.9 : n.at) : 1e9; })();
-  for (const qh of ctx.of('highlight')) {
-    if (qh.at < q.at || qh.at >= nxAt || !qh.data || !qh.data.rect) continue;
-    const hl = ctx.lt(t, qh.at); if (hl <= 0) continue;
-    const R = CLIP.sub(qh.data.rect, f), s = MO.spring(hl, { duration: 0.45, bounce: 0.25 }), e = 8 * u * (1 - s);
-    g.save(); g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.rect(f.x, f.y, f.w, f.h); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.globalAlpha = clamp(hl / 0.3); g.fill('evenodd'); g.restore();
-    g.save(); g.strokeStyle = acc; g.lineWidth = 5 * u; g.shadowColor = acc; g.shadowBlur = 18 * u * (0.7 + 0.3 * Math.sin(hl * 5)); g.globalAlpha = clamp(hl / 0.15);
-    g.beginPath(); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.stroke(); g.restore();
-    UI.sheen(g, UI.rrPath(R.x, R.y, R.w, R.h, 10 * u), MO.seg(hl, 0.25, 1.0), { x0: R.x, x1: R.x + R.w, width: Math.max(60 * u, R.w * 0.2), alpha: 0.35 });
-    if (qh.text) { g.font = `600 ${30 * u}px ${ZHB}`; const lw = g.measureText(qh.text).width + 36 * u, ly = R.y + R.h + 16 * u + 48 * u > f.y + f.h ? R.y - 64 * u : R.y + R.h + 16 * u;
-      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(clamp(R.x, f.x, f.x + f.w - lw), ly, lw, 48 * u, 24 * u); g.fill(); g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(qh.text, clamp(R.x, f.x, f.x + f.w - lw) + 18 * u, ly + 25 * u); g.restore(); }
-  }
+  hlOn(g, cd, f, t, ctx, acc, u, nxAt);
 }
 // 无图功能卡的内容：图标（或步骤号）→ 大标题 → 说明 →（可选）大数字计数。横屏竖卡上下排，竖屏横卡左右排
 function featContent(g, cd, Bw, Bh, lt, t, ctx, acc) {

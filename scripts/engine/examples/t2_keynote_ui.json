@@ -9,6 +9,6 @@
     { "at": 1.8, "kind": "highlight", "data": { "rect": [0.648, 0.245, 0.104, 0.105] } },
     { "at": 4.0, "kind": "card", "text": "竖屏换一套排版", "sub": "同一份数据", "image": "assets/营收图_竖屏.png" },
     { "at": 6.6, "kind": "number", "text": "可换的动画语法", "data": { "value": 8, "suffix": " 种" } },
-    { "at": 8.0, "kind": "card", "text": "时长精确到帧", "sub": "帧数＝时长×帧率", "data": { "icon": "clock" } }
+    { "at": 8.0, "kind": "card", "text": "时长精确到帧", "sub": "帧数 = 时长 × 帧率", "data": { "icon": "clock" } }
   ]
 }

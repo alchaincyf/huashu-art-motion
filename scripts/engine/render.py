@@ -3,14 +3,17 @@
 → 读 canvas 像素 → 管道送 ffmpeg 出 60fps mp4，最后混入音轨。
 
 uv run --with playwright python render.py --out ../成片/复刻_v1.mp4 [--audio ../音频/复刻音轨.wav] [--from 0 --to 片长] [--fps 60]
-    [--film gallery]（读 eras_gallery.js）[--solo <id> --stills 0.2,0.6 --no-counter]
+    [--film gallery]（读 eras_gallery.js）[--solo <id> --stills 0.2,0.6 --no-counter] [--width 1080 --height 1920]（竖屏整片：传给 index.html?w=&h=，
+    引擎、转场、相机和各库按这个画布算；不写就用 eras.js 的 window.FILM_SIZE，再不写 1920×1080）
 uv run --with playwright python render.py --spec clip.json --out 片段.mp4 [--alpha] [--stills 0.5,2]
     参数化片段（口播管线的「动画段」，契约见 references/09）：时长严格 = spec.duration（帧数 round(duration×fps)），
     宽高/fps 从 spec 读；默认无声 H.264 yuv420p、每秒一个关键帧（GOP=fps，管线渲染器按秒 seek），--alpha 出 ProRes 4444 带透明（.mov）。spec 里图片路径相对 spec 文件。
 页面里有 pageerror 或 console.error（场景报错、缺字形）→ 渲完后非零退出。
 """
-import argparse, base64, http.server, json, socketserver, subprocess, threading, functools, time, urllib.parse
+import argparse, base64, http.server, json, socketserver, subprocess, sys, threading, functools, time, urllib.parse
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+import spec_assets
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -26,22 +29,18 @@ ap.add_argument('--no-counter', action='store_true', help='--solo 时不画角�
 ap.add_argument('--crf', type=int, default=14)
 ap.add_argument('--spec', help='参数化片段 spec.json（走 clip.html，不读段落表）')
 ap.add_argument('--alpha', action='store_true', help='--spec 时出 ProRes 4444 带透明（背景不画）')
+ap.add_argument('--width', type=int, help='整片模式的画布宽（竖屏 1080）；--spec 时宽高从 spec 读，写了这个会覆盖 spec')
+ap.add_argument('--height', type=int, help='整片模式的画布高（竖屏 1920）')
 a = ap.parse_args()
 
 root = Path(__file__).parent
-spec = None
+spec, ALLOWED = None, set()
 if a.spec:
     sp = Path(a.spec).resolve(); spec = json.loads(sp.read_text())
-    def ref(v):                                            # 本地图片 → /__file__/<绝对路径>（只服务 spec 里点名的文件）
-        if not v or v.startswith(('data:', 'http:', 'https:')): return v
-        f = (sp.parent / v).resolve()
-        if not f.exists(): raise SystemExit(f'spec 里的图片不存在：{v}（相对 {sp.parent}）')
-        ALLOWED.add(str(f)); return '/__file__/' + urllib.parse.quote(str(f))
-    ALLOWED = set()
-    for q in spec.get('cues', []):
-        if q.get('image'): q['image'] = ref(q['image'])
-    if (spec.get('data') or {}).get('image'): spec['data']['image'] = ref(spec['data']['image'])
+    try: spec_assets.localize(spec, sp.parent, ALLOWED)   # image / frames / data.character 里的本地路径 → /__file__/<绝对路径>（只服务 spec 里点名的文件）
+    except FileNotFoundError as e: raise SystemExit(str(e))
     if a.alpha: spec['alpha'] = True
+    if a.width or a.height: spec['width'], spec['height'] = a.width or spec.get('width', 1920), a.height or spec.get('height', 1080)
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *x): pass
     def translate_path(self, path):
@@ -72,7 +71,10 @@ with sync_playwright() as p:
         pg.add_init_script('window.CLIP_SPEC = ' + json.dumps(spec, ensure_ascii=False) + ';')
         pg.goto(f'http://127.0.0.1:{port}/clip.html?render=1')
     else:
-        pg.goto(f'http://127.0.0.1:{port}/index.html?render=1' + (f'&film={a.film}' if a.film else ''))
+        if a.width or a.height:
+            if not (a.width and a.height): raise SystemExit('--width 和 --height 要一起写')
+            pg.set_viewport_size({'width': a.width, 'height': a.height})
+        pg.goto(f'http://127.0.0.1:{port}/index.html?render=1' + (f'&film={a.film}' if a.film else '') + (f'&w={a.width}&h={a.height}' if a.width else ''))
     pg.wait_for_function('window.__ready === true || !!window.__bootFailed', timeout=120000)
     bf = pg.evaluate('window.__bootFailed || null')
     if bf: raise SystemExit('场景加载失败，拒绝渲染：\n' + bf)

@@ -53,7 +53,7 @@ S.world = (c, t, ch) => {
   c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 240); c.stroke();
   c.fillStyle = '#F2C86B'; c.beginPath(); c.moveTo(-90, 330); c.lineTo(-42, 240); c.lineTo(42, 240); c.lineTo(90, 330); c.closePath(); c.fill(); c.stroke(); c.restore();
   // 角色
-  const info = TOON.bean(c, { x: 860, y: 760, s: 165, ...ch });
+  const info = TOON.bean(c, { x: 860, y: 760, s: 165, char: 'author', ...ch });   // 示范片讲的是作者自己的经历，显式用作者造型（TOON.bean 默认是中性角色）
   c.drawImage(front(), X0, Y0);
   // 笔记本（背面朝镜头、斜对着他），屏幕光打在桌上，光随代码滚动微闪
   c.save(); c.lineWidth = S.bgLW; c.strokeStyle = C.bgLine; c.lineJoin = 'round';

@@ -44,8 +44,8 @@ return {
     if (k >= 0) {
       // 拍点微冲：每个 cue 落下时整屏放大 1.5%，0.15s 衰减
       let bump = 1; for (const q of ctx.cues) { const l = t - q.at; if (l >= 0 && l < 0.4) bump += 0.015 * Math.exp(-l * 22); }
-      const [dx, dy] = CAM.drift(t, 5 * u, 2);
-      CAM.with(c, { x: W / 2 + dx, y: H / 2 + dy, z: bump, r: 0.008 * Math.sin(t * 0.8) }, cc => { ghost(cc, P, t, ctx); page(P, cc); });
+      // 镜头不漂不晃：落定就停，运动只在拍点上（上面的微冲、主词砸入、换页色带）
+      CAM.with(c, { x: W / 2, y: H / 2, z: bump }, cc => { ghost(cc, P, t, ctx); page(P, cc); });
       track(c, P, t, ctx);
     }
     // 换页：两条色带从左扫到右，最后一条后面露出新页（露出那一帧＝新页的 show 时刻）

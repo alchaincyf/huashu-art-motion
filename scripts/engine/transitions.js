@@ -2,7 +2,8 @@
 // o: {W,H,lt,t,tmp,IMG, ...该转场在 eras.js 里的参数}。确定性：随机数一律 U.rng(种子)。
 // 每个转场都取「新时代」最有辨识度的形式元素（见 经验日志「转场」）。
 (() => {
-const W = 1920, H = 1080;
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走：竖屏整片（render.py --width 1080 --height 1920）的转场按当前画布算
+const sx = x => x * W / 1920, sy = y => y * H / 1080;          // 按 1920×1080 写的默认位置换算到当前画布（横屏时原样）
 const { clamp, lerp, ease, rng } = U, TAU = Math.PI * 2;
 const seg = (p, a, b) => clamp((p - a) / (b - a));          // 把 p 的 [a,b] 段拉成 0..1
 
@@ -118,7 +119,7 @@ const T = window.TRANSITIONS = {
 
   // ⑤ 哥特→文艺复兴：窗口迸出金色神光，光芒里旧画渐隐、新画浮现
   godRays(c, A, B, p, o) {
-    const cx = o.cx || 440, cy = o.cy || 300;
+    const cx = o.cx || sx(440), cy = o.cy || sy(300);
     c.drawImage(A, 0, 0);
     c.globalAlpha = ease.out(seg(p, 0.05, 0.5)); c.drawImage(B, 0, 0); c.globalAlpha = 1;
     // 光晕
@@ -215,7 +216,7 @@ const T = window.TRANSITIONS = {
 
   // ⑧ 印象派→梵高：星空漩涡——以窗户为中心的旋涡扭曲，新画面带着旋转卷进来、最后摆正
   swirl(c, A, B, p, o) {
-    const cx = o.cx || 420, cy = o.cy || 300;
+    const cx = o.cx || sx(420), cy = o.cy || sy(300);
     const S = 2;                                        // 半分辨率做像素扭曲
     const w = W / S, h = H / S;
     const src = once('swirlSrc', () => ({ a: mkc(w, h), b: mkc(w, h), out: mkc(w, h) }));
@@ -244,7 +245,7 @@ const T = window.TRANSITIONS = {
 
   // ⑨ 梵高→新艺术：从人物头部长出一块带金边的有机形状（慕夏式曲线轮廓），向外生长吞没画面
   organic(c, A, B, p, o) {
-    const cx = o.cx || 1500, cy = o.cy || 330;
+    const cx = o.cx || sx(1500), cy = o.cy || sy(330);
     const e = ease.out(p) * 0.7 + p * 0.3;
     const R = e * 2300;
     const path = () => {
@@ -302,7 +303,7 @@ const T = window.TRANSITIONS = {
 
   // ⑪ 立体→包豪斯：蓝方块＋红圆＋黄三角的构成旋转放大，中心的米白圆里是新画面，最后构成扫出画面
   bauhaus(c, A, B, p, o) {
-    const cx = o.cx || 1010, cy = o.cy || 560;
+    const cx = o.cx || sx(1010), cy = o.cy || sy(560);
     c.drawImage(A, 0, 0);
     const s = Math.pow(30, ease.out(seg(p, 0, 0.7))) * 0.35;   // 指数放大
     const rot = -0.5 + p * 0.9;
@@ -398,7 +399,7 @@ const T = window.TRANSITIONS = {
 
   // ⑮ 光追→2026：三色同心环从杯子(992,601)线性扩张，外径约 143px/帧，每环厚 137px，最内环里是新画面（分镜表 T15）
   iris(c, A, B, p, o) {
-    const cx = o.cx || 992, cy = o.cy || 601;
+    const cx = o.cx || sx(992), cy = o.cy || sy(601);
     const R = 19 + p * (1159 - 19 + 3 * 137 + 900);           // 线性；到 p=1 时最内环也超出画面对角
     c.drawImage(A, 0, 0);
     const ring = (r, col) => { if (r <= 0) return; c.fillStyle = col; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); };
@@ -413,7 +414,7 @@ const T = window.TRANSITIONS = {
   // 水墨 → 克里姆特：金箔一片片贴上来。从少女头部按螺旋次序落下方形金箔（带螺旋/眼形/同心圆压纹），
   // 贴实后金色褪去露出新画面。q<0.5 贴金箔（从 1.3 倍、带旋转落位），0.5..1 金箔变透明露出 B。
   goldLeaf(c, A, B, p, o) {
-    const ts = 72, cx = o.cx || 1300, cy = o.cy || 380;
+    const ts = 72, cx = o.cx || sx(1300), cy = o.cy || sy(380);
     const tiles = once('goldLeaf', () => { const r = rng(21), out = [], maxd = Math.hypot(W, H) * 0.8;
       for (let y = 0; y < H; y += ts) for (let x = 0; x < W; x += ts) { const mx = x + ts / 2, my = y + ts / 2; const d = Math.hypot(mx - cx, my - cy) / maxd, a = (Math.atan2(my - cy, mx - cx) / (Math.PI * 2) + 1) % 1;
         out.push({ x, y, key: d * 0.78 + a * 0.12 + r() * 0.08, rot: (r() - .5) * 0.8, m: (r() * 3) | 0 }); }
@@ -472,7 +473,7 @@ const T = window.TRANSITIONS = {
   },
   // 敦煌 → 草间：波点从猫的位置一圈圈长出来，点里是新画面；点胀到彼此相接就整幅换完。
   dotBloom(c, A, B, p, o) {
-    const sp = 58, cx = o.cx || 540, cy = o.cy || 760, maxd = Math.hypot(W, H);
+    const sp = 58, cx = o.cx || sx(540), cy = o.cy || sy(760), maxd = Math.hypot(W, H);
     c.drawImage(A, 0, 0);
     const pts = once('dotBloom', () => { const r = rng(44), out = []; for (let y = 0, j = 0; y < H + sp; y += sp * 0.87, j++) for (let x = (j % 2) * sp / 2; x < W + sp; x += sp) out.push([x + (r() - .5) * 8, y + (r() - .5) * 8, Math.hypot(x - cx, y - cy) / maxd, r()]); return out; });
     const path = new Path2D(), rims = [];
@@ -484,7 +485,7 @@ const T = window.TRANSITIONS = {
   // ① Kirby → 莫奈：旧画面「落进水里」——逐行横向正弦错位（水面倒影的抖动）越来越强；
   //    新画面从杯子位置以「横向短笔触」一圈圈荡开（涟漪由笔触组成），亮色水光短横线闪烁。
   ripple(c, A, B, p, o) {
-    const cx = o.cx || 1000, cy = o.cy || 600, e = ease.inOut(p);
+    const cx = o.cx || sx(1000), cy = o.cy || sy(600), e = ease.inOut(p);
     const amp = 46 * Math.sin(Math.PI * Math.min(1, p * 1.2)), rowH = 6;
     for (let y = 0; y < H; y += rowH) { const d = Math.abs(y - cy) / H, dx = Math.sin(y * 0.045 - p * 26) * amp * (0.4 + d); c.drawImage(A, 0, y, W, rowH, dx, y, W, rowH); }
     const S = once('rip', () => { const r = rng(41), out = []; for (let i = 0; i < 3600; i++) { const x = r() * W, y = r() * H; out.push({ x, y, l: 40 + r() * 70, h: 9 + r() * 8, d: Math.hypot(x - cx, (y - cy) * 1.9) / 1700 + r() * 0.06 }); } return out; });
@@ -559,7 +560,7 @@ const T = window.TRANSITIONS = {
   // ④ 马蒂斯 → 哈林：一个粗黑轮廓的跳舞小人（双臂 V 字）从杯子处放大，身体里面是新画面，
   //    周围一圈哈林式放射动作线；小人越长越大直到身体铺满整个画面。
   radiant(c, A, B, p, o) {
-    const cx = o.cx || 1000, cy = o.cy || 600, s = 0.15 * Math.pow(320, ease.inOut(p));
+    const cx = o.cx || sx(1000), cy = o.cy || sy(600), s = 0.15 * Math.pow(320, ease.inOut(p));
     const pose = { head: [0, -224], neck: [0, -182], hip: [0, -100], hl: [-84, -256], hr: [84, -256], kl: [-40, -54], kr: [40, -54], fl: [-60, -14], fr: [60, -14] };
     const T = q => [cx + q[0] * s, cy + (q[1] + 130) * s];
     const parts = [RIG.limb(T(pose.neck), T(pose.hip), 70 * s, 60 * s), RIG.limb(T(pose.neck), T(pose.hl), 36 * s, 32 * s), RIG.limb(T(pose.neck), T(pose.hr), 36 * s, 32 * s),
@@ -582,7 +583,7 @@ const T = window.TRANSITIONS = {
   // ---- D：伦勃朗 / 橡皮管 / 皮影 / 新海诚 / 蓝色时期 ----
   // 伦勃朗 → 橡皮管卡通：旧画先褪成棕褐老胶片（闪烁＋划痕），黑色光圈收到少女杯口，再从同一点「弹」开（outBack 过冲）
   irisFilm(c, A, B, p, o) {
-    const cx = o.cx || 960, cy = o.cy || 540, R0 = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 20;
+    const cx = o.cx || W / 2, cy = o.cy || H / 2, R0 = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 20;
     const close = p < 0.5, q = close ? seg(p, 0, 0.5) : seg(p, 0.5, 1);
     if (close) { c.save(); c.filter = `sepia(${q}) grayscale(${q * 0.7}) contrast(${1 + q * 0.3})`; c.drawImage(A, 0, 0); c.restore(); }
     else c.drawImage(B, 0, 0);
@@ -596,7 +597,7 @@ const T = window.TRANSITIONS = {
   },
   // 橡皮管 → 皮影：旧片像灯灭一样压成暗褐剪影；幕后的油灯从中心点亮，暖光圈（边缘带灯焰抖动）向外推开，新画面在光里出现
   lampGlow(c, A, B, p, o) {
-    const cx = o.cx || 960, cy = o.cy || 470;
+    const cx = o.cx || W / 2, cy = o.cy || sy(470);
     c.drawImage(A, 0, 0);
     c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = `rgba(70,34,12,${Math.min(1, p * 2.2)})`; c.fillRect(0, 0, W, H); c.restore();
     const fl = Math.sin(o.t * 37) * 0.04 + Math.sin(o.t * 23) * 0.03;
@@ -698,7 +699,7 @@ T.sunShaft = function (c, A, B, p) {
 //    边缘一圈颜料沉积的深色水痕＋外侧一圈被水冲淡的亮晕；色晕里是新画面。
 //    水痕/亮晕的 α 跟着「这一团的扩张进度」淡出，否则长大后的水痕线会横穿新画面（第一版踩到）。
 T.bleed = function (c, A, B, p, o) {
-  const cx = o.cx || 580, cy = o.cy || 330;
+  const cx = o.cx || sx(580), cy = o.cy || sy(330);
   const blobs = [[cx, cy, 0, 1.0], [1300, 420, 0.14, 0.75], [520, 880, 0.24, 0.6], [1650, 860, 0.3, 0.6], [1050, 100, 0.34, 0.55]];
   const st = blobs.map(([x, y, t0, k]) => ({ x, y, q: ease.inOut(seg(p, t0, t0 + 0.66)), k }));
   const one = (i) => { const b = st[i], R = b.q * 1400 * b.k; if (R <= 0) return;
@@ -739,7 +740,7 @@ T.vhs = function (c, A, B, p) {
 Object.assign(T, {
   // 进入水墨：旧画先被「洗」成宣纸（去色、提亮、减对比），几团墨点从落笔处先后洇开，边缘带一圈墨晕，新画在墨里出现
   inkBloom(c, A, B, p, o) {
-    const cx = o.cx || 560, cy = o.cy || 740;
+    const cx = o.cx || sx(560), cy = o.cy || sy(740);
     c.save(); c.filter = `grayscale(${seg(p, 0, 0.5)}) brightness(${1 + 0.35 * seg(p, 0, 0.6)}) contrast(${1 - 0.3 * seg(p, 0, 0.6)})`; c.drawImage(A, 0, 0); c.restore();
     const blobs = once('inkBloom', () => { const r = rng(17), out = [[cx, cy, 0, 1.0]]; for (let i = 0; i < 6; i++) out.push([200 + r() * 1520, 120 + r() * 840, 0.08 + r() * 0.3, 0.45 + r() * 0.4]); return out; });
     const outline = (g, x, y, R) => { g.beginPath(); for (let j = 0; j <= 72; j++) { const a = j / 72 * TAU, n = PAINT.fbm(Math.cos(a) * 1.8 + x * 0.01, Math.sin(a) * 1.8 + y * 0.01, 3), rr = R * (1 + 0.35 * n); j ? g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); };
@@ -759,17 +760,17 @@ Object.assign(T, {
   redWedge(c, A, B, p, o) {
     const e = ease.inOut(p), ang = -0.32, ca = Math.cos(ang), sa = Math.sin(ang);
     const X = lerp(-700, W + 900, e);                                           // 楔尖沿斜轴的位置
-    const tf = (u, v) => [960 + (u - 960) * ca - (v - 540) * sa, 540 + (u - 960) * sa + (v - 540) * ca];
+    const mx = W / 2, my = H / 2, tf = (u, v) => [mx + (u - mx) * ca - (v - my) * sa, my + (u - mx) * sa + (v - my) * ca];
     c.drawImage(A, 0, 0);
-    c.save(); c.beginPath(); [tf(-2000, -2000), tf(X - 420, -2000), tf(X - 420, 3000), tf(-2000, 3000)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.clip(); c.drawImage(B, 0, 0); c.restore();
-    c.save(); c.fillStyle = '#c8231c'; c.beginPath(); [tf(X, 540), tf(X - 520, 540 - 330), tf(X - 520, 540 + 330)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.fill();
+    c.save(); c.beginPath(); [tf(-3000, -3000), tf(X - 420, -3000), tf(X - 420, 4000), tf(-3000, 4000)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.clip(); c.drawImage(B, 0, 0); c.restore();
+    c.save(); c.fillStyle = '#c8231c'; c.beginPath(); [tf(X, my), tf(X - 520, my - 330), tf(X - 520, my + 330)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.fill();
     c.fillStyle = '#151311'; [[-150, 26, 0], [120, 18, 0.12], [260, 34, 0.2]].forEach(([dv, h, lag]) => { const x1 = lerp(-700, W + 900, ease.inOut(clamp(p - lag))) - 560;
-      c.beginPath(); [tf(-2000, 540 + dv), tf(x1, 540 + dv), tf(x1, 540 + dv + h), tf(-2000, 540 + dv + h)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.fill(); });
+      c.beginPath(); [tf(-2000, my + dv), tf(x1, my + dv), tf(x1, my + dv + h), tf(-2000, my + dv + h)].forEach((q, i) => i ? c.lineTo(...q) : c.moveTo(...q)); c.closePath(); c.fill(); });
     c.restore();
   },
   // 进入 Kirby 漫画：新画面按漫画分格一格格「砸」进来（从 1.18 倍落位、黑格线），没换到的旧画面先被盖上一层本戴网点
   comicPanels(c, A, B, p, o) {
-    const cells = once('comicPanels', () => [[0, 0, 820, 520, 0], [820, 0, 1100, 520, 0.12], [0, 520, 640, 560, 0.24], [640, 520, 700, 560, 0.34], [1340, 520, 580, 560, 0.44]]);
+    const cells = once('comicPanels', () => [[0, 0, 820, 520, 0], [820, 0, 1100, 520, 0.12], [0, 520, 640, 560, 0.24], [640, 520, 700, 560, 0.34], [1340, 520, 580, 560, 0.44]].map(([x, y, w, h, t0]) => [sx(x), sy(y), sx(w), sy(h), t0]));
     c.drawImage(A, 0, 0);
     c.save(); c.globalAlpha = Math.min(1, p * 2.5) * 0.85; c.fillStyle = PAINT.dotPattern(c, 'comicTr', 12, 3.4, '#e0287a', null, 75); c.fillRect(0, 0, W, H); c.restore();
     for (const [x, y, w, h, t0] of cells) {
@@ -781,17 +782,17 @@ Object.assign(T, {
   },
   // 进入伦勃朗：旧画沉进暗褐（暗角从四周合拢），然后一道从窗口斜下来的光柱把新画面照出来，最后暗部也慢慢显影
   chiaroscuro(c, A, B, p, o) {
-    const sx = o.cx || 580, sy = o.cy || 300;
+    const lx = o.cx || sx(580), ly = o.cy || sy(300);
     c.drawImage(A, 0, 0);
     c.save(); c.globalCompositeOperation = 'multiply'; const d = seg(p, 0, 0.45);
-    const vg = c.createRadialGradient(960, 540, lerp(1100, 80, d), 960, 540, lerp(1400, 700, d)); vg.addColorStop(0, 'rgba(255,255,255,1)'); vg.addColorStop(1, `rgba(28,18,10,${0.9 * d + 0.1})`);
+    const vg = c.createRadialGradient(W / 2, H / 2, lerp(1100, 80, d), W / 2, H / 2, lerp(1400, 700, d)); vg.addColorStop(0, 'rgba(255,255,255,1)'); vg.addColorStop(1, `rgba(28,18,10,${0.9 * d + 0.1})`);
     c.fillStyle = vg; c.fillRect(0, 0, W, H); c.fillStyle = `rgba(40,26,14,${0.85 * d})`; c.fillRect(0, 0, W, H); c.restore();
     const q = ease.inOut(seg(p, 0.25, 0.9)); if (q <= 0) return;
     const T2 = o.tmp, g = T2.getContext('2d'); g.reset(); g.drawImage(B, 0, 0); g.globalCompositeOperation = 'destination-in'; g.filter = 'blur(40px)'; g.fillStyle = '#000';
-    const spread = lerp(60, 1400, q); g.beginPath(); g.moveTo(sx - 180, sy - 200); g.lineTo(sx + 180, sy - 200); g.lineTo(sx + 500 + spread, sy + 900); g.lineTo(sx - 200 - spread * 0.6, sy + 900); g.closePath(); g.fill();
-    g.beginPath(); g.arc(sx + 420, sy + 260, lerp(40, 1500, q), 0, TAU); g.fill(); g.filter = 'none';
+    const spread = lerp(60, 1400, q); g.beginPath(); g.moveTo(lx - 180, ly - 200); g.lineTo(lx + 180, ly - 200); g.lineTo(lx + 500 + spread, ly + 900); g.lineTo(lx - 200 - spread * 0.6, ly + 900); g.closePath(); g.fill();
+    g.beginPath(); g.arc(lx + 420, ly + 260, lerp(40, 1500, q), 0, TAU); g.fill(); g.filter = 'none';
     c.drawImage(T2, 0, 0);
-    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 * Math.sin(Math.PI * q); c.fillStyle = 'rgba(255,214,150,1)'; c.beginPath(); c.moveTo(sx - 140, sy - 160); c.lineTo(sx + 140, sy - 160); c.lineTo(sx + 420 + spread * 0.5, sy + 900); c.lineTo(sx - 120 - spread * 0.3, sy + 900); c.closePath(); c.filter = 'blur(30px)'; c.fill(); c.restore();
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 * Math.sin(Math.PI * q); c.fillStyle = 'rgba(255,214,150,1)'; c.beginPath(); c.moveTo(lx - 140, ly - 160); c.lineTo(lx + 140, ly - 160); c.lineTo(lx + 420 + spread * 0.5, ly + 900); c.lineTo(lx - 120 - spread * 0.3, ly + 900); c.closePath(); c.filter = 'blur(30px)'; c.fill(); c.restore();
     if (p > 0.8) { c.globalAlpha = seg(p, 0.8, 1); c.drawImage(B, 0, 0); c.globalAlpha = 1; }
   },
 });

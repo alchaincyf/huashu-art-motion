@@ -9,7 +9,7 @@
 //   P.impasto(c, pts, w, col, hi)   厚涂鬃毛笔：一笔＝若干平行细鬃（伦勃朗高光、梵高厚涂补笔）
 //   P.cut(pts, seed, step, amp)     剪刀折线：沿轮廓每 step px 取点＋抖动、直线相连（马蒂斯剪纸、剪影、木刻）
 (() => {
-const W = 1920, H = 1080;
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
 const P = window.PAINT;
 const { clamp, lerp, rng, ss } = U;
 

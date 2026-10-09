@@ -15,7 +15,8 @@
 //   P.roughen(layer, box, opt)                                 整层低频像素位移：RIG 角色的边也像手剪的（马蒂斯）
 //   P.glowStroke(c, col, w, blur)                              霓虹灯管：对当前路径用 shadowBlur 描辉光（再描一道近白细芯线就是灯管）
 (() => {
-const W = 1920, H = 1080, TAU = Math.PI * 2;
+const TAU = Math.PI * 2;
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
 const P = window.PAINT;
 const { clamp, lerp, rng } = U;
 
@@ -93,7 +94,7 @@ P.pointillism = (c, src, { pal, comp = {}, pitch = 10, rad = 4.5, posJitter = 2.
 };
 
 // ---------- 赛璐珞 / 漫画阴影 ----------
-const BIG = (() => { const p = new Path2D(); p.rect(-60, -60, W + 120, H + 120); return p; })();
+let BIG; U.onStage((w, h) => { BIG = new Path2D(); BIG.rect(-60, -60, w + 120, h + 120); });   // 比画布四边各大 60px 的矩形，跟画布尺寸走
 // clip 到 path ∩ ¬translate(path, dx, dy)：沿 (dx,dy) 方向的那一侧之外留下一条带（光从 -(dx,dy) 来时就是背光侧的阴影带）
 P.clipBeside = (c, path, dx, dy) => { const m = new Path2D(); m.addPath(BIG); m.addPath(path, new DOMMatrix().translate(dx, dy)); c.clip(path); c.clip(m, 'evenodd'); };
 // 底色 → 背光侧硬阴影带（宽 sd，光方向 (lx,ly) 指向光源的反方向：lx=-1 光从左来、阴影在右）→ 受光侧亮边（宽 rw）→ 细描线。

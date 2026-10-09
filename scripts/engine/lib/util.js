@@ -26,6 +26,16 @@ window.U = {
   poly(pts, closed = true) { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); if (closed) p.closePath(); return p; },
 };
 
+// ---------- 画布尺寸 ----------
+// 默认 1920×1080。竖屏片段（clip.html，spec.width/height）和竖屏整片（index.html?w=1080&h=1920，或 eras.js 里写 window.FILM_SIZE = [1080, 1920]）
+// 启动时调一次 U.setStage(w, h)。用到屏幕尺寸的库（PAINT / BRUSH / RENDER / POST / KIT / TOON / CAM / UI / CH / DG / CL / MD、transitions.js、engine.js）
+// 用 U.onStage 登记，尺寸一改全部跟着改；登记时立刻按当前尺寸回调一次，后加载的库也拿得到。
+// 35 种艺术风格场景（scenes/）是按 1920×1080 画的，竖屏只保证解说语法、转场和引擎本身。
+const stageHooks = [];
+window.STAGE = { W: 1920, H: 1080 };
+U.onStage = f => { stageHooks.push(f); f(window.STAGE.W, window.STAGE.H); };
+U.setStage = (w, h) => { w = Math.round(+w); h = Math.round(+h); if (!(w > 0 && h > 0)) throw new Error(`U.setStage：尺寸不对 ${w}×${h}`); window.STAGE = { W: w, H: h }; stageHooks.forEach(f => f(w, h)); };
+
 // ---------- 字形检查 ----------
 // 字体文件缺某个字时浏览器会静默回退到系统字体：measureText 不报错、宽度也对，换台机器就变样（迁移测试 B、D：全角字母、▶、「戏」「蓝」都踩过）。
 // 做法：启动时（engine boot，字体加载完）把 FONT_FACES 里每个字体文件的 cmap 表读出来（WOFF1 用 DecompressionStream 解 zlib），查表判断有没有这个字。

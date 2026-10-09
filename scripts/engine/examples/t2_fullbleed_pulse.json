@@ -1,0 +1,14 @@
+{
+  "grammar": "t2_keynote_ui",
+  "duration": 8,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "cues": [
+    { "at": 0.0, "kind": "card", "text": "for 循环累加", "sub": "一百万个整数", "image": "assets/终端_for循环求和.png" },
+    { "at": 1.4, "kind": "highlight", "text": "318 毫秒", "data": { "rect": [0.292, 0.212, 0.115, 0.07] } },
+    { "at": 3.2, "kind": "card", "text": "换成 sum()", "image": "assets/终端_sum求和.png" },
+    { "at": 4.3, "kind": "highlight", "text": "20.9 毫秒", "data": { "rect": [0.292, 0.153, 0.128, 0.07] } },
+    { "at": 6.4, "kind": "number", "text": "同一件事快了", "data": { "value": 15.2, "decimals": 1, "suffix": " 倍" } }
+  ]
+}

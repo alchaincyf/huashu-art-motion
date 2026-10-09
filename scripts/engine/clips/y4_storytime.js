@@ -1,9 +1,15 @@
-// 片段 · 故事型简笔角色（y4，storytime）：豆子花叔在小房间里对镜头讲，姿势快切（0.1s）后定住，笑点靠反应特写和插入镜头。
-// cues：point | title（他说一句：at 这一帧气泡弹出、开始张嘴；嘴按 text 的字数说 ≈6.5 字/秒；data.pose 指定姿势 talk/point/shrug/type）
+// 片段 · 故事型简笔角色（y4，storytime）：一个豆子角色在小房间里对镜头讲，姿势快切（0.1s）后定住，笑点靠反应特写和插入镜头。
+// 镜头不慢推、不手持漂、角色不呼吸：定住就是定住，变化靠快切、跳近（反应特写砸进来）和插入镜头。
+// data.character：'neutral'（默认：短发、蓝 T）| 'bun'（丸子头）| 'author'（本 skill 作者的卡通形象，只在讲作者自己的故事时显式写）
+//                 | 造型对象 {base, skin, hair, shirt, pants, hairStyle, hat, glasses, watch}（见 TOON.LOOKS）
+//                 | 帧库：render.py 里写一个目录（文件名去扩展名 = 姿势名），或 {frames: {rest, talk, point, shrug, type, stiff, react, back, <姿势>_open: 路径}}
+//                   至少要有 rest 或 talk；缺的姿势退到 talk → rest；<姿势>_open 是张嘴帧（说话时一拍二换）；react 是反应特写，back 是插入镜头前景的后脑勺。
+//                   帧图要透明底、角色脚底在图片底边中间，画出来高 ≈ 3.15 个头半径。
+// cues：point | title（角色说一句：at 这一帧气泡弹出、开始张嘴；嘴按 text 的字数说 ≈6.5 字/秒；data.pose 指定姿势 talk/point/shrug/type）
 //         气泡里写什么：有 sub 就写 sub（≤12 字的短句最好），没有才写 text——口播原文交给管线的字幕，气泡别和字幕重复一遍
 //       highlight（「？」「！」弹出＋摊手担心：data.mark 默认「？」）
 //       react（反应镜头：at 这一帧跳到大特写，死鱼眼＋汗滴，一言不发；dur 默认到下一个 cue）
-//       insert（插入镜头：at 这一帧切到桌上那台电脑的屏幕特写——sub = 他打的那一行（打字、发送），之后 AI 的回复像代码墙一样越滚越快，
+//       insert（插入镜头：at 这一帧切到桌上那台电脑的屏幕特写——sub = 角色打的那一行（打字、发送），之后 AI 的回复像代码墙一样越滚越快，
 //               text = 砸出来的大字（如「3000行」），在 data.hit（绝对秒，默认 at+1.3，没有 sub 时 at+0.4）砸出、屏幕一震；
 //               data.count + data.unit 让右上角计数器在砸出那一刻停在这个数；dur 默认到下一个 cue）
 // 房间里有桌上的电脑（插入镜头切进去的就是它的屏幕）、马克杯、墙上的书架和绿植，右边不再是空墙。
@@ -16,12 +22,16 @@ const COLS = ['#C792EA', '#82AAFF', '#C3E88D', '#F78C6C', '#89DDFF', '#FFCB6B', 
 const LINES = (() => { const r = rng(42), out = []; let ind = 0;
   for (let i = 0; i < 400; i++) { if (r() < 0.18) ind = Math.min(4, ind + 1); else if (r() < 0.2) ind = Math.max(0, ind - 1);
     const toks = []; let x = ind * 34; const n = 1 + (r() * 4 | 0); for (let k = 0; k < n; k++) { const w = 30 + r() * 150; toks.push([x, w, COLS[(r() * COLS.length) | 0]]); x += w + 14; } out.push(toks); } return out; })();
-let keys, says, L, shots;
+let keys, says, L, shots, LOOK, FR;
 return {
   fonts: ['PuHui-Bold', 'PuHui-Black'],
   safe: true,
   init(ctx) {
-    const { W, H, u } = ctx;
+    const { W, H, u } = ctx, ch = ctx.data.character;
+    // 角色：帧库（对象带 frames）或造型（预设名 / 造型对象）。帧图已由 clip.js 加载，缺图在启动时就失败
+    FR = ch && typeof ch === 'object' && ch.frames ? Object.fromEntries(Object.entries(ch.frames).map(([k, v]) => [k, ctx.IMG[v]])) : null;
+    if (FR && !FR.rest && !FR.talk) console.error('y4 data.character.frames 至少要有 rest 或 talk 一张');
+    LOOK = FR ? TOON.look('neutral') : TOON.look(ch);
     L = { cx: ctx.portrait ? W * 0.42 : W * 0.3, fy: ctx.portrait ? H * 0.8 : H * 1.02, R: (ctx.portrait ? 230 : 215) * u };
     L.dy = L.fy - L.R * 0.55;                                             // 桌面高度
     L.mon = ctx.portrait ? { x: W * 0.66, w: 330 * u, h: 240 * u } : { x: W * 0.6, w: 520 * u, h: 340 * u };   // 桌上的电脑（屏幕左上角 x、宽高）
@@ -41,21 +51,21 @@ return {
     const shot = shots.find(s => t >= s.q.at - 1e-6 && t < s.end);
     if (shot && shot.q.kind === 'insert') return insert(c, t, ctx, shot);
     const inReact = !!shot;
-    // 镜头：中景慢推 3%；反应＝同机位跳到 1.9 倍大特写（砸镜：前 0.3s 从 2.2 弹回）
-    let z = 1.0 + 0.03 * MO.quintOut(clamp(t / 3)), cy = L.fy - L.R * 1.6;
-    if (inReact) { const l = t - shot.q.at; z = 1.9 * (1 + 0.15 * Math.max(0, 1 - MO.springHz(l, 3, 11))) * (1 + 0.03 * clamp(l / 1.5)); cy = L.fy - L.R * 2.2; }
-    const [dx, dy] = CAM.drift(t, 3 * u, 1);
+    // 镜头：中景定住；反应＝同机位跳到 1.9 倍大特写（砸镜：前 0.3s 从 2.2 弹回，之后定住）
+    let z = 1, cy = L.fy - L.R * 1.6;
+    if (inReact) { const l = t - shot.q.at; z = 1.9 * (1 + 0.15 * Math.max(0, 1 - MO.springHz(l, 3, 11))); cy = L.fy - L.R * 2.2; }
     if (!ctx.alpha) { c.fillStyle = C.wall; c.fillRect(0, 0, W, H); }
-    CAM.with(c, { x: (inReact ? L.cx : W / 2) + dx, y: (inReact ? cy : H / 2) + dy, z }, g => {
+    CAM.with(c, { x: inReact ? L.cx : W / 2, y: inReact ? cy : H / 2, z }, g => {
       if (!ctx.alpha) room(g, t, ctx);
       const st = TOON.poseAt(keys, ts), say = says.find(s => t >= s.q.at - 1e-6 && t < s.end);
       const mouth = window.VO_ENV ? TOON.mouth(t) : say ? [1, 2, 1, 0, 2, 1][Math.floor(MO.step(t - say.q.at + 1e-6, 12) * 12) % 6] : 0;
-      const blink = TOON.blinkAt(ts, [0.9, 3.4, 6.1, 8.8, 11.5]), br = 1 + 0.012 * Math.sin(2 * Math.PI * t / 1.6);
-      const info = TOON.bean(g, { x: L.cx, y: L.fy, s: L.R, pose: st.pose, expr: inReact ? 'blank' : st.expr, mouth: inReact ? 0 : mouth, blink, squash: st.squash * br, bob: mouth * L.R * 0.015, tilt: st.expr === 'worry' ? -0.06 : 0.02 * Math.sin(t), lw: inReact ? 12 * u : undefined });
+      const blink = TOON.blinkAt(ts, [0.9, 3.4, 6.1, 8.8, 11.5]);
+      const info = FR ? frameChar(g, ts, st, inReact, mouth)
+        : TOON.bean(g, { char: LOOK, x: L.cx, y: L.fy, s: L.R, pose: st.pose, expr: inReact ? 'blank' : st.expr, mouth: inReact ? 0 : mouth, blink, squash: st.squash, bob: mouth * L.R * 0.015, tilt: st.expr === 'worry' ? -0.06 : 0, lw: inReact ? 12 * u : undefined });
       if (!ctx.alpha) desk(g, t, ctx);
       if (inReact) { const sw = clamp((t - shot.q.at - 0.3) / 0.9); if (sw > 0) TOON.sweat(g, L.cx + L.R * 0.88, info.head[1] - L.R * 0.1, 30 * u, MO.expoOut(sw) * 0.6 + sw * 0.4); }
       for (const h of ctx.of('highlight')) { const l = ctx.lt(t, h.at); if (l <= 0) continue;
-        g.save(); g.translate(info.head[0] + L.R * 1.35, info.head[1] - L.R * 0.6); g.rotate(0.14 + 0.05 * Math.sin(t * 6)); TOON.mark(g, (h.data && h.data.mark) || '？', 0, 0, clamp(l / 0.26), 130 * u); g.restore(); }
+        g.save(); g.translate(info.head[0] + L.R * 1.35, info.head[1] - L.R * 0.6); g.rotate(0.14 + MO.settle(l, 0.12, 3, 6)); TOON.mark(g, (h.data && h.data.mark) || '？', 0, 0, clamp(l / 0.26), 130 * u); g.restore(); }
     });
     // 对话气泡（屏幕空间，不跟镜头）：at 这一帧弹出，说完 0.6s 后收起；特写切回来后，特写之前的那句不再出现
     if (!inReact) for (const s of says) {
@@ -77,6 +87,15 @@ return {
     }
   },
 };
+// 帧库角色：按当前姿势名取帧（缺的退到 talk → rest），说话时一拍二换 <姿势>_open；换姿势那一下沿用 poseAt 的挤压回弹
+function frameChar(g, ts, st, inReact, mouth) {
+  let name = 'rest'; for (const k of keys) if (ts >= k[0]) name = k[1];
+  if (inReact) name = 'react';
+  const pick = n => FR[n] || FR.talk || FR.rest;
+  const im = (!inReact && mouth && FR[name + '_open']) || pick(name), [iw, ih] = MD.size(im), h = L.R * 3.15, w = iw * h / ih;
+  g.save(); g.translate(L.cx, L.fy); g.scale(1 / Math.sqrt(st.squash), st.squash); g.drawImage(im, -w / 2, -h, w, h); g.restore();
+  return { head: [L.cx, L.fy - h * 0.78], hl: [L.cx - w * 0.4, L.fy - h * 0.45], hr: [L.cx + w * 0.4, L.fy - h * 0.45] };
+}
 // 房间：墙、地、窗（慢飘的云）、书架、画框。只画一次的东西不缓存——片段短，画得起
 function room(g, t, ctx) {
   const { W, H, u } = ctx, X0 = -W, Y0 = -H, fy = L.fy;
@@ -118,7 +137,7 @@ function insert(c, t, ctx, shot) {
   const lt = t - t0, slam = t - T_HIT;
   const scrollAt = tt => { const k = Math.max(0, tt - T_SEND - 0.15), span = Math.max(0.3, T_HIT - T_SEND - 0.15); return 46 * u * (k * 6 + Math.pow(k / span * 1.8, 3) * 6); };
   const shake = slam > 0 && slam < 0.3 ? MO.settle(slam, 14 * u, 9, 14) : 0;
-  const zoom = 1.06 - 0.06 * MO.expoOut(clamp(lt / 0.25)) + 0.02 * clamp(lt / 2.2) + (slam > 0 ? 0.04 * MO.expoOut(clamp(slam / 0.12)) : 0);   // 切进来：1.06 落到 1（像推过去的一下）
+  const zoom = 1.06 - 0.06 * MO.expoOut(clamp(lt / 0.25)) + (slam > 0 ? 0.04 * MO.expoOut(clamp(slam / 0.12)) : 0);   // 切进来：1.06 落到 1（像推过去的一下）；大字砸出时再推一档，之后定住
   if (!ctx.alpha) { c.fillStyle = '#15161C'; c.fillRect(0, 0, W, H); }   // 透明模式：只留显示器和后脑勺，口播画面从四周透出来
   const bx = W * 0.06, by = safe.top + H * 0.05, bw = W * 0.88, bh = H - safe.bottom - by - H * (ctx.portrait ? 0.2 : 0.06);
   CAM.with(c, { x: W / 2 + shake, y: H / 2 - shake * 0.5, z: zoom }, c => {
@@ -154,15 +173,21 @@ function insert(c, t, ctx, shot) {
       fs.lines.forEach((ln, i) => TY.pop(c, ln, sx + sw / 2, sy + sh / 2 + fs.size * 0.35 + (i - (fs.lines.length - 1) / 2) * fs.size * 1.1, clamp(slam / 0.24), { size: fs.size, fam: 'PuHui-Black', color: '#FFCB6B', over: 3.5, stroke: '#15161C', strokeW: 18 * u })); }
     c.restore();
   });
-  // 前景：他的后脑勺（过肩），随呼吸起伏，砸出时往后一缩
-  const hx = W * (ctx.portrait ? 0.2 : 0.17), hy = by + bh - 60 * u + 6 * u * Math.sin(2 * Math.PI * t / 1.6) + (slam > 0 ? -MO.settle(slam, 18 * u, 4, 7) : 0), s = (ctx.portrait ? 0.8 : 0.75) * u;
+  // 前景：角色的后脑勺（过肩），定住；砸出时往后一缩。造型跟 data.character 走（帧库给了 back 就贴那张）
+  const hx = W * (ctx.portrait ? 0.2 : 0.17), hy = by + bh - 60 * u + (slam > 0 ? -MO.settle(slam, 18 * u, 4, 7) : 0), s = (ctx.portrait ? 0.8 : 0.75) * u;
+  if (FR && FR.back) { const [iw, ih] = MD.size(FR.back), h = 560 * s, w = iw * h / ih; c.drawImage(FR.back, hx - w / 2, hy + 500 * s - h, w, h); return; }
   c.save(); c.translate(hx, hy); c.scale(s, s); c.lineWidth = 7; c.strokeStyle = '#1B1B1F'; c.lineJoin = 'round';
-  c.fillStyle = '#FFFFFF'; c.beginPath(); c.ellipse(0, 300, 330, 200, 0, Math.PI, 0); c.fill(); c.stroke();
-  c.fillStyle = '#FFE2CC'; c.beginPath(); c.roundRect(-70, 120, 140, 110, 30); c.fill(); c.stroke();
+  c.fillStyle = LOOK.shirt; c.beginPath(); c.ellipse(0, 300, 330, 200, 0, Math.PI, 0); c.fill(); c.stroke();
+  c.fillStyle = LOOK.skin; c.beginPath(); c.roundRect(-70, 120, 140, 110, 30); c.fill(); c.stroke();
   for (const k of [-1, 1]) { c.beginPath(); c.ellipse(k * 196, 40, 34, 52, k * 0.2, 0, 7); c.fill(); c.stroke(); }
-  c.fillStyle = '#1B1B1F'; c.beginPath(); c.ellipse(0, 40, 190, 175, 0, 0, 7); c.fill();
-  c.fillStyle = '#FFFFFF'; c.beginPath(); c.moveTo(-180, -20); c.bezierCurveTo(-180, -290, 180, -290, 180, -20); c.closePath(); c.fill(); c.stroke();
-  c.beginPath(); c.ellipse(0, -12, 280, 64, 0, 0, 7); c.fill(); c.stroke();
+  if (LOOK.hat) {
+    c.fillStyle = LOOK.hair; c.beginPath(); c.ellipse(0, 40, 190, 175, 0, 0, 7); c.fill();
+    c.fillStyle = '#FFFFFF'; c.beginPath(); c.moveTo(-180, -20); c.bezierCurveTo(-180, -290, 180, -290, 180, -20); c.closePath(); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(0, -12, 280, 64, 0, 0, 7); c.fill(); c.stroke();
+  } else {                                                               // 没帽子：整个后脑勺是头发（丸子头再加一个丸子）
+    c.fillStyle = LOOK.hair; c.beginPath(); c.ellipse(0, 20, 196, 200, 0, 0, 7); c.fill(); c.stroke();
+    if (LOOK.hairStyle === 'bun') { c.beginPath(); c.arc(0, -190, 70, 0, 7); c.fill(); c.stroke(); }
+  }
   c.restore();
 }
 })();
