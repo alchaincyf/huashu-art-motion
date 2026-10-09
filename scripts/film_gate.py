@@ -11,11 +11,17 @@
 退出码：红灯 2；黄灯、绿灯 0；读不了文件 1。
 只依赖 ffmpeg/ffprobe 和 opencv，不依赖 art-motion 引擎，任何来源的成片都能量。
 
-门禁只有一条：快速运动帧占比（镜头内部相邻帧平均灰度差 ≥9 的帧对占比，12fps、320 宽灰度、
+门禁两条。第一条：快速运动帧占比（镜头内部相邻帧平均灰度差 ≥9 的帧对占比，12fps、320 宽灰度、
 屏蔽底部字幕带；像切点的帧和交叉淡化窗口整段排除，转场再快也不算）。< 0.035 红灯，< 0.06 黄灯。
 标定（2026-10-09）：作者本人表过态的 13 支片（9 支认可、4 支否定），它是唯一单独就能把两组干净分开、
 阈值两侧都有余量的指标——认可的最低 0.068，否定的最高 0.021；帧差阈值在 6–13 之间取值都能分开。
 样本只有 13 支，读作「这 13 支里没有反例」，不是已经证明。
+
+第二条门禁是事实类硬伤，不靠品味标定：中段近乎纯色的空画面。去掉首尾各 0.5 秒和转场窗口（切点前后两帧、
+交叉淡化整段），一帧里梯度 >24 的像素不到 0.2%（整帧几乎没有任何边缘或纹理，同样 12fps、320 宽灰度、屏蔽字幕带）
+算空帧，连续 ≥0.3 秒红灯，报告给出每一段的时间码。按边缘判、不按颜色判：黑底 3b1b 的细线和公式、白板上的笔画
+都是边缘，不会误伤；「画面 95% 是同一色」这种按颜色的判法在标定集里会把认可的白板片判成 3 秒空画面，所以不用。
+标定数据里的 32 支片（含作者表过态的 13 支、9 支认可）没有一支出现过连续 2 帧的空帧。短片降级不适用于这一条。
 
 其余指标只报告（最多黄灯，不拦）。静止类指标（静止帧占比、最长连续静止、最长无事件间隔）会把
 「停住→猛动→停住」的好片判反，所以绝不能拿来当门禁；黄灯只是「去看这一段」。
@@ -45,11 +51,12 @@ DEFAULT_TEMPLATE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 # gate=True 的指标才会亮红灯并让脚本非零退出；其余只报告（最多黄灯，'info' 不打灯）。
 # 方向 'high_bad'：值越大越可疑；'low_bad'：值越小越可疑；'info'：只给数，不判好坏。
 # 标定：2026-10-09 用作者本人判过的 13 支片（9 正 4 负），见文件头。阈值不要随手改：改了要用新的表态片重标。
-# 门禁只放「单个指标就能把正负例干净分开、阈值两边都有余量」的指标；目前只有 fast_ratio。
+# 门禁只放「单个指标就能把正负例干净分开、阈值两边都有余量」的指标（fast_ratio），和不需要标定的事实类硬伤（blank_run_s）。
 # 黄线是从同一批片子读出来的经验线，样本太少，不能当判决，只提示「去看这一段」。
 METRICS = {
     # key: (中文名, 方向, 黄线, 红线, 是否门禁, 单位)
     "fast_ratio":         ("快速运动帧占比", "low_bad", 0.06, 0.035, True, ""),
+    "blank_run_s":        ("中段近乎纯色的空画面（最长连续）", "high_bad", None, 0.3, True, "秒"),
     "fast_ratio_worst_window": ("最差30秒窗口的快动帧占比", "low_bad", 0.02, None, False, ""),
     "top10_share":        ("运动集中度（前10%帧占运动量）", "info", None, None, False, ""),
     "drift_ratio":        ("慢漂帧占比", "high_bad", 0.65, None, False, ""),
@@ -242,6 +249,7 @@ def analyze(path, sub_band=None, vertical="auto", template=None, verbose=False):
         shots = [(0, n)]
     trans = cut_like | in_diss
     n_cut, n_diss = int(cut.sum()), len(diss)
+    blank_runs = blank_frames(F, cut_like, in_diss)
 
     # --- 运动分布（排除转场帧）
     mv = np.where(trans, np.nan, d)
@@ -434,6 +442,8 @@ def analyze(path, sub_band=None, vertical="auto", template=None, verbose=False):
         "worst_window_start_s": worst_t,
         "worst_window_len_s": round(win / FPS, 2),
         "fast_ratio_by_10s": by10,
+        "blank_run_s": round(max((b - a for a, b in blank_runs), default=0.0), 2),
+        "blank_runs_s": blank_runs,
         "cut_times_s": [round((i + 1) / FPS, 2) for i in np.where(cut)[0]],
         "dissolve_times_s": [round(c / FPS, 2) for _, _, c in diss],
     }
@@ -441,6 +451,29 @@ def analyze(path, sub_band=None, vertical="auto", template=None, verbose=False):
 
 
 FLAT_GRAD = 6.0     # 8x8 块平均梯度低于它算「平」（320 宽灰度）
+BLANK_GRAD, BLANK_FRAC = 24.0, 0.002   # 空帧：梯度 > 24 的像素不到 0.2%（标定集认可片的单帧最低是 0.30%，没有连续两帧低于它）
+BLANK_EDGE_S, BLANK_MIN_S = 0.5, 0.3   # 去掉首尾各 0.5 秒；连续 ≥0.3 秒才算
+
+
+def blank_frames(F, cut_like, in_diss):
+    """中段近乎纯色的空画面：[(起, 止) 秒]，只列 ≥ BLANK_MIN_S 的段。
+    按边缘判（整帧几乎没有梯度），不按颜色判；切点两侧的帧和交叉淡化窗口不算，跨过它们的段断开算。"""
+    n = len(F)
+    blank = np.zeros(n, bool)
+    for i, fr in enumerate(F):
+        g = np.hypot(cv2.Sobel(fr, cv2.CV_32F, 1, 0), cv2.Sobel(fr, cv2.CV_32F, 0, 1))
+        blank[i] = (g > BLANK_GRAD).mean() < BLANK_FRAC
+    ok = np.ones(n, bool)
+    e = int(round(BLANK_EDGE_S * FPS)); ok[:e] = False; ok[max(0, n - e):] = False
+    for i in np.where(cut_like | in_diss)[0]:
+        ok[i] = False; ok[i + 1] = False
+    runs, s0 = [], None
+    for i, v in enumerate(list(blank & ok) + [False]):
+        if v and s0 is None: s0 = i
+        elif not v and s0 is not None:
+            if (i - s0) / FPS >= BLANK_MIN_S - 1e-9: runs.append((round(s0 / FPS, 2), round(i / FPS, 2)))
+            s0 = None
+    return runs
 TEX_GRAD = 14.0     # 高于它算「有纹理」
 PAGE_GRAD = 25.0    # 页框格子要求的纹理（字、细线、logo 的强边）
 
@@ -506,6 +539,9 @@ def template_similarity(F, shots, template):
 SHORT_S = float(os.environ.get("FILM_GATE_MIN_S", 20))  # 标定集都是 45 秒以上的成片；短于这个时长的片段读数噪声大，红灯降为黄灯只提示
 
 
+FACT_GATES = {"blank_run_s"}   # 事实类门禁：片长再短也照样红灯
+
+
 def grade(res):
     rows, red = [], False
     short = (res.get("duration_s") or 0) < SHORT_S
@@ -515,8 +551,8 @@ def grade(res):
             rows.append((k, name, v, "--", gate, unit)); continue
         bad = (lambda t: v >= t) if direc == "high_bad" else (lambda t: v <= t)
         lv = "red" if (gate and r is not None and bad(r)) else "yellow" if (y is not None and bad(y)) else "green"
-        if lv == "red" and short:
-            lv = "yellow"; res["short_clip_note"] = f"片长 {res.get('duration_s')}s，短于 {SHORT_S}s，门禁只提示不拦；拼进成片后在成片上再跑一次"
+        if lv == "red" and short and k not in FACT_GATES:
+            lv = "yellow"; res["short_clip_note"] = f"片长 {res.get('duration_s')}s，短于 {SHORT_S}s，快动门禁只提示不拦（空画面照样拦）；拼进成片后在成片上再跑一次"
         red |= lv == "red"
         rows.append((k, name, v, lv, gate, unit))
     return rows, red
@@ -528,6 +564,10 @@ FIX = ("按 SKILL.md 窄桥第一条「动在事件上」改：每个镜头在�
        "有截图、照片、录像就用 MD.cover 满幅铺开，念到哪一处就把焦点推近到哪一处。"
        "匀速慢推、淡入淡出、转场都不算数（转场再快也被排除在外）。"
        "别为了过门每页硬塞一次快推：门禁只拦「整片没有猛动作」这一种 PPT，页框、米底小图、前紧后松它拦不住。")
+
+BLANK_FIX = ("空画面这一段让主角或主物留在画里：要换气就让它停住、拉远，或者镜头从它身上横移到下一个物；"
+             "转场不要经过纯色底（黑场、纯色闪、渐变底）停留 0.3 秒以上。白板、黑底片只要画面上有笔画、线条、字，就不算空。")
+
 
 # 只报告的黄灯项：一句「去看哪里」
 LOOK = {
@@ -558,6 +598,11 @@ def explain(res):
         head = f"镜头内有足够的快速动作（{fr:.1%}）"
     if res.get("short_clip_note"):
         head += "。" + res["short_clip_note"]
+    blank_red = res["lights"].get("blank_run_s") == "red"
+    if blank_red:
+        segs = "、".join(f"{a:.2f}–{b:.2f}s" for a, b in res["blank_runs_s"])
+        head = (f"中段有 {len(res['blank_runs_s'])} 段近乎纯色的空画面（{segs}），最长 {res['blank_run_s']:.2f}s，"
+                f"整帧几乎没有边缘或纹理、主体不在画里") + ("；另外" + head if lv != "green" else "")
     why = []
     if lv != "green":
         if res["slow_zoom_share"] >= 0.3:
@@ -573,7 +618,8 @@ def explain(res):
     if res.get("worst_window_start_s") is not None:
         a = res["worst_window_start_s"]
         ww = {"start_s": a, "end_s": round(a + res["worst_window_len_s"], 2), "fast_ratio": res["fast_ratio_worst_window"]}
-    return {"summary": head, "why": why, "fix": FIX if lv != "green" else None, "look": look, "worst_window": ww}
+    fix = " ".join(x for x in (BLANK_FIX if blank_red else None, FIX if lv != "green" else None) if x) or None
+    return {"summary": head, "why": why, "fix": fix, "look": look, "worst_window": ww, "blank_runs": res["blank_runs_s"]}
 
 
 def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE):
@@ -584,7 +630,8 @@ def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE):
     rows, red = grade(res)
     res["lights"] = {k: lv for k, _, _, lv, _, _ in rows}
     res["gate_metrics"] = [k for k, _, _, _, gate, _ in rows if gate]
-    res["gate_light"] = res["lights"]["fast_ratio"]
+    gl = [res["lights"][k] for k in res["gate_metrics"]]
+    res["gate_light"] = "red" if "red" in gl else "yellow" if "yellow" in gl else "green"
     res["verdict"] = "red" if red else "pass"
     res["explain"] = explain(res)
     return res, rows
@@ -601,6 +648,8 @@ def report_lines(res, rows):
         vs = "—" if v is None else (f"{v:.3f}" if isinstance(v, float) else str(v))
         L.append(f"  {LIGHT[lv]} {'门禁' if gate else '报告'}  {name}：{vs}{unit}")
     ex = res["explain"]
+    if res.get("blank_runs_s"):
+        L.append("  空画面时间码：" + "、".join(f"{a:.2f}–{b:.2f}s" for a, b in res["blank_runs_s"]))
     if ex["worst_window"]:
         w = ex["worst_window"]
         L.append(f"  最差 {w['end_s'] - w['start_s']:.0f} 秒窗口：{w['start_s']:.0f}–{w['end_s']:.0f}s，快动帧占比 {w['fast_ratio']}；"
@@ -640,7 +689,7 @@ def main():
             for _, t in ex["look"]:
                 print("  - " + t)
         if not red:
-            print("提醒：门禁只拦「整片几乎没有快动作」这一种 PPT；独立审片仍然要做。")
+            print("提醒：门禁只拦「整片几乎没有快动作」和「中段空画面」两种硬伤；独立审片仍然要做。")
     sys.exit(2 if red else 0)
 
 

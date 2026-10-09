@@ -121,5 +121,96 @@ class Rules(unittest.TestCase):
         self.assertIn("缺列", res["error"])
 
 
+class EndingAndEmpty(unittest.TestCase):
+    HEAD = Rules.HEAD
+
+    def lint(self, *rows, **kw):
+        return SL.lint(self.HEAD + "\n".join(rows) + "\n", **kw)
+
+    BODY = ("| 0–3 | 一部手机 | 从桌上滑进口袋 | 停 | | scenes/a.js |",
+            "| 3–6 | 那部手机 | 屏幕亮起又暗下 | 快推 | | 素材 截图 |")
+
+    def test_last_shot_text_card_is_red(self):
+        for last in ("| 6–9 | 金句 | 砸进画面 | 砸入 | 贴身口袋 | t2 片段 a.json |",
+                     "| 6–9 | 黄底大字 | 弹出来 | 停 | 贴身口袋 | t2 片段 a.json |",
+                     "| 6–9 | 那部手机 | 被塞回口袋 | 停 | 贴身口袋 | y5 片段 a.json |"):
+            res = self.lint(*self.BODY, last)
+            self.assertIn((SL.RED, "⑧结尾"), {(lv, t) for lv, t, *_ in res["rows"][-1]["issues"]}, last)
+
+    def test_last_shot_on_the_object_passes(self):
+        res = self.lint(*self.BODY, "| 6–9 | 那部手机 | 被塞回贴身口袋，镜头拉远看全貌 | 横移 | 贴身口袋 | scenes/b.js |")
+        self.assertFalse(any(t == "⑧结尾" for r in res["rows"] for _, t, *_ in r["issues"]))
+
+    def test_empty_scene_object_is_red(self):
+        for obj in ("空镜", "纯色背景", "黑场", "黑屏", "全黑", "渐变底", "空景", "橙色纯色底"):
+            res = self.lint(*self.BODY, f"| 6–9 | {obj} | 慢慢变亮 | 停 | | scenes/b.js |")
+            hits = [w for lv, t, w, _ in res["rows"][-1]["issues"] if lv == SL.RED and t == "①物"]
+            self.assertTrue(hits and "空画面" in hits[0], (obj, hits))
+
+    def test_object_on_dark_background_is_fine(self):
+        self.assertTrue(SL.obj_residue("黑屏上的一只猫"))
+        self.assertTrue(SL.obj_residue("渐变底上的一部手机"))
+
+
+class ScriptNumbers(unittest.TestCase):
+    HEAD = Rules.HEAD
+    SCRIPT = "这一年它涨了百分之六十。换成 sum() 之后快了十五点二倍，二零二五年起每人一万两千元，大概六成的人用过。"
+
+    def row_issues(self, text, script=SCRIPT):
+        res = SL.lint(self.HEAD + f"| 0–3 | 一部手机 | 从桌上滑进口袋 | 快推 | {text} | scenes/a.js |\n| 3–6 | 那部手机 | 被塞回口袋 | 停 | | 素材 截图 |\n", script=script)
+        return [(lv, t, w) for lv, t, w, _ in res["rows"][0]["issues"]], res
+
+    def test_mismatch_is_red(self):
+        iss, _ = self.row_issues("涨了 27%")
+        hit = [w for lv, t, w in iss if t == "⑨数字"]
+        self.assertTrue(hit and "27" in hit[0] and "口播" in hit[0], iss)
+        self.assertTrue(all(lv == SL.RED for lv, t, _ in iss if t == "⑨数字"))
+
+    def test_chinese_numerals_in_script_match(self):
+        for text in ("涨了 60%", "快了 15.2 倍", "2025 年起", "1.2 万元", "60% 的人"):
+            iss, _ = self.row_issues(text)
+            self.assertFalse([t for _, t, _ in iss if t == "⑨数字"], (text, iss))
+
+    def test_rounded_speech_matches_precise_screen(self):
+        iss, _ = self.row_issues("8.7 倍", script="营收涨到了原来的近九倍")
+        self.assertFalse([t for _, t, _ in iss if t == "⑨数字"], iss)
+        iss, _ = self.row_issues("15.3 倍", script="快了十五点二倍")
+        self.assertTrue([t for _, t, _ in iss if t == "⑨数字"], iss)
+
+    def test_no_script_skips_and_hints(self):
+        iss, res = self.row_issues("涨了 27%", script=None)
+        self.assertFalse([t for _, t, _ in iss if t == "⑨数字"])
+        self.assertIn("--script", "\n".join(SL.report(res)))
+
+    def test_cli_script(self):
+        with tempfile.TemporaryDirectory() as d:
+            ok, bad = Path(d) / "ok.txt", Path(d) / "bad.txt"
+            ok.write_text("厨房里从十五度升到二十八度，霉菌长得最快。", encoding="utf-8")
+            bad.write_text("厨房里很暖和，霉菌长得最快。", encoding="utf-8")
+            p = subprocess.run([sys.executable, str(SCRIPT), str(TEMPLATE), "--script", str(ok)], capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stdout)
+            p = subprocess.run([sys.executable, str(SCRIPT), "--script", str(bad), str(TEMPLATE)], capture_output=True, text=True)
+            self.assertEqual(p.returncode, 1, p.stdout)
+            self.assertIn("屏上数字和口播不一致", p.stdout)
+            self.assertIn("28", p.stdout)
+
+
+class TagsColumn(unittest.TestCase):
+    HEAD = "| 时间段 | 画面里的物 | 它在做什么 | 镜头 | 屏上字 | 标签 | 做法 |\n|---|---|---|---|---|---|---|\n"
+
+    def test_more_than_three_tags_is_yellow(self):
+        res = SL.lint(self.HEAD + "| 0–3 | 一部手机 | 从桌上滑进口袋 | 快推 | 轻 | 快、省、稳、准 | scenes/a.js |\n"
+                                  "| 3–6 | 那部手机 | 被塞回口袋 | 停 | | 快、省、稳 | 素材 截图 |\n")
+        self.assertEqual(res["rows"][0]["tags"], 4)
+        self.assertIn((SL.YELLOW, "⑩标签"), {(lv, t) for lv, t, *_ in res["rows"][0]["issues"]})
+        self.assertFalse(any(t == "⑩标签" for _, t, *_ in res["rows"][1]["issues"]))
+        self.assertEqual(res["rows"][0]["text"], "轻")          # 标签列不会被当成屏上字
+
+    def test_tag_count(self):
+        self.assertEqual(SL.tag_count("快 · 省 · 稳 · 准"), 4)
+        self.assertEqual(SL.tag_count("Claude Code"), 2)
+        self.assertEqual(SL.tag_count("—"), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

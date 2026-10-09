@@ -109,7 +109,7 @@ huashu-art-motion/
     ├── engine/              # 可整个复制走的动画工程：引擎、转场、库、场景、示范片、片段
     ├── analyze/breakdown.py # 把参考动画拆成「能写代码的地图」
     ├── qa.py                # 一键验收
-    ├── film_gate.py         # 成片门禁：量翻页式 PPT 感（只读 mp4）
+    ├── film_gate.py         # 成片门禁：量翻页式 PPT 感、查中段空画面（只读 mp4）
     ├── deliver.py           # 一条命令交付：门禁→复制成片→写交付说明
     ├── audio/               # 纯代码合成配乐的模板
     └── font_subset.py ...   # 字体子集、绿幕抠图

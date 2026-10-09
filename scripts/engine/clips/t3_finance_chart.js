@@ -1,14 +1,32 @@
 // 片段 · 财经图表（t3）：版式先出 → 坐标系 → 数据长出 → 只标一件事。真实数据驱动，单位/来源/角标全从 data 读。
 // data: { title, unit（副标题：指标与单位）, source（来源，左下）, badge?（只有写了才画右下角标，如 "示意数据"），
 //         chart: 'bar'|'line'|'candle', series: [{label, value}] 或 K 线 [{label, o, h, l, c}], decimals=1, prefix='', suffix='',
-//         highlight?: {index, text, sub}, colors?: {main, accent, dim}, upDown?: 'cn'（红涨绿跌，默认）|'us' }
+//         highlight?: {index, text, sub}, colors?: {main, accent, dim}, upDown?: 'cn'（红涨绿跌，默认）|'us', theme? }
+// 主题（图表镜头要留在片子的世界里，底和前后镜头同色系）：spec.theme 或 data.theme，
+//   'light'（白底，默认）| 'paper'（FT 三文鱼粉）| 'dark'（深底浅字）| 对象 {bg, ink, sub, src, tick, xlab, grid, red, bar, dim}（写了 bg 按它的明暗选浅/深一套，再逐项覆盖）。
+//   没写主题但 spec.safe.fill 写了片子的底色：图表底就用它，深色底自动换深底浅字——不再在深色片里冒出一张白卡。
 // cues（at 秒）：title（版式）· bar|line|candle（数据从 at 开始长出，dur 默认按根数；柱状图可写多个 bar cue，各带 data.index（数或数组）＝这几根在这一刻才长，让每根柱子踩自己的那个词）
 //         series 每项可写 color（柱子自己的颜色，和片里别处同一个量的配色对上）· highlight（at 这一帧标注圆点弹出；text/sub 覆盖 data.highlight，data.index 指定第几根）
 //         number（大数字：data {value, prefix, suffix, decimals}，at = 数字落定的时刻，提前 0.9s 开始滚）
 // 规矩：柱一律从 0 起；折线/K 线纵轴不从 0 起时自动在副标题后加「纵轴未从 0 开始」。
 CLIPS.t3_finance_chart = (() => {
 const { clamp, lerp } = U;
-const RED = '#E3120B', INK = '#0C0C0C', SUB = '#4F5B61', GRID = 'rgba(12,12,12,0.13)';
+const THEMES = {
+  light: { bg: '#FFFFFF', ink: '#0C0C0C', sub: '#4F5B61', src: '#7c868b', tick: '#5b666b', xlab: '#3a4246', grid: 'rgba(12,12,12,0.13)', red: '#E3120B', bar: '#006BA2', dim: '#C6D2D8' },
+  paper: { bg: '#FFF1E5', ink: '#0C0C0C', sub: '#4F5B61', src: '#7c868b', tick: '#5b666b', xlab: '#3a4246', grid: 'rgba(12,12,12,0.13)', red: '#E3120B', bar: '#0F5499', dim: '#D9CBBF' },
+  dark:  { bg: '#0E1116', ink: '#F2F4F5', sub: '#A7B2B8', src: '#848F95', tick: '#9AA5AB', xlab: '#C3CBD0', grid: 'rgba(255,255,255,0.14)', red: '#FF4B3E', bar: '#3EBCD2', dim: '#3A4650' },
+};
+const lum = col => { const m = String(col).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if (!m) return 1;
+  const h = m[1].length === 3 ? [...m[1]].map(x => x + x).join('') : m[1], [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+function palette(ctx) {
+  const T = (typeof ctx.theme === 'string' || (ctx.theme && Object.keys(ctx.theme).length)) ? ctx.theme : ctx.data.theme;
+  if (typeof T === 'string') return { ...(THEMES[T] || THEMES.light) };
+  const bg = (T && T.bg) || (ctx.safe && ctx.safe.fill) || null;
+  const base = bg ? (lum(bg) < 0.45 ? THEMES.dark : THEMES.light) : THEMES.light;
+  return { ...base, ...(bg ? { bg } : {}), ...(T || {}) };
+}
+let RED, INK, SUB, GRID, P;
 const CN = '"PuHui-Medium"', CNB = '"PuHui-Bold"', NUM = '"RobotoCondensed", "PuHui-Medium"';
 let L, BUF;
 const fmtv = (d, v) => (d.prefix || '') + TY.fmt(v, d.decimals ?? 1) + (d.suffix || '');
@@ -16,6 +34,7 @@ return {
   fonts: ['PuHui-Medium', 'PuHui-Bold'],
   safe: true,
   init(ctx) {
+    P = palette(ctx); RED = P.red; INK = P.ink; SUB = P.sub; GRID = P.grid;
     const { W, H, u, data: d } = ctx, m = (ctx.portrait ? 70 : 90) * u, c = document.createElement('canvas').getContext('2d');
     const kind = (ctx.of('bar', 'line', 'candle')[0] || {}).kind || d.chart || 'bar';
     const S = d.series || [];
@@ -56,16 +75,16 @@ return {
     }
     L = { subF, srcF, m, kind, S, zeroBased, ticks, tdec, yS: CH.lin(ticks[0], ticks[ticks.length - 1], F.y + F.h, F.y), F, xs, slot, t, sub, band, category, xFont: xf * xScale, stagger,
       every: category ? 1 : Math.max(1, Math.ceil(n / (ctx.portrait ? 6 : 10))) };
-    const main = (d.colors && d.colors.main) || (kind === 'bar' ? '#006BA2' : RED);
-    L.col = { main, accent: (d.colors && d.colors.accent) || main, dim: (d.colors && d.colors.dim) || '#C6D2D8' };
+    const main = (d.colors && d.colors.main) || (kind === 'bar' ? P.bar : RED);
+    L.col = { main, accent: (d.colors && d.colors.accent) || main, dim: (d.colors && d.colors.dim) || P.dim };
     L.updown = d.upDown === 'us' ? ['#1B9E5A', RED] : [RED, '#1B9E5A'];
   },
   draw(c0, t, ctx) {
-    // alpha：图是白纸黑字，叠在深色画面上墨色看不见。先画进缓冲，再带一圈白色光晕合成（和 t1 同一招）
+    // alpha：字和线叠在别的画面上可能看不见。先画进缓冲，再带一圈主题底色的光晕合成（和 t1 同一招；默认白纸黑字＝白光晕）
     const c = ctx.alpha ? (BUF = BUF || document.createElement('canvas'), BUF.width = ctx.W, BUF.height = ctx.H, BUF.getContext('2d')) : c0;
     const { W, H, u, data: d } = ctx, { m, F, yS, xs, S, kind } = L, fs = ctx.portrait ? 1.2 : 1;   // 竖屏在手机上看：小字放大两成
     const qt = ctx.of('title')[0] || { at: 0 }, lt = ctx.lt(t, qt.at);
-    if (!ctx.alpha) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H); }
+    if (!ctx.alpha) { c.fillStyle = P.bg; c.fillRect(0, 0, W, H); }
     // ---- 版式：顶红线 → 小旗 → 标题 → 副标题（单位/口径）→ 来源 → 角标 ----
     if (lt > 0) {
       const p = MO.quintOut(MO.seg(lt, 0, 0.45));
@@ -75,7 +94,7 @@ return {
       L.t.lines.forEach((ln, i) => c.fillText(ln, m, ctx.safe.top + 80 * u + (i + 1) * L.t.size * 1.2 + (1 - tp) * 18 * u));
       const sp = MO.quintOut(MO.seg(lt, 0.15, 0.6)), sy = ctx.safe.top + 80 * u + L.t.lines.length * L.t.size * 1.2 + 54 * u;
       c.globalAlpha = sp; c.font = `400 ${L.subF.size}px ${CN}`; c.fillStyle = SUB; L.subF.lines.forEach((ln, k) => c.fillText(ln, m, sy + k * L.subF.size * 1.3 + (1 - sp) * 14 * u));
-      c.globalAlpha = MO.seg(lt, 0.2, 0.6); c.font = `400 ${L.srcF.size}px ${CN}`; c.fillStyle = '#7c868b';
+      c.globalAlpha = MO.seg(lt, 0.2, 0.6); c.font = `400 ${L.srcF.size}px ${CN}`; c.fillStyle = P.src;
       L.srcF.lines.forEach((ln, k, a) => c.fillText(ln, m, H - 40 * u - ctx.safe.bottom - (a.length - 1 - k) * L.srcF.size * 1.3));
       c.restore();
       if (d.badge) { c.save(); c.globalAlpha = MO.seg(lt, 0.2, 0.6); CH.demoBadge(c, d.badge, { x: W - m, y: H - 50 * u - ctx.safe.bottom, font: `700 ${28 * u}px ${CN}`, col: RED, box: 'rgba(227,18,11,0.06)' }); c.restore(); }
@@ -84,10 +103,10 @@ return {
     const qd = ctx.of('bar', 'line', 'candle')[0] || { at: qt.at + 0.75 }, gStart = Math.min(qt.at + 0.25, qd.at - 0.4);
     const gp = MO.seg(ctx.lt(t, gStart), 0, 0.6);
     const fmtTick = v => TY.fmt(v, L.tdec);
-    CH.grid(c, F, L.ticks, yS, gp, { col: GRID, zeroCol: L.zeroBased ? INK : GRID, font: `400 ${28 * u * fs}px ${NUM}`, labelCol: '#5b666b', side: 'right', lw: 1.5 * u, zeroLw: 3 * u, fmt: fmtTick, labelDy: -10 * u });
+    CH.grid(c, F, L.ticks, yS, gp, { col: GRID, zeroCol: L.zeroBased ? INK : GRID, font: `400 ${28 * u * fs}px ${NUM}`, labelCol: P.tick, side: 'right', lw: 1.5 * u, zeroLw: 3 * u, fmt: fmtTick, labelDy: -10 * u });
     const qh0 = ctx.of('highlight')[0], hi0 = qh0 ? (qh0.data && qh0.data.index != null ? qh0.data.index : (d.highlight && d.highlight.index != null ? d.highlight.index : S.length - 1)) : -1;
     const keep = i => i % L.every === 0 || i === hi0 || (i === S.length - 1 && (S.length - 1) % L.every >= L.every / 2);   // 被标注的那根永远有名字；末尾标签离上一个太近就不硬塞
-    const xp = MO.seg(ctx.lt(t, gStart + 0.15), 0, 0.5), xy = F.y + F.h + 46 * u, xo = { font: `400 ${L.xFont}px ${NUM}`, col: '#3a4246' };
+    const xp = MO.seg(ctx.lt(t, gStart + 0.15), 0, 0.5), xy = F.y + F.h + 46 * u, xo = { font: `400 ${L.xFont}px ${NUM}`, col: P.xlab };
     if (!L.stagger) CH.xLabels(c, S.map((r, i) => ({ x: xs[i], label: keep(i) ? String(r.label ?? '') : '' })), xy, xp, xo);
     else { CH.xLabels(c, S.map((r, i) => ({ x: xs[i], label: i % 2 ? '' : String(r.label ?? '') })), xy, xp, xo); CH.xLabels(c, S.map((r, i) => ({ x: xs[i], label: i % 2 ? String(r.label ?? '') : '' })), xy + L.xFont * 1.15, xp, xo); }
     // ---- 数据 ----
@@ -115,7 +134,7 @@ return {
     } else if (kind === 'line') {
       const pts = S.map((r, i) => [xs[i], yS(r.value)]);
       const lp = MO.smooth(dp);
-      const hp = CH.line(c, pts, lp, { col: L.col.main, lw: 5 * u, headR: 9 * u, area: { top: F.y, base: F.y + F.h, c0: 'rgba(227,18,11,0.12)', c1: 'rgba(227,18,11,0)' } });
+      const hp = CH.line(c, pts, lp, { col: L.col.main, lw: 5 * u, headR: 9 * u, area: { top: F.y, base: F.y + F.h, c0: tint(RED, 0.12), c1: tint(RED, 0) } });
       if (hp && lp < 1) { const v = yS.inv(hp[1]); c.save(); c.font = `700 ${36 * u}px ${NUM}`; c.fillStyle = L.col.main; c.textAlign = 'left'; c.textBaseline = 'middle'; TY.tabular(c, fmtv(d, v), hp[0] + 20 * u, hp[1] - 4 * u); c.restore(); }
       else if (lp >= 1) { const v = S[n - 1].value; c.save(); c.font = `700 ${36 * u}px ${NUM}`; c.fillStyle = L.col.main; c.textAlign = 'right'; c.textBaseline = 'alphabetic'; TY.tabular(c, fmtv(d, v), pts[n - 1][0], pts[n - 1][1] - 24 * u, { align: 'right' }); c.restore(); }
       if (hi >= 0) anchor = pts[hi];
@@ -167,8 +186,10 @@ return {
       const cap = q.text ?? q.sub; if (cap) { c.font = `400 ${30 * u * fs}px ${CN}`; c.fillStyle = SUB; c.textAlign = 'right'; c.fillText(cap, W - m - nw - 24 * u, by - 10 * u); }
       c.restore();
     }
-    if (ctx.alpha) { c0.save(); c0.shadowColor = '#FFFFFF'; for (const b of [8, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore(); }   // 三遍由宽到窄：外圈柔光＋贴字的实边
+    if (ctx.alpha) { c0.save(); c0.shadowColor = P.bg; for (const b of [8, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore(); }   // 三遍由宽到窄：外圈柔光＋贴字的实边
   },
 };
 function C(...a) { return a.find(v => v != null && v !== ''); }
+function tint(col, a) { const m = String(col).trim().match(/^#([0-9a-f]{6})$/i); if (!m) return a ? 'rgba(227,18,11,' + a + ')' : 'rgba(227,18,11,0)';
+  const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 })();

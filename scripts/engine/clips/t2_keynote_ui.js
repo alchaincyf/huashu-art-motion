@@ -12,6 +12,8 @@
 //       highlight（框出当前截图里的一块：data.rect = [x, y, w, h]，相对截图的 0..1；text 可选标签；满幅模式下镜头同时快推过去，data.fill 改推近后框占画面的比例）
 //       number（大数字单独一屏：data {value, prefix, suffix, decimals, label?（数字上方小字）}；at = 数字落定时刻，提前 0.9s 开始计数，
 //               上一屏这时开始退场，不叠在卡片上；说明写 text 或 sub 都认）
+//               · data.over: true 且上一屏是满幅截图：不另起一屏，留在截图的世界里——镜头拉回整张截图，截图压暗，数字砸在它上面计数，
+//                 说明是黑底撕边标签。数字讲的就是这张截图里的事（两次计时之比、这一页的结论）时用它；和截图无关的数字照旧单独一屏
 // 竖屏：第一张卡进来时标题缩成页眉留在顶上（不让上下大片空着）；卡片按剩余高度放大。safe：版面只排在 top..H−bottom 之间。
 // alpha：不画光斑底；卡片垫一层深色、字带投影，压在亮画面上也看得清。
 CLIPS.t2_keynote_ui = (() => {
@@ -59,7 +61,11 @@ return {
         const last = slides[slides.length - 1], full = im && ((q.data && q.data.frame) || ctx.data.frame || 'full') !== 'glass';
         if (!im && last && last.type === 'cards' && last.cards.length < 3) last.cards.push(cd);
         else slides.push({ type: im ? 'img' : 'cards', cards: [cd], start: q.at, full });
-      } else if (q.kind === 'number') slides.push({ type: 'num', q, start: q.at - 0.9 });
+      } else if (q.kind === 'number') {
+        const last = slides[slides.length - 1];
+        if (q.data && q.data.over && last && last.full) (last.nums = last.nums || []).push(q);   // 砸在当前截图上，不另起一屏
+        else slides.push({ type: 'num', q, start: q.at - 0.9 });
+      }
     }
     slides.forEach((s, i) => { s.next = slides[i + 1] ? slides[i + 1].start : 1e9; s.panIn = s.full && i > 0 && slides[i - 1].full; s.panOut = s.full && !!slides[i + 1] && slides[i + 1].full; });
     // 满幅截图：内容框（让开 safe，四边留一点）、截图的几何、这一屏的脉冲镜头（highlight 快推 / 横移）
@@ -77,6 +83,10 @@ return {
         const tx = R.x + R.w / 2 - (bcx - W / 2) / z, ty = R.y + R.h / 2 - (bcy - H / 2) / z;   // 框中心落到内容框中心（让开 safe）
         s.events.push({ at: qh.at, kind: 'to', x: tx, y: ty, z, dur: zoomed ? MO.PULSE.pan : MO.PULSE.punch });
         zoomed = true;
+      }
+      for (const qn of s.nums || []) {                                       // 推近过就先拉回整张截图（0.28s），拉到位数字再砸下来
+        qn.t1 = qn.at - 0.9 + (zoomed ? MO.PULSE.punch : 0);
+        if (zoomed) s.events.push({ at: qn.at - 0.9, kind: 'to', ...s.base, dur: MO.PULSE.punch });
       }
     }
     // 截图卡的版式：标题行 ＋ 截图区；截图区按截图比例定。竖图在横屏里改成「左字右图」
@@ -171,7 +181,21 @@ function drawFull(c, s, t, ctx, acc) {
   const ySub = yb - ss * 0.75, yMain = q.sub ? ySub - ss * 0.75 - 12 * u - size * 0.75 : yb - size * 0.75;
   if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size });
   if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, fam: 'PuHui-Bold', bg: acc, fg: '#ffffff' });
+  for (const qn of s.nums || []) overNumber(c, qn, t, ctx);
   c.restore();
+}
+// data.over 的大数字：（拉回整张截图后）截图压暗 → 数字 0.17s 砸入并计数到 at 落定 → 说明是黑底撕边标签。画在屏幕层，不跟镜头
+function overNumber(c, q, t, ctx) {
+  const { W, u } = ctx, t0 = q.t1; if (t < t0 - 1e-6) return;
+  const nd = q.data || {}, k = MO.expoOut(clamp((t - t0) / Math.max(0.3, q.at - t0))), cap = q.text ?? q.sub, bx = ctx.box;
+  c.save(); c.fillStyle = `rgba(0,0,0,${(0.62 * clamp(ctx.lt(t, t0) / 0.17)).toFixed(3)})`; c.fillRect(0, 0, W, ctx.H); c.restore();
+  let size = (ctx.portrait ? 200 : 240) * u; c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03);
+  const fw = c.measureText(fmtNum(nd, 1)).width; if (fw > bx.w * 0.86) size *= bx.w * 0.86 / fw;
+  const cx = bx.x + bx.w / 2, cy = bx.y + bx.h / 2 + size * 0.3 - (cap ? 40 * u : 0), my = cy - size * 0.3, z = MO.slamK(ctx.lt(t, t0) / MO.PULSE.slam, 1.35, 0.96);
+  c.save(); c.translate(cx, my); c.scale(z, z); c.translate(-cx, -my);
+  c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = '#ffffff'; c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 30 * u;
+  TY.tabular(c, fmtNum(nd, k), cx, cy, { align: 'center' }); c.restore();
+  if (cap) MD.label(c, cap, cx, cy + 110 * u, { t, at: t0 + 0.2, size: (ctx.portrait ? 54 : 48) * u, align: 'center' });
 }
 // 截图上的 highlight：at 这一帧框开始弹出，其余压暗，一道光扫过框内；只认落在这一屏在屏期间的 highlight
 function hlOn(g, cd, f, t, ctx, acc, u, until) {

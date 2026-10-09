@@ -136,7 +136,7 @@ def facts_block(src, dst, info, res, rows, qa_lines, rv_lines):
 def write_doc(out, dst, facts, res):
     h = hashlib.sha256(facts.encode()).hexdigest()
     look = [t for _, t in res["explain"]["look"]]
-    if res["gate_light"] == "yellow":
+    if res["lights"]["fast_ratio"] == "yellow":
         look.insert(0, f"门禁黄灯：快速运动帧占比 {res['fast_ratio']}（黄线 0.06）")
     tail = ["## 制作说明（制作者填写；只写在这一段，事实段不要动）", "",
             "- 用了哪个语法 / 风格：",
