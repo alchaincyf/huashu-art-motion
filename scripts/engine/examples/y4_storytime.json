@@ -5,10 +5,9 @@
   "width": 1920,
   "height": 1080,
   "cues": [
-    { "at": 0.1, "kind": "point", "text": "我第一次让 AI 帮我写代码，", "sub": "AI，帮我写个网站！" },
-    { "at": 2.0, "kind": "insert", "text": "3000行", "sub": "帮我做个网站", "data": { "hit": 3.5, "count": 3000, "unit": "行" } },
-    { "at": 4.6, "kind": "react" },
-    { "at": 5.9, "kind": "point", "text": "这些……贴哪儿？", "data": { "pose": "point" } },
-    { "at": 7.2, "kind": "highlight", "data": { "mark": "？" } }
+    { "at": 0.1, "kind": "insert", "text": "3000行", "sub": "帮我做个网站", "data": { "hit": 1.6, "count": 3000, "unit": "行" } },
+    { "at": 2.8, "kind": "react" },
+    { "at": 4.1, "kind": "point", "text": "第一次让 AI 写代码，", "sub": "这些……贴哪儿？", "data": { "pose": "point" } },
+    { "at": 6.6, "kind": "highlight", "data": { "mark": "？" } }
   ]
 }

@@ -4,14 +4,11 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
-  "data": { "eyebrow": "全 新 发 布", "title": "参数化动画片段", "subtitle": "一份 JSON，出一段时长精确的动画" },
   "cues": [
-    { "at": 0.0, "kind": "title" },
-    { "at": 2.2, "kind": "card", "text": "8 种动画语法", "sub": "从 3Blue1Brown 到动态文字", "data": { "icon": "layers" } },
-    { "at": 3.0, "kind": "card", "text": "时长精确到帧", "sub": "帧数 = 时长 × 帧率", "data": { "icon": "clock", "value": 30, "suffix": " fps", "label": "默认帧率" } },
-    { "at": 3.8, "kind": "card", "text": "横竖屏都能出", "sub": "竖屏自动换一套排版", "data": { "icon": "phone" } },
-    { "at": 6.0, "kind": "number", "text": "英伟达五个财年的营收涨幅", "data": { "value": 7.8, "decimals": 1, "suffix": " 倍" } },
-    { "at": 7.2, "kind": "card", "text": "用 t3 财经图表出的一帧", "sub": "数据：英伟达 2021–2025 财年 10-K 年报", "image": "assets/财经图表_横屏.png" },
-    { "at": 8.4, "kind": "highlight", "data": { "rect": [0.648, 0.245, 0.104, 0.105] } }
+    { "at": 0.0, "kind": "card", "text": "一份 JSON 出的图", "sub": "数据：英伟达 10-K 年报", "image": "assets/财经图表_横屏.png" },
+    { "at": 1.8, "kind": "highlight", "data": { "rect": [0.648, 0.245, 0.104, 0.105] } },
+    { "at": 4.0, "kind": "card", "text": "竖屏换一套排版", "sub": "同一份数据", "image": "assets/营收图_竖屏.png" },
+    { "at": 6.6, "kind": "number", "text": "可换的动画语法", "data": { "value": 8, "suffix": " 种" } },
+    { "at": 8.0, "kind": "card", "text": "时长精确到帧", "sub": "帧数＝时长×帧率", "data": { "icon": "clock" } }
   ]
 }

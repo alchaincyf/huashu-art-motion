@@ -5,16 +5,14 @@
   "width": 1920,
   "height": 1080,
   "cues": [
-    { "at": 0.0, "kind": "title", "text": "梯度下降：每一步都往坡下走" },
-    { "at": 1.2, "kind": "equation", "data": { "tokens": [
+    { "at": 0.0, "kind": "line", "text": "损失 L(θ)", "data": { "values": [9, 5.8, 3.4, 1.8, 1.0, 0.8, 1.0, 1.8, 3.4, 5.8, 9], "color": "BLUE_C" } },
+    { "at": 1.8, "kind": "equation", "data": { "tokens": [
       { "s": "L", "it": true, "col": "BLUE_C" }, { "s": "(", "gap": 4 }, { "s": "θ", "it": true, "col": "YELLOW", "gap": 4 }, { "s": ")" } ] } },
-    { "at": 2.0, "kind": "line", "text": "损失 L(θ)", "data": { "values": [9, 5.8, 3.4, 1.8, 1.0, 0.8, 1.0, 1.8, 3.4, 5.8, 9], "color": "BLUE_C" } },
-    { "at": 3.6, "kind": "equation", "data": { "tokens": [
+    { "at": 3.4, "kind": "equation", "data": { "tokens": [
       { "s": "θ", "it": true, "col": "YELLOW" }, { "s": "←", "gap": 18 }, { "s": "θ", "it": true, "col": "YELLOW", "gap": 14 },
       { "s": "−", "gap": 14 }, { "s": "η", "it": true, "col": "GREEN_C", "gap": 8 }, { "s": "∇", "gap": 4 }, { "s": "L", "it": true, "col": "BLUE_C" } ] } },
-    { "at": 4.6, "kind": "point", "text": "算出当前位置的坡度 ∇L" },
-    { "at": 5.8, "kind": "point", "text": "沿反方向走一小步，步长是 η" },
-    { "at": 7.0, "kind": "line", "text": "训练中的损失", "data": { "values": [9, 6.2, 4.4, 3.2, 2.4, 1.9, 1.55, 1.3, 1.15, 1.05, 1.0], "color": "TEAL_C" } },
-    { "at": 8.4, "kind": "highlight", "data": { "index": 1 } }
+    { "at": 5.0, "kind": "point", "text": "沿坡度反方向走一小步" },
+    { "at": 6.4, "kind": "line", "text": "训练中的损失", "data": { "values": [9, 6.2, 4.4, 3.2, 2.4, 1.9, 1.55, 1.3, 1.15, 1.05, 1.0], "color": "TEAL_C" } },
+    { "at": 8.2, "kind": "highlight", "data": { "target": "equation" } }
   ]
 }

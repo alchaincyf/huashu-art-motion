@@ -1,14 +1,13 @@
 {
   "grammar": "y5_kinetic_type",
-  "duration": 8,
+  "duration": 7.5,
   "fps": 30,
   "width": 1920,
   "height": 1080,
   "cues": [
-    { "at": 0.0, "kind": "title", "text": "AI 写代码", "sub": "的三个阶段" },
-    { "at": 1.9, "kind": "point", "text": "补全", "sub": "它补完下一行", "data": { "label": "阶段 01", "key": "下一行" } },
-    { "at": 3.6, "kind": "point", "text": "对话", "sub": "一句话换一整段", "data": { "label": "阶段 02", "key": "一整段" } },
-    { "at": 5.3, "kind": "point", "text": "代理", "sub": "你只说要什么", "data": { "label": "阶段 03", "key": "要什么" } },
-    { "at": 6.4, "kind": "highlight", "data": { "word": "代理" } }
+    { "at": 0.7, "kind": "number", "text": "一句话换来的代码", "data": { "value": 3000, "suffix": " 行" } },
+    { "at": 2.6, "kind": "point", "text": "补全", "sub": "以前它补一行", "data": { "label": "从前", "key": "一行" } },
+    { "at": 4.3, "kind": "point", "text": "代理", "sub": "现在它做完整件事", "data": { "label": "现在", "key": "整件事" } },
+    { "at": 5.6, "kind": "highlight", "data": { "word": "代理" } }
   ]
 }

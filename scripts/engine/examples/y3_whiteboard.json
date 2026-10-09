@@ -5,13 +5,12 @@
   "width": 1920,
   "height": 1080,
   "cues": [
-    { "at": 0.0, "kind": "title", "text": "AI 为什么会一本正经地胡说" },
-    { "at": 1.9, "kind": "point", "text": "它读过海量的文字" },
-    { "at": 2.8, "kind": "draw", "text": "海量文本", "data": { "icon": "stack" } },
-    { "at": 3.9, "kind": "point", "text": "学会的是下一个词最像什么" },
-    { "at": 4.9, "kind": "draw", "text": "猜下一个词", "data": { "icon": "network" } },
-    { "at": 6.0, "kind": "point", "text": "没人教过它说「不知道」" },
-    { "at": 6.9, "kind": "draw", "text": "照样作答", "data": { "icon": "chat" } },
-    { "at": 8.0, "kind": "highlight", "data": { "index": 2 } }
+    { "at": 0.0, "kind": "draw", "text": "25 分钟", "data": { "icon": "clock" } },
+    { "at": 1.5, "kind": "point", "text": "这段时间只做一件事" },
+    { "at": 2.8, "kind": "draw", "text": "不切换", "data": { "icon": "target" } },
+    { "at": 4.1, "kind": "point", "text": "铃响就休息 5 分钟" },
+    { "at": 5.4, "kind": "draw", "text": "换口气", "data": { "icon": "bulb" } },
+    { "at": 6.8, "kind": "point", "text": "四轮后长休一次" },
+    { "at": 8.2, "kind": "highlight", "data": { "target": "draw", "index": 0 } }
   ]
 }

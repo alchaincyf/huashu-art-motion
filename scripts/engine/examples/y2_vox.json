@@ -5,10 +5,9 @@
   "width": 1920,
   "height": 1080,
   "cues": [
-    { "at": 0.0, "kind": "title", "text": "这两张图都是代码画的" },
-    { "at": 1.6, "kind": "image", "image": "assets/K线图_横屏.png", "text": "t3 财经图表：日 K 线（示意数据）" },
-    { "at": 3.4, "kind": "highlight", "data": { "rect": [0.74, 0.22, 0.22, 0.11] } },
-    { "at": 5.6, "kind": "point", "text": "收盘价在最后一根 K 线长出时落定" },
-    { "at": 7.0, "kind": "image", "image": "assets/营收图_竖屏.png", "text": "同一种图表，竖屏换一套排版" }
+    { "at": 0.0, "kind": "image", "image": "assets/K线图_横屏.png", "text": "日 K 线·示意数据" },
+    { "at": 1.8, "kind": "highlight", "data": { "rect": [0.74, 0.22, 0.22, 0.11] } },
+    { "at": 4.2, "kind": "image", "image": "assets/营收图_竖屏.png", "text": "同一图表的竖屏版" },
+    { "at": 6.6, "kind": "title", "text": "两张图都是代码画的" }
   ]
 }
