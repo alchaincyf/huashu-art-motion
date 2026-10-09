@@ -6,6 +6,7 @@
 
     uv run qa.py --project <代码工程目录> [--film gallery] [--ids 01_cave,09_postimp] [--fps 30] [--out <目录>]
     uv run qa.py --spec <片段 clip.json> [--out <目录>]      # 参数化片段（口播管线的动画段）：整段当一段量，竖屏也行；不量转场
+                                                              # 素材字段和 render.py 同一套（engine/spec_assets.py）：image、frames、data.image、data.character
 
 逐段（eras.js 的每个 id）做四件事：
   1. 稳定：场景加载失败直接退出（引擎 __bootErrors）；同一时刻冷渲＋热渲两次逐像素比对（确定性）。
@@ -13,6 +14,10 @@
   3. 动感：避开转场后 0.35s 镜头冲击，在本段静止区按 --fps 连续取帧，报运动面积（相邻帧变化 >12 的像素占比）均值，
      和「静止帧对」比例（相邻帧几乎不变 <0.05% —— 迁移测试 A 发现只看首尾差会漏掉一卡一卡）。
   4. 流畅：相邻帧差的峰值 / 中位数。>6 且峰值 >3% 记为「跳变」（整屏笔触按 8fps 重洗、某帧穿帮、闪烁都会冒出来）。
+     脉冲镜头（快推 0.28s、横移 0.30s、砸入 0.17s）不算跳变，单独记为「镜头事件」：从跳变帧往两边扩到帧差回落，
+     这一串至少 2 对帧、不长于 0.35s（+1 帧），且最后一帧离第一帧最远（推过去就停在那，不是闪一下又回来）。
+     孤立的一两帧（穿帮、闪白、整屏重洗）、闪过去又回来的、连续拖得更长的，照旧记跳变。只看像素，不读相机动作表，
+     所以手写的快推和 CAM.track 一样认；代价是 0.35s 内的单调大变化（比如一下子整屏换成另一张图又刚好接着推）也会被当成镜头事件。
 另做「转场冒烟」：每个带转场的段在 p=.25/.5/.75 渲整帧（renderFrame），报错计入页面报错——段内取帧用 renderSolo，
 转场代码一次都不会执行，转场崩了也能全绿（全风格样片移植时踩到）。
 判据是经验阈值不是规则：运动 0.5–8% 之间多数段好看；静止帧对 >40% 读作卡；跳变 >0 先看帧再判断（有意的节拍闪不算错）。
@@ -29,8 +34,10 @@
 
 产物：<out>/qa.json（全部数字）、<out>/qa.md（表）、<out>/<id>.jpg（4 帧拼图＋运动热图）。
 """
-import argparse, base64, functools, http.server, io, json, socketserver, threading, urllib.parse
+import argparse, base64, functools, http.server, io, json, socketserver, sys, threading, urllib.parse
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'engine'))
+import spec_assets
 import numpy as np
 from PIL import Image, ImageDraw
 from playwright.sync_api import sync_playwright
@@ -42,16 +49,10 @@ ap.add_argument('--sub-band', type=float, default=None, help='字幕带上沿（
 a = ap.parse_args()
 if not (a.project or a.spec): ap.error('--project 或 --spec 二选一')
 spec, ALLOWED = None, set()
-if a.spec:                                                 # 和 render.py 同一套：本地图片只服务 spec 里点名的文件
+if a.spec:                                                 # 和 render.py 同一套：本地素材（image / frames / 角色帧库）只服务 spec 里点名的文件
     sp = Path(a.spec).resolve(); spec = json.loads(sp.read_text())
-    def ref(v):
-        if not v or v.startswith(('data:', 'http:', 'https:')): return v
-        f = (sp.parent / v).resolve()
-        if not f.exists(): raise SystemExit(f'spec 里的图片不存在：{v}')
-        ALLOWED.add(str(f)); return '/__file__/' + urllib.parse.quote(str(f))
-    for q in spec.get('cues', []):
-        if q.get('image'): q['image'] = ref(q['image'])
-    if (spec.get('data') or {}).get('image'): spec['data']['image'] = ref(spec['data']['image'])
+    try: spec_assets.localize(spec, sp.parent, ALLOWED)
+    except FileNotFoundError as e: raise SystemExit(str(e))
 root = Path(a.project).resolve() if a.project else Path(__file__).resolve().parent / 'engine'
 out = Path(a.out) if a.out else (Path(a.spec).resolve().parent / 'qa' if a.spec else root.parent / 'qa'); out.mkdir(parents=True, exist_ok=True)
 VW, VH = (spec.get('width', 1920), spec.get('height', 1080)) if spec else (1920, 1080)
@@ -206,7 +207,21 @@ def near_blank(f):
     return float((np.abs(f - med).max(axis=2) > 24).mean()) < 0.003
 def img(b64, w=480): return np.asarray(Image.open(io.BytesIO(base64.b64decode(b64))).convert('RGB').resize((w, round(w * VH / VW)))).astype(np.int16)   # 按画幅缩，竖屏不压扁
 
-report = {'project': str(root), 'segments': []}
+def camera_events(frames, diffs, idx, fps, max_s=0.35):
+    """把跳变里的脉冲镜头挑出来（判据见文件头第 4 条）。idx：跳变所在的帧对下标。返回 (还算跳变的下标, 镜头事件 [(l, r)])。"""
+    keep, events = [], []
+    for i in idx:
+        if any(l <= i <= r for l, r in events): continue
+        thr = max(0.5, 0.1 * diffs[i]); l = r = i
+        while l > 0 and diffs[l - 1] > thr: l -= 1
+        while r < len(diffs) - 1 and diffs[r + 1] > thr: r += 1
+        n = r - l + 1
+        far = [float(np.abs(frames[k] - frames[l]).mean()) for k in range(l + 1, r + 2)]   # 这一串里每一帧离第一帧多远
+        if 2 <= n <= max_s * fps + 1 and far[-1] >= 0.8 * max(far): events.append((l, r))
+        else: keep.append(i)
+    return [i for i in keep if not any(l <= i <= r for l, r in events)], events
+
+report = {'project': str(root), 'spec': str(Path(a.spec).resolve()) if a.spec else None, 'segments': []}
 errors = []
 with sync_playwright() as p:
     br = p.chromium.launch(args=['--enable-gpu-rasterization', '--ignore-gpu-blocklist'])
@@ -242,16 +257,19 @@ with sync_playwright() as p:
         med = float(np.median(diffs)) if len(diffs) else 0
         if spec:   # 片段多是「动一下、定住」：全段中位数≈0，连续的推镜/滑入会整串被记成跳变。片段只认孤立的跳：比前后各 3 对的中位数大 6 倍
             loc = lambda i: float(np.median(np.r_[diffs[max(0, i - 3):i], diffs[i + 1:i + 4]])) if len(diffs) > 1 else 0
-            spikes = [round(ts[i + 1], 3) for i, d in enumerate(diffs) if d > 3 and d > 6 * max(loc(i), 0.05)]
+            sidx = [i for i, d in enumerate(diffs) if d > 3 and d > 6 * max(loc(i), 0.05)]
         else:
-            spikes = [round(ts[i + 1], 3) for i, d in enumerate(diffs) if d > 3 and d > 6 * max(med, 0.05)]
+            sidx = [i for i, d in enumerate(diffs) if d > 3 and d > 6 * max(med, 0.05)]
+        sidx, cams = camera_events(frames, diffs, sidx, a.fps)
+        spikes = [round(ts[i + 1], 3) for i in sidx]
         still = float((diffs < 0.05).mean() * 100)
         heat = np.zeros(frames[0].shape[:2]); [heat.__iadd__((np.abs(frames[i + 1] - frames[i]).max(axis=2) > 12)) for i in range(len(frames) - 1)]
         rec = {'id': s['id'], 'window_lt': [round(lt0, 3), round(lt1, 3)], 'frames': n,
                'ms_mean': round(float(np.mean(ms)), 1), 'ms_max': round(float(np.max(ms)), 1), 'ms_cold': round(cold_ms, 1),
                'deterministic': det == 0 and det_cold == 0, 'det_maxdiff': max(det, det_cold),
                'motion_pct': round(float(diffs.mean()), 2), 'motion_max': round(float(diffs.max()), 2), 'still_pairs_pct': round(still, 1),
-               'spike_ratio': round(float(diffs.max() / max(med, 0.05)), 1), 'spikes_at_lt': spikes}
+               'spike_ratio': round(float(diffs.max() / max(med, 0.05)), 1), 'spikes_at_lt': spikes,
+               'camera_events_lt': [[round(ts[l], 3), round(ts[r + 1], 3)] for l, r in cams]}
         frame_runs = merge_runs(persistent(ts, [frame_issues(tb, a.sub_band) for tb in tbs]) +
                                 persistent(ts, [[('近空白', '')] if near_blank(f) else [] for f in frames]))
         rec['framing'] = [{'kind': k, 'text': txt, 'lt': [round(t0, 2), round(t1, 2)], 't': [round(s['t0'] + t0, 2), round(s['t0'] + t1, 2)]} for k, txt, t0, t1 in frame_runs]
@@ -264,9 +282,9 @@ with sync_playwright() as p:
         hm = np.clip(heat / max(1, heat.max()) * 255, 0, 255).astype(np.uint8)
         base = Image.fromarray(pick[0].astype(np.uint8)).convert('L').convert('RGB'); red = np.zeros((H_, W_, 3), np.uint8); red[..., 0] = hm
         S.paste(Image.blend(base, Image.fromarray(red), 0.6), (4 * W_, 20))
-        dr.text((4, 4), f"{s['id']}  运动 {rec['motion_pct']}%  静止帧对 {rec['still_pairs_pct']}%  跳变 {len(spikes)}  {rec['ms_mean']}/{rec['ms_max']}ms  确定性 {'✓' if rec['deterministic'] else '✗'}", fill='black')
+        dr.text((4, 4), f"{s['id']}  运动 {rec['motion_pct']}%  静止帧对 {rec['still_pairs_pct']}%  跳变 {len(spikes)}  镜头事件 {len(cams)}  {rec['ms_mean']}/{rec['ms_max']}ms  确定性 {'✓' if rec['deterministic'] else '✗'}", fill='black')
         S.save(out / f"{s['id']}.jpg", quality=85)
-        print(f"{s['id']:<18} 运动 {rec['motion_pct']:>5}%  静止帧对 {rec['still_pairs_pct']:>5}%  跳变 {len(spikes)}  {rec['ms_mean']:>6}/{rec['ms_max']:>6}ms  确定性 {'✓' if rec['deterministic'] else '✗ ' + str(rec['det_maxdiff'])}  框景 {len(rec['framing'])}")
+        print(f"{s['id']:<18} 运动 {rec['motion_pct']:>5}%  静止帧对 {rec['still_pairs_pct']:>5}%  跳变 {len(spikes)}  镜头事件 {len(cams)}  {rec['ms_mean']:>6}/{rec['ms_max']:>6}ms  确定性 {'✓' if rec['deterministic'] else '✗ ' + str(rec['det_maxdiff'])}  框景 {len(rec['framing'])}")
         for r in rec['framing']: print(f"    {r['kind']}  {r['t'][0]:.2f}–{r['t'][1]:.2f}s  {r['text']}")
     # 转场冒烟：只查能不能渲、耗时多少，不参与运动/流畅判据
     report['transitions'] = []
@@ -286,9 +304,9 @@ srv.shutdown()
 srv.server_close()
 report['page_errors'] = errors
 json.dump(report, open(out / 'qa.json', 'w'), ensure_ascii=False, indent=1)
-rows = ['| 段 | 运动% | 静止帧对% | 跳变 | 均/峰 ms | 冷启动 ms | 确定性 | 框景 |', '|---|---|---|---|---|---|---|---|']
+rows = ['| 段 | 运动% | 静止帧对% | 跳变 | 镜头事件 | 均/峰 ms | 冷启动 ms | 确定性 | 框景 |', '|---|---|---|---|---|---|---|---|---|']
 for r in report['segments']:
-    rows.append(f"| {r['id']} | {r['motion_pct']} | {r['still_pairs_pct']} | {len(r['spikes_at_lt'])} {r['spikes_at_lt'][:3]} | {r['ms_mean']}/{r['ms_max']} | {r['ms_cold']} | {'✓' if r['deterministic'] else '✗'} | {len(r['framing'])} |")
+    rows.append(f"| {r['id']} | {r['motion_pct']} | {r['still_pairs_pct']} | {len(r['spikes_at_lt'])} {r['spikes_at_lt'][:3]} | {len(r['camera_events_lt'])} | {r['ms_mean']}/{r['ms_max']} | {r['ms_cold']} | {'✓' if r['deterministic'] else '✗'} | {len(r['framing'])} |")
 fr = [(r['id'], x) for r in report['segments'] for x in r['framing']]
 if fr: rows += ['', '框景线索（全片秒，持续 ≥0.3s；去看这一帧再判断）：'] + [f"- {x['kind']} {x['t'][0]:.2f}–{x['t'][1]:.2f}s（{i}）{x['text']}" for i, x in fr]
 if report.get('transitions'): rows += ['', '转场冒烟（整帧，峰值 ms）：' + '，'.join(f"{r['type']}→{r['id']} {r['ms_max']}" for r in report['transitions'])]
