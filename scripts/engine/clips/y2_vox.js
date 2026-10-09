@@ -59,7 +59,8 @@ return {
       if (e.it) {
         const tgt = { x: e.it.x, y: e.it.y, z: zFor(e.it) };
         if (!last) { keys.push({ t: 0, ...tgt }); }
-        else { const t0 = Math.max(last.t + 0.25, e.at - 0.95, Math.min(curItem ? curItem.done : 0, e.at - 0.4)), t1 = Math.max(t0 + 0.35, e.at - 0.05);   // 上一张卡没读完相机不走（最晚 at−0.4 起跑）
+        // 相机跟着卡走、和它一起到位：卡从 at 起滑入、约 at+0.55 落定，相机在 at+0.45 到位。原先相机在 at−0.05 就到、卡还没进来，会对着空桌面停 ≈0.6s
+        else { const t0 = Math.max(last.t + 0.25, e.at - 0.45, Math.min(curItem ? curItem.done : 0, e.at + 0.1)), t1 = Math.max(t0 + 0.35, e.at + 0.45);   // 上一张卡没读完相机不走（最晚 at+0.1 起跑）
           keys.push({ t: t0, x: last.x, y: last.y, z: last.z }); keys.push({ t: t1, ...tgt, ease: MO.longTail }); }
         last = keys[keys.length - 1]; curItem = e.it;
       } else if (curItem && curItem.kind === 'image' && e.h.data && e.h.data.rect) {
@@ -86,7 +87,7 @@ return {
     g.save(); g.translate(0, (ctx.safe.top - ctx.safe.bottom) / 2); CAM.apply(g, cam);
     if (!ctx.alpha) { g.fillStyle = g.createPattern(CL.paperTile('clipdesk', C.desk, { amt: 12, fibers: 320, fiberCol: [110, 95, 70] }), 'repeat'); const s = 4 / cam.z; g.fillRect(cam.x - W * s, cam.y - H * s, W * 2 * s, H * 2 * s); }
     // 红线：跟着下一件的到场描出（12fps）
-    for (const s of strings) { const q = MO.sineInOut(clamp(ls(t, s.at - 0.9) / 0.7)); if (t < s.at - 0.9) continue;
+    for (const s of strings) { const q = MO.sineInOut(clamp(ls(t, s.at - 0.4) / 0.7)); if (t < s.at - 0.4) continue;   // 和相机同步起跑（见上面相机关键帧）
       CL.string(g, s.pts, s.cum, s.cum[s.cum.length - 1] * q, { col: C.red, lw: 5 * u }); CL.pin(g, s.a[0], s.a[1], C.red); if (q >= 1) CL.pin(g, s.b[0], s.b[1], C.red); }
     for (const it of items) {
       const q = it.q; if (t < q.at - 1e-6) continue;
