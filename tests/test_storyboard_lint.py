@@ -214,3 +214,16 @@ class TagsColumn(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NumberCardRule(unittest.TestCase):
+    def test_middle_number_card_warns(self):
+        t = """| 时间段 | 画面里的物 | 它在做什么 | 镜头 | 屏上字 | 做法 |
+|---|---|---|---|---|---|
+| 0–3 | 一个人和一只杯子 | 人把热水倒进杯子，杯壁起雾 | 停 | | scenes/a.js |
+| 3–6 | 大字 | 大字砸进画面 | 砸入 | 60% | y5 片段 a.json |
+| 6–9 | 那只杯子 | 杯子里的水慢慢变凉，雾散了 | 快推 | | scenes/a.js |
+"""
+        res = SL.lint(t)
+        msgs = [i[1] for r in res["rows"] for i in r["issues"]]
+        self.assertIn("⑪数字字卡", msgs)

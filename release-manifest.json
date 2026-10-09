@@ -3,11 +3,11 @@
   "files": {
     ".github/workflows/tests.yml": "91b5797ea6f59b6e31e53de2a846194e33ab1dbe24b2efb8c0ed4367324f8fbe",
     ".gitignore": "64ed0cc55105bb4b33ebd1baadd1eb18c74b604f6bbce0fbaa4c62b5eb425197",
-    "CHANGELOG.md": "9a4d0a6f789faa309a24146fd8aafb7a0f55e15df58df5fc39b17b8b588f97b0",
+    "CHANGELOG.md": "6c7cf14cd6d0f64fc633902fe066b6ac9d0bf57de4e0807ce6c956e70d0db760",
     "CONTRIBUTING.md": "742a1a6071f6be25e82f0524a520fd6d09961be3f87d7a85940cd816ce7309a1",
     "LICENSE": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96",
     "README.md": "27a0a515bcaac0f0a73ad0b6ff0786f608869d6b095f8b954644eca8c7c3a950",
-    "SKILL.md": "8c80b953b5400f8d99a71710bc755a16dc21428fd1a7ccd194355b08ba65aebf",
+    "SKILL.md": "b55b4220554f2aa95df49e694bd423a8037ac205eaae04d45abc870d0806b0ab",
     "assets/showcase/egypt.gif": "256b946e2543192153f276dc46e0af98837c934ddb9e2e2c0c9843f0557cd54b",
     "assets/showcase/hero.png": "3b6b42bfb00f84925aebe2a10f85052dc6b4efb492e86f581f21f652b6686407",
     "assets/showcase/mario-claude.gif": "f63f2f464c1d7b477578d07359d85712086a39b615669f1d3bb015290c54741f",
@@ -36,7 +36,7 @@
     "references/06-口播驱动的艺术短片.md": "9275abd6451831515ed9aed24724062bf47dda5e5d2d804baa8313c137236bc8",
     "references/07-正面经验.md": "fd5f63474f15e01119e10586a14a456f602cf4f6ee03b4359bcf77c084305f1b",
     "references/08-风格作者规范.md": "30312801d2833b478bc80218a704d87971c08f50a7ee0e31f3c08eefe15f9b4e",
-    "references/09-视频动画语法.md": "14b844dfcca0632ac61dcf7d37ffa6f6543caa39efc5cb08bbc1bad3ea2e81c3",
+    "references/09-视频动画语法.md": "57b7616b95562b40ec305edd8e6a0ce678c1dd4c8250b4ef149b1afa25c9e471",
     "references/10-角色.md": "0c69bc849688069ee59bfe619eb7c44c48dbeee0324ee2bcc87bbe98d41af74b",
     "references/11-长卷穿越片.md": "42f2e441687116c8d2dd789b187ada572390e242976996727a209959163a6ad6",
     "references/12-口播整片与经验回流.md": "b85f6e8b665c13a5d98ea461c10af340679a6949101ee31dd64eee7e88aed415",
@@ -417,7 +417,7 @@
     "scripts/key_split.py": "889759cd6b5353b4d48d34faf3878682890e06ca79887c9ade9be401b7359f86",
     "scripts/koubo.py": "7837507e6bf02b20f8aa63efdc881c8de0d5de775b4bf31a1040bd3824348494",
     "scripts/qa.py": "a1457de52ee311659039207ef3304b6ade1531f538843a15bb509698e4b37da9",
-    "scripts/storyboard_lint.py": "02791af00497e6c0fa2718b5c7420bd10e0fb39e0ab810ada0477ebcc9e9991d",
+    "scripts/storyboard_lint.py": "f5cac0dc336451ea65fe89892747644ec29b377cf37008768690a658d4b665a9",
     "scripts/subzone_gate.py": "8641a3b1b38ac28c1562e454a0e370f36a73d1a0c79cddf36175c7444a9c1598",
     "tests/test_capabilities.py": "04ce548d5a72a11a87a3bd85c46a98e13f1aabafb096e3c59a6fc7a20bfdf4ad",
     "tests/test_clip_world.py": "9d2393b7eb31787367ef8dd1dd4b28ae53b56941c60ebb4ebf996580be34dd9f",
@@ -426,6 +426,6 @@
     "tests/test_images.py": "5fe7533ec25a2644e3685e1677186eaf1554ebbbcc390fcd56a45afbad872040",
     "tests/test_local_server.py": "b775a60c86c4a0914d67c4cfb7cb37256a447db700bfdba146a2db3704ea83ff",
     "tests/test_release.py": "a190d8825e23f6204263f3d00d6728bf709586bc178c980d53244a82ef198b41",
-    "tests/test_storyboard_lint.py": "e0d551216f9a959aa34a819655e0b341774e9eab387f42d0b06c37924915d4f9"
+    "tests/test_storyboard_lint.py": "ecbe82aa85188294eaef878036c86a24266facaec04450e181690a1ff9922e40"
   }
 }
