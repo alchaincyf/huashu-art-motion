@@ -3,7 +3,7 @@
   "files": {
     ".github/workflows/tests.yml": "91b5797ea6f59b6e31e53de2a846194e33ab1dbe24b2efb8c0ed4367324f8fbe",
     ".gitignore": "64ed0cc55105bb4b33ebd1baadd1eb18c74b604f6bbce0fbaa4c62b5eb425197",
-    "CHANGELOG.md": "7bedbb5ed661647265c083e0e76cb82d03e1d0822564d06e0396319500eb2468",
+    "CHANGELOG.md": "14b1c1dae2dd166adaf039387420933a03f69cb271ac93fd3bb2a8df3484ca99",
     "CONTRIBUTING.md": "742a1a6071f6be25e82f0524a520fd6d09961be3f87d7a85940cd816ce7309a1",
     "LICENSE": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96",
     "README.md": "fab161f6e22b8ff74d11602990ada532ba28d49478c8297b010a442d354903f5",
@@ -103,7 +103,7 @@
     "scripts/engine/clips/t2_keynote_ui.js": "bd96d0b6d4c55e86bf7b16852f90373b443f3eff8f6fd86ebdeec02f9d5f658a",
     "scripts/engine/clips/t3_finance_chart.js": "db7e1b44993964add4125917e7a651adc4a143259570aa4e65d85a72aae0d44b",
     "scripts/engine/clips/y1_kurzgesagt.js": "99c8656ac04dba5a218199ea272a71ad8ee34ad69125f906b22d6d1946745029",
-    "scripts/engine/clips/y2_vox.js": "250d7f793ad3c331bd351e43d70565144f73bbe5ae65e8588428811dfe45cf4d",
+    "scripts/engine/clips/y2_vox.js": "972ebe273f8db0bf0a8f45c6e42fc53a375d714cd01854f26d46c369f5552b61",
     "scripts/engine/clips/y3_whiteboard.js": "23ff417331708353de03289860bec28206aea12acfc45e40bc53b81c5a0e340c",
     "scripts/engine/clips/y4_storytime.js": "88faca8e84364dcbf46cf28dcedc3cd488909d2d439c88d12ffdca26114a2ba8",
     "scripts/engine/clips/y5_kinetic_type.js": "dac5d0f8da6ed8b0947235c2c2ad51234454cbc42a7da29c27826ee616716ded",
