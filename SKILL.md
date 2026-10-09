@@ -7,14 +7,22 @@ description: "艺术与视频动画：拆解复刻动画；代码画35种艺术�
 
 ## 先分档：你按哪一档读
 
-- **开阔档**：你是 Claude Opus 5.5 或更强的模型。全文都适用：路由表、窄桥、开阔地；库可以自己组合，渲染器可以自己写；交付同样走 `scripts/deliver.py`，红灯不交付。
-- **轨道档**：其它模型，或判断不出自己是谁。只走下面这一条路，只读这条路需要的 2–3 个文件，其余 reference 先不读：
-  1. **复制工程**：`cp -R <skill>/scripts/engine <项目>/代码工程`。
-  2. **选语法**：读 `references/09-视频动画语法.md` 第二节（选型表）和第五节里你选的那一种，再读 `references/动画语法/<语法>.md` 的「起手必查」。要艺术风格画面（梵高、像素……）就改读 `references/风格配方/INDEX.md` 和一张风格卡，写 `scenes/<id>.js`。
-  3. **填 spec 或照卡做**：从 `examples/<语法>.json` 抄结构，不抄内容。第一个 cue 是画面事件，不是标题；每条 text ≤14 字。
-  4. **渲染**：`uv run --with playwright python <项目>/代码工程/render.py --spec <spec>.json --out 片段.mp4`；加 `--stills 1,3,5 --out 静帧/` 抽 3 帧看。
-  5. **qa**：`uv run <skill>/scripts/qa.py --spec <spec>.json`，再拿抽帧逐条对下面「五种做坏方式」。
-  6. **交付**：`uv run <skill>/scripts/deliver.py 片段.mp4 --spec <spec>.json --root <项目> --out output/`。红灯不交付：脚本不复制成片，照它打印的修法改完重渲、重跑。绿灯、黄灯它复制成片并写 `output/交付说明.md`，时长、门禁、qa、有没有审片由脚本写；你只在「制作说明」段补用了哪个语法、黄灯项逐条理由、五种做坏方式自查，事实段不许改。派了独立审片的，先让审片人把结论写进 `<项目>/审片/*.md` 再跑。
+- **开阔档**：你是 Claude Opus 5.5 或更强的模型。全文都适用：路由表、窄桥、开阔地；库可以自己组合，渲染器可以自己写；交付同样走 `scripts/deliver.py`，红灯不交付。开工前也建议先写一张镜头表（`references/镜头表模板.md`），lint 可跑可不跑。
+- **轨道档**：其它模型，或判断不出自己是谁。只走下面这一条路，先镜头表，再动手；只读这条路点名的文件，其余 reference 先不读：
+  1. **写镜头表**：照 `references/镜头表模板.md` 写 `<项目>/镜头表.md`，每行一镜：时间段｜画面里的物（名词）｜它在做什么（动词）｜镜头（停/快推/横移/砸入/切）｜屏上字（≤8 字，可空）｜做法。开头 3 秒是一个具体的小场景（一个人或一个物在做一件和题目有关的事），不是标题；全片用一个具体例子或一个角色贯穿；一镜 2–6 秒；文字主导的镜头 ≤30%；相邻两镜不用同一版式。
+  2. **过 lint**：`uv run <skill>/scripts/storyboard_lint.py <项目>/镜头表.md`。有红灯就改镜头表、重跑，红灯没清不许开始写代码。
+  3. **按镜头表逐镜做**：`cp -R <skill>/scripts/engine <项目>/代码工程`，每一镜出一个 `镜NN.mp4`，所有镜同宽高、同 fps（默认 1920×1080@30）。
+     - 参数化片段：读 `references/09-视频动画语法.md` 第二节选型表和用到的 `references/动画语法/<语法>.md`「起手必查」，从 `examples/<语法>.json` 抄结构不抄内容，屏上字照镜头表那一格，`uv run --with playwright python <项目>/代码工程/render.py --spec 镜NN.json --out 镜NN.mp4`。**单个参数化片段最多撑 8 秒**，超了拆成几镜。
+     - scenes：艺术风格画面（梵高、像素……）或片段语法画不出的物，读 `references/风格配方/INDEX.md` 和一张风格卡，写 `scenes/<id>.js` 并登记进 `eras.js`，`render.py --solo <id> --from 0 --to <秒> --fps 30 --no-counter --out 镜NN.mp4`。
+     - 全片至少用 3 种不同的画面做法（不同语法的片段、scenes 代码画、真实素材满幅，各算一种）。每镜加 `--stills 0.5,2 --out 静帧/镜NN` 抽帧，对着镜头表看。
+  4. **拼接**：镜与镜硬切，在放 `镜NN.mp4` 的目录里：
+     ```sh
+     for f in 镜*.mp4; do printf "file '%s'\n" "$f"; done > 镜头列表.txt
+     ffmpeg -y -f concat -safe 0 -i 镜头列表.txt -r 30 -c:v libx264 -crf 16 -pix_fmt yuv420p -an 成片.mp4
+     ```
+     有口播再混音：`ffmpeg -i 成片.mp4 -i 口播.wav -map 0:v -map 1:a -c:v copy -c:a aac -shortest 成片_口播.mp4`。要转场就全用 scenes，把各镜按顺序写进 `eras.js` 段落表（段写 `dur` 秒、`transition`），整片模式 `render.py --out 成片.mp4` 一次出片。
+  5. **qa**：每个片段 `uv run <skill>/scripts/qa.py --spec 镜NN.json --out <项目>/qa/镜NN`；有 scenes 再跑 `qa.py --project <项目>/代码工程 --ids <id,…> --out <项目>/qa/scenes`。再拿抽帧逐条对下面「五种做坏方式」。
+  6. **交付**：`uv run <skill>/scripts/deliver.py 成片.mp4 --root <项目> --qa <项目>/qa/<跳变最多的那一镜> --out output/`。红灯不交付：脚本不复制成片，照它打印的修法改完重渲、重跑。绿灯、黄灯它复制成片并写 `output/交付说明.md`，时长、门禁、qa、有没有审片由脚本写；你只在「制作说明」段补用了哪些语法和做法、其余各镜的 qa 结论（每镜一行）、黄灯项逐条理由、五种做坏方式自查，事实段不许改。派了独立审片的，先让审片人把结论写进 `<项目>/审片/*.md` 再跑。
 
 ## 你是谁
 

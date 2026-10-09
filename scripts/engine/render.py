@@ -41,6 +41,14 @@ if a.spec:
     except FileNotFoundError as e: raise SystemExit(str(e))
     if a.alpha: spec['alpha'] = True
     if a.width or a.height: spec['width'], spec['height'] = a.width or spec.get('width', 1920), a.height or spec.get('height', 1080)
+# 单个参数化片段撑太久会读成一页 PPT（一个版式到底、要点越堆越长）。只警告不报错：管线里有合法的长片段。
+LONG_CLIP = None
+if spec and float(spec.get('duration', 0)) > 8:
+    LONG_CLIP = ('\n' + '!' * 72 + f'\n!! 警告：这个片段 duration = {spec["duration"]} 秒，超过 8 秒。\n'
+                 '!! 单个片段撑太久会读成一页 PPT：一个版式到底，要点越堆越长，背景从头死到尾。\n'
+                 '!! 拆成多镜：每镜 2–6 秒、换语法或换做法（scenes、真实素材），再拼接（SKILL.md 轨道档第 3–4 步）。\n'
+                 '!! 口播管线里确实要一段长片段的，可以忽略这条。\n' + '!' * 72 + '\n')
+    print(LONG_CLIP, file=sys.stderr, flush=True)
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *x): pass
     def translate_path(self, path):
@@ -112,4 +120,5 @@ with sync_playwright() as p:
     b.close()
 srv.shutdown()
 srv.server_close()
+if LONG_CLIP: print(LONG_CLIP, file=sys.stderr)   # 渲完再说一遍，免得被进度行冲掉
 if errors: raise SystemExit(f'❌ 页面报错 {len(errors)} 条（见上方 [page]/[pageerror]）')
