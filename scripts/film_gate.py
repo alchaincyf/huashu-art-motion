@@ -503,14 +503,20 @@ def template_similarity(F, shots, template):
 
 
 # ---------------------------------------------------------------- 打灯
+SHORT_S = float(os.environ.get("FILM_GATE_MIN_S", 20))  # 标定集都是 45 秒以上的成片；短于这个时长的片段读数噪声大，红灯降为黄灯只提示
+
+
 def grade(res):
     rows, red = [], False
+    short = (res.get("duration_s") or 0) < SHORT_S
     for k, (name, direc, y, r, gate, unit) in METRICS.items():
         v = res.get(k)
         if v is None or direc == "info":
             rows.append((k, name, v, "--", gate, unit)); continue
         bad = (lambda t: v >= t) if direc == "high_bad" else (lambda t: v <= t)
         lv = "red" if (gate and r is not None and bad(r)) else "yellow" if (y is not None and bad(y)) else "green"
+        if lv == "red" and short:
+            lv = "yellow"; res["short_clip_note"] = f"片长 {res.get('duration_s')}s，短于 {SHORT_S}s，门禁只提示不拦；拼进成片后在成片上再跑一次"
         red |= lv == "red"
         rows.append((k, name, v, lv, gate, unit))
     return rows, red
@@ -550,6 +556,8 @@ def explain(res):
         head = f"镜头内的快速动作偏少（{fr:.1%}，黄线 6%），离翻页感不远"
     else:
         head = f"镜头内有足够的快速动作（{fr:.1%}）"
+    if res.get("short_clip_note"):
+        head += "。" + res["short_clip_note"]
     why = []
     if lv != "green":
         if res["slow_zoom_share"] >= 0.3:

@@ -6,6 +6,8 @@
 测试只在本机装了 uv、ffmpeg 和 Playwright Chromium 时跑（CI 的媒体契约任务没有这些，自动跳过）。
 测试用的语法文件写在临时复制的引擎里，不进仓库。
 """
+import os
+os.environ["FILM_GATE_MIN_S"] = "0"  # 合成片只有 9 秒；这里测判定本身，不测短片降级
 import json
 import os
 import shutil
@@ -109,6 +111,14 @@ class FilmGateTests(unittest.TestCase):
         self.assertEqual(res['gate_light'], 'green')
         self.assertGreaterEqual(res['fast_ratio'], 0.06)
         self.assertIsNone(res['explain']['fix'])
+
+    def test_short_clip_only_warns(self):
+        # 短于 20 秒的片段读数没标定过：同一支慢推片默认只亮黄灯、不拦
+        env = dict(os.environ, FILM_GATE_MIN_S='20')
+        r = subprocess.run(['uv', 'run', '--quiet', str(SCRIPTS / 'film_gate.py'), str(W['slow'] / 'slow.mp4'), '--no-template'],
+                           capture_output=True, text=True, timeout=900, env=env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('只提示不拦', r.stdout)
 
     def test_unreadable_file_exits_1(self):
         bad = Path(W['tmp'].name) / 'bad.mp4'
