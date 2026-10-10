@@ -33,6 +33,21 @@ npx skills add alchaincyf/huashu-art-motion
 
 这组展示的是成片效果；GIF无声、循环播放。[片段时间点与导出参数](assets/showcase/mario-clips.md)。
 
+### Clawd 博物馆奇妙夜
+
+Claude Code 的像素吉祥物 Clawd 从保安电脑的终端里蹦出来，打着手电夜巡纽约大都会博物馆，再穿过中央公园去自然史博物馆，天亮前赶回来装成展品。98秒，16个场景，无口播，配乐也是代码合成的。
+
+<img src="assets/showcase/clawd-vangogh.gif" alt="Clawd跳进梵高《麦田与柏树》，被重画成厚涂笔触，在麦浪里奔跑" width="100%" />
+
+跳进梵高《麦田与柏树》：笔触方向取自原作的结构张量，Clawd被重画成厚涂。
+
+<table><tr>
+<td width="50%"><img src="assets/showcase/clawd-trex.gif" alt="霸王龙骨架像猫追激光点一样追着手电光斑扑来扑去" width="100%" /><br/>霸王龙骨架 · 追手电光斑</td>
+<td width="50%"><img src="assets/showcase/clawd-dawn.gif" alt="天亮，Clawd在画框里装展品，保安的手放下咖啡，Clawd眨了一下眼" width="100%" /><br/>天亮 · 装成展品眨一下眼</td>
+</tr></table>
+
+暗处是炭笔夜景，只有手电照到的地方显出颜色；入画的五幅（梵高、修拉、维米尔、伦勃朗、勒茨）都是大都会开放获取的CC0原作，按各自画家的笔法用代码重画。完整成片在[Releases](https://github.com/alchaincyf/huashu-art-motion/releases/latest)，[片段时间点与说明](assets/showcase/clawd-clips.md)。
+
 ### 花叔穿越名画
 
 画里真的会动。下面三段来自同一支穿越短片，场景用代码画，角色用生成帧合成。
@@ -160,6 +175,8 @@ uv run --with playwright python scripts/engine/render.py --spec scripts/engine/e
 
 例外：笔顺衍生数据`reference_films/spacex/spacex_wb/assets/strokes.js`沿用Arphic Public License（原文随文件附带）；`scripts/engine/lib/fonts/` 里的字体沿用各自的 OFL 许可；花叔的卡通形象与角色帧（`scripts/engine/demos/_shared/hero/`、`scripts/engine/demos/long_scroll/frames/`、`assets/角色/`）以及总览图、示范视频中包含的同一形象，只用于本 skill 的示范，不随 MIT 授权用于其他用途。
 
+Clawd 是 Anthropic 的 Claude Code 吉祥物，形象权利归 Anthropic；《Clawd 博物馆奇妙夜》是非官方的同人示范，与 Anthropic 无关，GIF 与成片同样不随 MIT 授权。片中画作来自大都会艺术博物馆开放获取（CC0）。
+
 ---
 
 <div align="center">
@@ -187,7 +204,7 @@ MIT License © [花叔 Huashu](https://github.com/alchaincyf)
 
 It started as a code-only recreation of Tak's ([@cherry_mx_reds](https://x.com/cherry_mx_reds/status/2106095190285144331)) 15-second *Art History Speedrun*. The scene layouts and the girl-and-cat premise follow his original; every frame here is redrawn in code, and no frames, screenshots or audio from the original are included.
 
-Install: `npx skills add alchaincyf/huashu-art-motion`. Requires uv, ffmpeg and Playwright Chromium. The skill content is in Chinese. The ninth grammar, presenter-led explainers, ships as a reference implementation and requires your own character assets. Full-narration examples are code snapshots, not ready-to-render projects. Code and docs are MIT; the bundled stroke medians retain the Arphic Public License; bundled fonts keep their SIL OFL licenses; the Huashu character artwork, including its appearance in overview images and demo videos, is for demo use only.
+Install: `npx skills add alchaincyf/huashu-art-motion`. Requires uv, ffmpeg and Playwright Chromium. The skill content is in Chinese. The ninth grammar, presenter-led explainers, ships as a reference implementation and requires your own character assets. Full-narration examples are code snapshots, not ready-to-render projects. Code and docs are MIT; the bundled stroke medians retain the Arphic Public License; bundled fonts keep their SIL OFL licenses; the Huashu character artwork, including its appearance in overview images and demo videos, is for demo use only. Clawd is Anthropic's Claude Code mascot; the *Clawd: Night at the Museum* clips are an unofficial fan demo, not affiliated with Anthropic and not covered by MIT. Paintings in it are The Met Open Access (CC0) images redrawn in code.
 
 ## 可选媒体能力
 
