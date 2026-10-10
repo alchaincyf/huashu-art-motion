@@ -19,7 +19,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / 'scripts'
 ENGINE = SCRIPTS / 'engine'
-IMAGES = [ROOT / 'assets' / 'showcase' / 'hero.png', ROOT / 'assets' / '全风格总览.jpg', ROOT / 'assets' / '动画语法' / 'y2_vox_总览.jpg']
+_HERO = ROOT / 'assets' / 'showcase' / 'hero.png'   # 只在公开仓库里；私有版没有就用样例里的图表截图
+IMAGES = [_HERO if _HERO.exists() else ROOT / 'scripts' / 'engine' / 'examples' / 'assets' / 'K线图_横屏.png',
+          ROOT / 'assets' / '全风格总览.jpg', ROOT / 'assets' / '动画语法' / 'y2_vox_总览.jpg']
 SHOT = 3.0
 
 # 测试专用语法：kind=shot 的 cue 一镜一张图，满幅（MD.cover），镜头由 data.mode 决定。
