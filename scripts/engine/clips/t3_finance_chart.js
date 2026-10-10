@@ -3,7 +3,10 @@
 //         chart: 'bar'|'line'|'candle', series: [{label, value}] 或 K 线 [{label, o, h, l, c}], decimals=1, prefix='', suffix='',
 //         highlight?: {index, text, sub}, colors?: {main, accent, dim}, upDown?: 'cn'（红涨绿跌，默认）|'us', theme? }
 // 主题（图表镜头要留在片子的世界里，底和前后镜头同色系）：spec.theme 或 data.theme，
-//   'light'（白底，默认）| 'paper'（FT 三文鱼粉）| 'dark'（深底浅字）| 对象 {bg, ink, sub, src, tick, xlab, grid, red, bar, dim}（写了 bg 按它的明暗选浅/深一套，再逐项覆盖）。
+//   全片色板名（paper / poster / ink / navy / bauhaus / snow / wood / chalk，见 lib/palettes.js）→ 按 ctx.pal 上色：底 bg、字 ink、次要字和刻度 sub、
+//     折线/标注/大数字 accent、柱子 accent2；K 线涨跌仍按 upDown 用红绿（语义色）。
+//   旧写法照旧：'light'（白底，默认）| 'dark'（深底浅字）| 对象 {bg, ink, sub, src, tick, xlab, grid, red, bar, dim}（写了 bg 按它的明暗选浅/深一套，再逐项覆盖）。
+//   'paper' 现在是全片色板「纸本」（以前是 FT 三文鱼粉）。
 //   没写主题但 spec.safe.fill 写了片子的底色：图表底就用它，深色底自动换深底浅字——不再在深色片里冒出一张白卡。
 // cues（at 秒）：title（版式）· bar|line|candle（数据从 at 开始长出，dur 默认按根数；柱状图可写多个 bar cue，各带 data.index（数或数组）＝这几根在这一刻才长，让每根柱子踩自己的那个词）
 //         series 每项可写 color（柱子自己的颜色，和片里别处同一个量的配色对上）· highlight（at 这一帧标注圆点弹出；text/sub 覆盖 data.highlight，data.index 指定第几根）
@@ -13,14 +16,20 @@ CLIPS.t3_finance_chart = (() => {
 const { clamp, lerp } = U;
 const THEMES = {
   light: { bg: '#FFFFFF', ink: '#0C0C0C', sub: '#4F5B61', src: '#7c868b', tick: '#5b666b', xlab: '#3a4246', grid: 'rgba(12,12,12,0.13)', red: '#E3120B', bar: '#006BA2', dim: '#C6D2D8' },
-  paper: { bg: '#FFF1E5', ink: '#0C0C0C', sub: '#4F5B61', src: '#7c868b', tick: '#5b666b', xlab: '#3a4246', grid: 'rgba(12,12,12,0.13)', red: '#E3120B', bar: '#0F5499', dim: '#D9CBBF' },
   dark:  { bg: '#0E1116', ink: '#F2F4F5', sub: '#A7B2B8', src: '#848F95', tick: '#9AA5AB', xlab: '#C3CBD0', grid: 'rgba(255,255,255,0.14)', red: '#FF4B3E', bar: '#3EBCD2', dim: '#3A4650' },
 };
 const lum = col => { const m = String(col).trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if (!m) return 1;
   const h = m[1].length === 3 ? [...m[1]].map(x => x + x).join('') : m[1], [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+// 旧主题写法（'light' / 'dark' / 不带色板键的对象）不当全片色板解析（clip.js 认这个钩子）
+const legacy = th => th === 'light' || th === 'dark' || (!!th && typeof th === 'object' && !Array.isArray(th) && th.name == null && !['surface', 'accent', 'accent2'].some(k => k in th));
+// 全片色板 → 图表的一整套色：辅助色都从 6 个键派生
+const fromPal = p => ({ bg: p.bg, ink: p.ink, sub: p.sub, src: PAL.mix(p.sub, p.bg, 0.2), tick: p.sub, xlab: PAL.mix(p.ink, p.sub, 0.45), grid: PAL.alpha(p.ink, 0.13),
+  red: p.accent, bar: p.accent2, dim: PAL.mix(p.bg, p.sub, 0.3), dark: PAL.dark(p) });
 function palette(ctx) {
+  if (ctx.pal) return fromPal(ctx.pal);
   const T = (typeof ctx.theme === 'string' || (ctx.theme && Object.keys(ctx.theme).length)) ? ctx.theme : ctx.data.theme;
+  if (typeof T === 'string' && !legacy(T) && window.PALETTES[T]) return fromPal(PAL.resolve(T));   // data.theme 写了色板名
   if (typeof T === 'string') return { ...(THEMES[T] || THEMES.light) };
   const bg = (T && T.bg) || (ctx.safe && ctx.safe.fill) || null;
   const base = bg ? (lum(bg) < 0.45 ? THEMES.dark : THEMES.light) : THEMES.light;
@@ -33,6 +42,7 @@ const fmtv = (d, v) => (d.prefix || '') + TY.fmt(v, d.decimals ?? 1) + (d.suffix
 return {
   fonts: ['PuHui-Medium', 'PuHui-Bold'],
   safe: true,
+  legacyTheme: legacy,
   init(ctx) {
     P = palette(ctx); RED = P.red; INK = P.ink; SUB = P.sub; GRID = P.grid;
     const { W, H, u, data: d } = ctx, m = (ctx.portrait ? 70 : 90) * u, c = document.createElement('canvas').getContext('2d');
@@ -77,7 +87,8 @@ return {
       every: category ? 1 : Math.max(1, Math.ceil(n / (ctx.portrait ? 6 : 10))) };
     const main = (d.colors && d.colors.main) || (kind === 'bar' ? P.bar : RED);
     L.col = { main, accent: (d.colors && d.colors.accent) || main, dim: (d.colors && d.colors.dim) || P.dim };
-    L.updown = d.upDown === 'us' ? ['#1B9E5A', RED] : [RED, '#1B9E5A'];
+    const up = P.dark != null ? (P.dark ? '#FF4B3E' : '#E3120B') : RED;   // 涨跌是语义色：用了全片色板（accent 未必是红）也照旧红绿
+    L.updown = d.upDown === 'us' ? ['#1B9E5A', up] : [up, '#1B9E5A'];
   },
   draw(c0, t, ctx) {
     // alpha：字和线叠在别的画面上可能看不见。先画进缓冲，再带一圈主题底色的光晕合成（和 t1 同一招；默认白纸黑字＝白光晕）
@@ -97,7 +108,7 @@ return {
       c.globalAlpha = MO.seg(lt, 0.2, 0.6); c.font = `400 ${L.srcF.size}px ${CN}`; c.fillStyle = P.src;
       L.srcF.lines.forEach((ln, k, a) => c.fillText(ln, m, H - 40 * u - ctx.safe.bottom - (a.length - 1 - k) * L.srcF.size * 1.3));
       c.restore();
-      if (d.badge) { c.save(); c.globalAlpha = MO.seg(lt, 0.2, 0.6); CH.demoBadge(c, d.badge, { x: W - m, y: H - 50 * u - ctx.safe.bottom, font: `700 ${28 * u}px ${CN}`, col: RED, box: 'rgba(227,18,11,0.06)' }); c.restore(); }
+      if (d.badge) { c.save(); c.globalAlpha = MO.seg(lt, 0.2, 0.6); CH.demoBadge(c, d.badge, { x: W - m, y: H - 50 * u - ctx.safe.bottom, font: `700 ${28 * u}px ${CN}`, col: RED, box: tint(RED, 0.06) }); c.restore(); }
     }
     // ---- 坐标系（版式之后 0.25s） ----
     const qd = ctx.of('bar', 'line', 'candle')[0] || { at: qt.at + 0.75 }, gStart = Math.min(qt.at + 0.25, qd.at - 0.4);

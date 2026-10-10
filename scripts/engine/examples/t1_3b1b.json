@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "ink",
   "cues": [
     { "at": 0.0, "kind": "line", "text": "损失 L(θ)", "data": { "values": [9, 5.8, 3.4, 1.8, 1.0, 0.8, 1.0, 1.8, 3.4, 5.8, 9], "color": "BLUE_C" } },
     { "at": 1.8, "kind": "equation", "data": { "tokens": [

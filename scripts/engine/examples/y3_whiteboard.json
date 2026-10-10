@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "chalk",
   "cues": [
     { "at": 0.0, "kind": "draw", "text": "25 分钟", "data": { "icon": "clock" } },
     { "at": 1.5, "kind": "point", "text": "这段时间只做一件事" },

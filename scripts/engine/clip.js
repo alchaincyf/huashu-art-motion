@@ -2,6 +2,9 @@
 // 契约见 references/09-视频动画语法.md「片段契约」。和 engine.js 的区别：没有段落表/转场，一个语法一个 draw(c, t, ctx)，画布尺寸从 spec 读（竖屏也行）。
 //
 // spec = { grammar, duration, fps=30, width=1920, height=1080, safe?: {top,bottom,left,right（px，留给字幕/平台 UI）, fill?（让开的边涂这个色）}, theme?, alpha?, data?, cues: [{at, kind, text?, sub?, data?, image?, frames?, fps?, dur?}] }
+// spec.theme：全片共用的色板（lib/palettes.js）——名字（paper poster ink navy bauhaus snow wood chalk）、{name, 要覆盖的键}、或完整 6 键 {bg, surface, ink, sub, accent, accent2}。
+//   解析成 ctx.pal（完整 6 键＋name），各语法按它上色；名字写错 / 缺键 → 启动失败。不写 → ctx.pal = null，各语法用自己的默认配色。
+//   语法可以声明 legacyTheme(theme) → true：这个 theme 是它自己的旧写法（t3 的 'light' / 'dark' / 旧主题对象），不当色板解析，语法照旧读 ctx.theme。
 // 素材路径（render.py 用 spec_assets.py 核存在并改写）：cue.image、cue.frames（帧序列：目录或路径数组）、data.image、data.character.frames（y4 帧库）。
 // 任何一张加载失败 → 启动失败、拒绝渲染（不出空白帧）。语法里取素材：ctx.still(q) = 这条 cue 的静态图（有 frames 时是第一帧），ctx.frame(q, t) = t 时刻该画的那一帧。
 // 语法文件 clips/<grammar>.js 注册 CLIPS[grammar] = { init?(ctx), draw(c, t, ctx), safe?: true（按 ctx.safe / ctx.box 排版了才写，否则 spec.safe 会告警） }。
@@ -47,6 +50,9 @@ async function boot() {
   if (x.status !== 200) return fail(`没有这个语法：clips/${spec.grammar}.js（HTTP ${x.status}）`);
   try { (0, eval)(x.responseText + `\n//# sourceURL=clips/${spec.grammar}.js`); } catch (e) { return fail(`clips/${spec.grammar}.js 执行出错 ${e.stack || e}`); }
   const G = CLIPS[spec.grammar]; if (!G || typeof G.draw !== 'function') return fail(`clips/${spec.grammar}.js 没注册 CLIPS['${spec.grammar}'] = { draw }`);
+  // 主题色板：在加载素材之前核，写错就别白等图片
+  let pal = null;
+  if (!(G.legacyTheme && G.legacyTheme(spec.theme))) { try { pal = PAL.resolve(spec.theme); } catch (e) { return fail(e.message); } }
   // 图片
   const IMG = {}, urls = new Set();
   for (const q of (spec.cues || [])) {
@@ -69,7 +75,7 @@ async function boot() {
   for (const q of cues) if (q.kind === 'number') { const cap = q.text ?? q.sub ?? (q.data && q.data.text); if (cap != null) { q.text = cap; q.sub = cap; } }
   const safe = { top: 0, bottom: 0, left: 0, right: 0, ...(spec.safe || {}) };   // 让开的边（px）：管线烧录字幕、平台 UI 压在这里，带字的语法不往里排
   const box = { x: safe.left, y: safe.top, w: W - safe.left - safe.right, h: H - safe.top - safe.bottom };   // 让开之后的内容框，语法排版用它（ctx.box）
-  const ctx = { spec, data: spec.data || {}, theme: spec.theme || {}, cues, W, H, FPS, u: Math.min(W, H) / 1080, portrait: H > W, alpha: !!spec.alpha, IMG, dur: spec.duration, safe, box,
+  const ctx = { spec, data: spec.data || {}, theme: spec.theme || {}, pal, cues, W, H, FPS, u: Math.min(W, H) / 1080, portrait: H > W, alpha: !!spec.alpha, IMG, dur: spec.duration, safe, box,
     of: (...kinds) => cues.filter(q => kinds.includes(q.kind)), lt: (t, at) => C.lt(t, at, FPS), p: (t, at, d) => C.p(t, at, d, FPS),
     // 素材：still = 定版式用的那张（image，或 frames 的第一帧）；frame = t 时刻画哪一帧（frames 从 at 起按 q.fps（默认 30）播，播完停在最后一帧，q.loop 循环）
     still: q => q && (q.image ? IMG[q.image] : q.frames ? IMG[q.frames[0]] : null),

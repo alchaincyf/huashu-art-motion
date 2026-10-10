@@ -8,10 +8,10 @@
  "data": {
   "character": {
    "frames": {
-    "rest": "../../../角色帧库/<你的角色>/rest.png",
-    "talk": "../../../角色帧库/<你的角色>/talk.png",
-    "point": "../../../角色帧库/<你的角色>/point.png",
-    "shrug": "../../../角色帧库/<你的角色>/shrug.png"
+    "rest": "../demos/_shared/hero/c1_1.png",
+    "talk": "../demos/_shared/hero/c1_1.png",
+    "point": "../demos/_shared/hero/c1_0.png",
+    "shrug": "../demos/_shared/hero/c1_2.png"
    }
   }
  },
@@ -48,5 +48,5 @@
    }
   }
  ],
- "_note": "y4 必须用你自己的角色帧库（AI 生帧，见 references/10-角色.md 与 角色精细度.md）。把 <你的角色> 换成你的帧库；没有生图能力就别用 y4。"
+ "_note": "只给测试用：帧是作者本人的 AI 卡通形象（不随 MIT 授权，不许进别人的成片）。路径相对 scripts/engine/examples/。"
 }

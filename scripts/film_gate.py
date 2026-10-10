@@ -23,6 +23,13 @@
 都是边缘，不会误伤；「画面 95% 是同一色」这种按颜色的判法在标定集里会把认可的白板片判成 3 秒空画面，所以不用。
 标定数据里的 32 支片（含作者表过态的 13 支、9 支认可）没有一支出现过连续 2 帧的空帧。短片降级不适用于这一条。
 
+第三条门禁：蓝紫底画面时长占比（作者原话「我们需要规避下蓝、紫渐变的垃圾配色，这种非常ai slop」）。
+2fps、160 宽 RGB，像素色相 225°–300°、饱和度 ≥0.30、亮度 0.06–0.90 算蓝紫；一帧里蓝紫像素 ≥30% 算蓝紫帧。
+蓝紫帧占比 ≥0.30 红灯，≥0.12 黄灯。标定（2026-10-10）：88 支片里作者认可的 9 支最高 0.10（花叔穿越名画），
+大多为 0；他否掉或两支都不要的片子 0.46–1.00（深紫星空＋白壳机器人那支 0.94）。海军蓝平涂（色相约 210°）不算。
+题材本身要蓝紫（用户点名的赛博朋克紫、梵高星月夜这类风格画面）时，用 --allow-blue-purple "理由" 降为黄灯，
+理由原样写进交付说明的事实段。
+
 其余指标只报告（最多黄灯，不拦）。静止类指标（静止帧占比、最长连续静止、最长无事件间隔）会把
 「停住→猛动→停住」的好片判反，所以绝不能拿来当门禁；黄灯只是「去看这一段」。
 
@@ -57,6 +64,7 @@ METRICS = {
     # key: (中文名, 方向, 黄线, 红线, 是否门禁, 单位)
     "fast_ratio":         ("快速运动帧占比", "low_bad", 0.06, 0.035, True, ""),
     "blank_run_s":        ("中段近乎纯色的空画面（最长连续）", "high_bad", None, 0.3, True, "秒"),
+    "blue_purple_share":  ("蓝紫底画面时长占比", "high_bad", 0.12, 0.30, True, ""),
     "fast_ratio_worst_window": ("最差30秒窗口的快动帧占比", "low_bad", 0.02, None, False, ""),
     "top10_share":        ("运动集中度（前10%帧占运动量）", "info", None, None, False, ""),
     "drift_ratio":        ("慢漂帧占比", "high_bad", 0.65, None, False, ""),
@@ -535,11 +543,38 @@ def template_similarity(F, shots, template):
     return float(durs[sims >= 0.70].sum() / durs.sum()), float(sims.max())
 
 
+BP_HUE, BP_SAT, BP_VAL, BP_FRAME = (225, 300), 0.30, (0.06, 0.90), 0.30
+
+
+def blue_purple(path, fps=SAMPLE_FPS, width=160):
+    """蓝紫帧占比与蓝紫段时间码。色相 225°–300°、饱和度 ≥0.30、亮度 0.06–0.90 的像素占一帧 ≥30% 算蓝紫帧。"""
+    w, h = probe(path)[:2]
+    hh = max(2, int(round(h * width / w / 2)) * 2)
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={width}:{hh}",
+                          "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+    F = np.frombuffer(raw, np.uint8).reshape(-1, hh, width, 3).astype(np.float32) / 255
+    if not len(F):
+        return 0.0, []
+    r, g, b = F[..., 0], F[..., 1], F[..., 2]
+    mx, mn = F.max(-1), F.min(-1); d = mx - mn + 1e-6
+    sat = d / (mx + 1e-6)
+    hue = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+    m = (hue >= BP_HUE[0]) & (hue <= BP_HUE[1]) & (sat >= BP_SAT) & (mx >= BP_VAL[0]) & (mx <= BP_VAL[1])
+    bad = m.reshape(len(F), -1).mean(1) >= BP_FRAME
+    spans, start = [], None
+    for i, x in enumerate(list(bad) + [False]):
+        if x and start is None: start = i
+        if not x and start is not None:
+            if i - start >= 2: spans.append((round(start / fps, 1), round(i / fps, 1)))
+            start = None
+    return round(float(bad.mean()), 3), spans
+
+
 # ---------------------------------------------------------------- 打灯
 SHORT_S = float(os.environ.get("FILM_GATE_MIN_S", 20))  # 标定集都是 45 秒以上的成片；短于这个时长的片段读数噪声大，红灯降为黄灯只提示
 
 
-FACT_GATES = {"blank_run_s"}   # 事实类门禁：片长再短也照样红灯
+FACT_GATES = {"blank_run_s", "blue_purple_share"}   # 片长再短也照样红灯（配色不随片长变）
 
 
 def grade(res):
@@ -551,6 +586,8 @@ def grade(res):
             rows.append((k, name, v, "--", gate, unit)); continue
         bad = (lambda t: v >= t) if direc == "high_bad" else (lambda t: v <= t)
         lv = "red" if (gate and r is not None and bad(r)) else "yellow" if (y is not None and bad(y)) else "green"
+        if lv == "red" and k == "blue_purple_share" and res.get("allow_blue_purple"):
+            lv = "yellow"
         if lv == "red" and short and k not in FACT_GATES:
             lv = "yellow"; res["short_clip_note"] = f"片长 {res.get('duration_s')}s，短于 {SHORT_S}s，快动门禁只提示不拦（空画面照样拦）；拼进成片后在成片上再跑一次"
         red |= lv == "red"
@@ -567,6 +604,11 @@ FIX = ("按 SKILL.md 窄桥第一条「动在事件上」改：每个镜头在�
 
 BLANK_FIX = ("空画面这一段让主角或主物留在画里：要换气就让它停住、拉远，或者镜头从它身上横移到下一个物；"
              "转场不要经过纯色底（黑场、纯色闪、渐变底）停留 0.3 秒以上。白板、黑底片只要画面上有笔画、线条、字，就不算空。")
+
+
+BP_FIX = ("换掉蓝紫底：片段 spec 写同一个 \"theme\"（references/色板.md 里的 paper、poster、ink、navy、bauhaus、snow、wood、chalk，"
+          "或按它的规则自定），scenes 也用这套色板；不画深紫星空、蓝紫渐变、霓虹青紫光。"
+          "题材本身就要蓝紫（用户点名的赛博朋克紫、梵高星月夜）才用 --allow-blue-purple \"理由\"，理由会写进交付说明。")
 
 
 # 只报告的黄灯项：一句「去看哪里」
@@ -603,6 +645,13 @@ def explain(res):
         segs = "、".join(f"{a:.2f}–{b:.2f}s" for a, b in res["blank_runs_s"])
         head = (f"中段有 {len(res['blank_runs_s'])} 段近乎纯色的空画面（{segs}），最长 {res['blank_run_s']:.2f}s，"
                 f"整帧几乎没有边缘或纹理、主体不在画里") + ("；另外" + head if lv != "green" else "")
+    bp = res["lights"].get("blue_purple_share")
+    if bp in ("red", "yellow") and not res.get("allow_blue_purple"):
+        segs = "、".join(f"{a:.1f}–{b:.1f}s" for a, b in res["blue_purple_spans_s"][:6])
+        msg = f"{res['blue_purple_share']:.0%} 的画面是蓝紫底（{segs}）"
+        head = (msg + "，这是最典型的 AI 配色" + ("；另外" + head if lv != "green" or blank_red else "")) if bp == "red" else head + "；" + msg
+    elif res.get("allow_blue_purple") and res["blue_purple_share"] >= METRICS["blue_purple_share"][2]:
+        head += f"；蓝紫底占 {res['blue_purple_share']:.0%}，已声明题材需要：{res['allow_blue_purple']}"
     why = []
     if lv != "green":
         if res["slow_zoom_share"] >= 0.3:
@@ -618,15 +667,19 @@ def explain(res):
     if res.get("worst_window_start_s") is not None:
         a = res["worst_window_start_s"]
         ww = {"start_s": a, "end_s": round(a + res["worst_window_len_s"], 2), "fast_ratio": res["fast_ratio_worst_window"]}
-    fix = " ".join(x for x in (BLANK_FIX if blank_red else None, FIX if lv != "green" else None) if x) or None
+    fix = " ".join(x for x in (BP_FIX if bp == "red" else None, BLANK_FIX if blank_red else None, FIX if lv != "green" else None) if x) or None
     return {"summary": head, "why": why, "fix": fix, "look": look, "worst_window": ww, "blank_runs": res["blank_runs_s"]}
 
 
-def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE):
-    """量一支成片，返回带 lights / gate_light / verdict / explain 的结果。deliver.py 也调它。"""
+def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE, allow_blue_purple=None):
+    """量一支成片，返回带 lights / gate_light / verdict / explain 的结果。deliver.py 也调它。
+    allow_blue_purple：题材本身要蓝紫时的理由（非空字符串），蓝紫门禁降为黄灯，理由进结果。"""
     tpl = template if template and os.path.exists(template) else None
     cv2.setNumThreads(max(1, (os.cpu_count() or 2) // 2))
     res = analyze(path, sub_band=sub_band, vertical=vertical, template=tpl)
+    res["blue_purple_share"], res["blue_purple_spans_s"] = blue_purple(path)
+    if allow_blue_purple and allow_blue_purple.strip():
+        res["allow_blue_purple"] = allow_blue_purple.strip()
     rows, red = grade(res)
     res["lights"] = {k: lv for k, _, _, lv, _, _ in rows}
     res["gate_metrics"] = [k for k, _, _, _, gate, _ in rows if gate]
@@ -650,6 +703,10 @@ def report_lines(res, rows):
     ex = res["explain"]
     if res.get("blank_runs_s"):
         L.append("  空画面时间码：" + "、".join(f"{a:.2f}–{b:.2f}s" for a, b in res["blank_runs_s"]))
+    if res.get("blue_purple_spans_s") and res["lights"].get("blue_purple_share") != "green":
+        L.append("  蓝紫底时间码：" + "、".join(f"{a:.1f}–{b:.1f}s" for a, b in res["blue_purple_spans_s"]))
+    if res.get("allow_blue_purple"):
+        L.append(f"  已声明题材需要蓝紫：{res['allow_blue_purple']}")
     if ex["worst_window"]:
         w = ex["worst_window"]
         L.append(f"  最差 {w['end_s'] - w['start_s']:.0f} 秒窗口：{w['start_s']:.0f}–{w['end_s']:.0f}s，快动帧占比 {w['fast_ratio']}；"
@@ -667,11 +724,14 @@ def main():
                     help="屏蔽底部字幕带的比例；默认横屏 0.15、竖屏 0.18；0 表示不屏蔽")
     ap.add_argument("--template", default=DEFAULT_TEMPLATE, help="示范片（取前 12 秒比构图）")
     ap.add_argument("--no-template", action="store_true")
+    ap.add_argument("--allow-blue-purple", metavar="理由", default=None,
+                    help="题材本身要蓝紫（用户点名的赛博朋克紫、梵高星月夜）时写理由，蓝紫门禁降为黄灯")
     a = ap.parse_args()
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
         print("需要 ffmpeg/ffprobe", file=sys.stderr); sys.exit(1)
     try:
-        res, rows = measure(a.mp4, sub_band=a.sub_band, vertical=a.vertical, template=None if a.no_template else a.template)
+        res, rows = measure(a.mp4, sub_band=a.sub_band, vertical=a.vertical, template=None if a.no_template else a.template,
+                            allow_blue_purple=a.allow_blue_purple)
     except (subprocess.CalledProcessError, KeyError, IndexError, RuntimeError, ValueError) as e:
         print(f"读不了这支片：{a.mp4}（{e}）", file=sys.stderr); sys.exit(1)
     red = res["verdict"] == "red"
@@ -689,7 +749,7 @@ def main():
             for _, t in ex["look"]:
                 print("  - " + t)
         if not red:
-            print("提醒：门禁只拦「整片几乎没有快动作」和「中段空画面」两种硬伤；独立审片仍然要做。")
+            print("提醒：门禁只拦「整片几乎没有快动作」「中段空画面」「蓝紫底」三种硬伤；独立审片仍然要做。")
     sys.exit(2 if red else 0)
 
 

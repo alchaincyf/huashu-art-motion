@@ -5,7 +5,7 @@
 """deliver.py —— 一条命令交付：量门禁 → 红灯不出片；绿灯、黄灯复制成片并写交付说明，说明里的事实由脚本写。
 
     uv run deliver.py <成片.mp4> --out output/ [--spec 片段.json | --project <代码工程>] [--qa <qa 输出目录>] [--root <项目目录>]
-                      [--sub-band 0.15] [--vertical auto|yes|no]
+                      [--sub-band 0.15] [--vertical auto|yes|no] [--allow-blue-purple "理由"]
     uv run deliver.py --verify output/交付说明.md       # 核对事实段有没有被改过
 
 做三件事：
@@ -14,7 +14,7 @@
      时长、分辨率、帧率、音轨、文件指纹；门禁各指标和灯；最差 30 秒窗口；
      qa 跑没跑过、结果如何（读 qa 输出目录里的 qa.json，没有就写「没跑」）；
      有没有独立审片记录（<项目目录>/审片/*.md 在不在，列出文件名；没有就写「没派审片」）。
-  3. 事实段末尾带指纹。制作者只在「制作说明」段补主观描述（用了哪个语法、黄灯项为什么可以这样、五种做坏方式自查），
+  3. 事实段末尾带指纹。制作者只在「制作说明」段补主观描述（用了哪个语法、黄灯项为什么可以这样、六种做坏方式自查），
      不改事实段；改了 --verify 会报出来。
 
 约定：
@@ -120,6 +120,8 @@ def facts_block(src, dst, info, res, rows, qa_lines, rv_lines):
          "", "### 门禁（film_gate）", "",
          f"- 结论：{LIGHT_ZH[gl]}。快速运动帧占比 {res['fast_ratio']}（< 0.035 红灯，< 0.06 黄灯）",
          f"- 一句话：{ex['summary']}。" + ("；".join(ex["why"]) + "。" if ex["why"] else "")]
+    if res.get("allow_blue_purple"):
+        L.append(f"- 制作者声明题材需要蓝紫（蓝紫门禁降为黄灯）：{res['allow_blue_purple']}；蓝紫底占 {res['blue_purple_share']:.0%}")
     if ex["worst_window"]:
         w = ex["worst_window"]
         L.append(f"- 最差 {w['end_s'] - w['start_s']:.0f} 秒窗口：{w['start_s']:.0f}–{w['end_s']:.0f}s，快动帧占比 {w['fast_ratio']}")
@@ -140,7 +142,7 @@ def write_doc(out, dst, facts, res):
         look.insert(0, f"门禁黄灯：快速运动帧占比 {res['fast_ratio']}（黄线 0.06）")
     tail = ["## 制作说明（制作者填写；只写在这一段，事实段不要动）", "",
             "- 用了哪个语法 / 风格：",
-            "- 「五种做坏方式」逐条自查：",
+            "- 「六种做坏方式」逐条自查：",
             "- 黄灯项逐条说明（时间码＋为什么可以这样）：" + ("" if look else "无黄灯项")]
     tail += [f"  - {t}：" for t in look]
     doc = f"# 交付说明：{dst.name}\n\n{START}\n{facts}<!-- deliver.py 事实段：结束 sha256={h} -->\n\n" + "\n".join(tail) + "\n"
@@ -171,6 +173,8 @@ def main():
     ap.add_argument("--sub-band", type=float, default=None, help="同 film_gate.py：屏蔽底部字幕带的比例")
     ap.add_argument("--vertical", default="auto", choices=["auto", "yes", "no"])
     ap.add_argument("--verify", metavar="交付说明.md", help="只核对事实段有没有被改过")
+    ap.add_argument("--allow-blue-purple", metavar="理由", default=None,
+                    help="同 film_gate.py：题材本身要蓝紫时写理由，理由写进交付说明事实段")
     a = ap.parse_args()
     if a.verify:
         sys.exit(verify(a.verify))
@@ -188,7 +192,7 @@ def main():
 
     try:
         info = probe(src)
-        res, rows = film_gate.measure(str(src), sub_band=a.sub_band, vertical=a.vertical)
+        res, rows = film_gate.measure(str(src), sub_band=a.sub_band, vertical=a.vertical, allow_blue_purple=a.allow_blue_purple)
     except (subprocess.CalledProcessError, StopIteration, KeyError, RuntimeError, ValueError) as e:
         print(f"读不了这支片：{src}（{e}）", file=sys.stderr); sys.exit(1)
     print("\n".join(film_gate.report_lines(res, rows)))

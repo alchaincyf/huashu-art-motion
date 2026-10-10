@@ -70,7 +70,7 @@ class BulletWall(unittest.TestCase):
     def test_one_clip_carrying_the_film(self):
         whats = [w for lv, t, w, _ in self.res["table"] if t == "做法"]
         self.assertTrue(any("白板.json" in w and "60" in w for w in whats), whats)
-        self.assertTrue(any("1 种画面做法" in w for w in whats), whats)
+        self.assertIn("⑫画风锁", tags(self.res, SL.RED))
 
     def test_cli_exit_nonzero(self):
         with tempfile.TemporaryDirectory() as d:
@@ -227,3 +227,54 @@ class NumberCardRule(unittest.TestCase):
         res = SL.lint(t)
         msgs = [i[1] for r in res["rows"] for i in r["issues"]]
         self.assertIn("⑪数字字卡", msgs)
+
+
+class StyleLock(unittest.TestCase):
+    """⑫–⑭：表前锁一种画风、一套不落蓝紫的色板、角色要么帧库要么不出脸；片段语法最多 2 种。"""
+    HEAD = "| 时间段 | 画面里的物 | 它在做什么 | 镜头 | 屏上字 | 做法 |\n|---|---|---|---|---|---|\n"
+    LOCK = "画风：纸本插画\n色板：paper\n角色：只出手\n\n"
+    ROWS = ["| 0–3 | 一只猫 | 跳上桌子 | 停 | | scenes/a.js |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | scenes/a.js |"]
+
+    def lint(self, lock, rows=None):
+        return SL.lint(lock + self.HEAD + "\n".join(rows or self.ROWS) + "\n")
+
+    def red(self, res):
+        return {(t, w) for lv, t, w, _ in res["table"] if lv == SL.RED} | {(t, w) for r in res["rows"] for lv, t, w, _ in r["issues"] if lv == SL.RED}
+
+    def test_lock_ok(self):
+        res = self.lint(self.LOCK)
+        self.assertNotIn("⑫画风锁", {t for t, _ in self.red(res)}, "\n".join(SL.report(res)))
+        self.assertFalse([t for t, _ in self.red(res) if t.startswith(("⑫", "⑬", "⑭"))])
+
+    def test_missing_lock_is_red(self):
+        res = self.lint("画风：纸本插画\n\n")
+        whats = [w for t, w in self.red(res) if t == "⑫画风锁"]
+        self.assertTrue(whats and "色板" in whats[0] and "角色" in whats[0], whats)
+
+    def test_blue_purple_palette(self):
+        res = self.lint("画风：扁平插画\n色板：#0E0631 #2A1A6E #F9FCFB\n角色：无\n\n")
+        self.assertIn("⑬色板", {t for t, _ in self.red(res)})
+        res = self.lint("画风：赛博朋克\n色板：#2A1A6E #FF3EA5 #0B0B12\n角色：无\n允许蓝紫：用户点名要赛博朋克紫\n\n")
+        self.assertNotIn("⑬色板", {t for t, _ in self.red(res)})
+        res = self.lint("画风：海军蓝平涂\n色板：#0D1B2A #16293D #EEF3F6 #5CC8E0\n角色：无\n\n")   # 海军蓝色相约 210°，不算
+        self.assertNotIn("⑬色板", {t for t, _ in self.red(res)})
+
+    def test_code_drawn_character(self):
+        res = self.lint("画风：扁平插画\n色板：paper\n角色：代码画的Q版小人\n\n")
+        self.assertIn("⑭角色", {t for t, _ in self.red(res)})
+        rows = ["| 0–3 | 一个白壳机器人 | 挥手打招呼 | 停 | | scenes/a.js |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | scenes/a.js |"]
+        self.assertIn("⑭角色", {t for t, _ in self.red(self.lint(self.LOCK, rows))})
+        self.assertNotIn("⑭角色", {t for t, _ in self.red(self.lint("画风：绘本\n色板：paper\n角色：帧库 角色/小满/\n\n", rows))})
+        rows = ["| 0–3 | 小满 | 撕开面包袋 | 停 | | y4 片段 镜01.json |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | scenes/a.js |"]
+        self.assertIn("⑭角色", {t for t, _ in self.red(self.lint(self.LOCK, rows))})
+
+    def test_faces_on_objects_warn(self):
+        rows = ["| 0–3 | 带笑脸的金币 | 一枚枚跳进罐子 | 停 | | scenes/a.js |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | scenes/a.js |"]
+        res = self.lint(self.LOCK, rows)
+        self.assertIn("⑭角色", {t for r in res["rows"] for lv, t, *_ in r["issues"] if lv == SL.YELLOW})
+
+    def test_three_grammars_is_collage(self):
+        rows = ["| 0–3 | 一只猫 | 跳上桌子 | 停 | | y2 片段 a.json |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | y5 片段 b.json |",
+                "| 6–9 | 杯子 | 摔成两半 | 砸入 | | t3 片段 c.json |"]
+        self.assertTrue(any(t == "做法" and "3 种片段语法" in w for t, w in self.red(self.lint(self.LOCK, rows))))
+        self.assertFalse(any(t == "做法" for t, _ in self.red(self.lint(self.LOCK, rows[:2]))))

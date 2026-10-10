@@ -6,17 +6,24 @@
 //       sub 里的关键词：data.key 写辅句里的一个词，那个词用强调色（示范片「下一行」那样）
 //       number 的说明写 text 或 sub 都行（clip.js 已统一）；data.label 照样有
 // 两个以上的 point 页 = 一份清单：画进度轨（01/02/03，告诉观众第几个、一共几个；横屏右上、竖屏在下方）和背景巨型序号（低对比、斜向慢漂，data.num 可指定）。
-// data.palette = [[底色, 字色], ...] 换配色。alpha 模式不画底，字白色带深色描边。safe：主词块在 top..H−bottom 之间居中，进度轨也在这一带里。
+// data.palette = [[底色, 字色], ...] 换配色（写了就优先，盖过 spec.theme）。alpha 模式不画底，字白色带深色描边。safe：主词块在 top..H−bottom 之间居中，进度轨也在这一带里。
+// spec.theme（全片色板 ctx.pal）：页面轮换 [bg 底 ink 字] → [accent 底] → [ink 底 bg 字] → [accent2 底]（强调色页的字取 surface/ink/bg 里最清楚的那个）；
+//   荧光笔、辅句关键词、换页色带都只从 bg / ink / accent / accent2 里挑和当前页底色不同的。
 CLIPS.y5_kinetic_type = (() => {
 const { clamp, lerp } = U;
-const PAL = [['#FFD23F', '#111111'], ['#FF5A36', '#FFFFFF'], ['#14213D', '#FFD23F'], ['#F4EFE6', '#111111']];
-let pages, LIST;
-const accentOf = col => col[0] === '#FFD23F' || col[0] === '#F4EFE6' || col[1] === '#FFD23F' ? '#FF5A36' : '#FFD23F';   // 字本身是黄的（深蓝页）就用橙，不然着色看不出来
+const PAGES0 = [['#FFD23F', '#111111'], ['#FF5A36', '#FFFFFF'], ['#14213D', '#FFD23F'], ['#F4EFE6', '#111111']];
+let pages, LIST, TP = null;                                                // TP：全片色板（没写 data.palette 时才用）
+const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// 在候选色里挑一个和页底、字色都不同、压在页底上最清楚的
+const pick = (bg, fg, cands) => { const ok = cands.filter(x => !same(x, bg) && !same(x, fg)); return ok.length ? PAL.on(bg, ok) : cands[0]; };
+const accentOf = col => TP ? pick(col[0], col[1], [TP.accent, TP.accent2]) : col[0] === '#FFD23F' || col[0] === '#F4EFE6' || col[1] === '#FFD23F' ? '#FF5A36' : '#FFD23F';   // 字本身是黄的（深蓝页）就用橙，不然着色看不出来
+const fromPal = p => { const txt = bg => PAL.on(bg, [p.surface, p.ink, p.bg]); return [[p.bg, p.ink], [p.accent, txt(p.accent)], [p.ink, p.bg], [p.accent2, txt(p.accent2)]]; };
 return {
   fonts: ['PuHui-Black', 'PuHui-Heavy', 'PuHui-Bold'],
   safe: true,
   init(ctx) {
-    const { W, u } = ctx, pal = ctx.data.palette || PAL, g = document.createElement('canvas').getContext('2d');
+    TP = ctx.data.palette ? null : ctx.pal;
+    const { W, u } = ctx, pal = ctx.data.palette || (TP ? fromPal(TP) : PAGES0), g = document.createElement('canvas').getContext('2d');
     pages = ctx.of('title', 'point', 'number').map((q, i) => {
       const num = q.kind === 'number', nd = q.data || {};
       const text = num ? (nd.prefix || '') + TY.fmt(nd.value || 0, nd.decimals ?? 0) + (nd.suffix || '') : (q.text || '');
@@ -52,7 +59,7 @@ return {
     const N = pages[k + 1];
     if (N && !ctx.alpha) {
       const p = (t - (N.show - 0.3)) / 0.36; if (p > 0 && p < 1) {
-        const mid = ['#FFD23F', '#FF5A36', '#14213D', '#3A86FF'].find(x => x !== P.col[0] && x !== N.col[0]), cols = [mid, N.col[0]], sk = H * 0.35;   // 两条：一条和前后底色都不同的强调色＋新底色（以前第一条是字色，白字页前会整屏闪一帧白）
+        const mid = (TP ? [TP.accent, TP.accent2, TP.ink, TP.bg] : ['#FFD23F', '#FF5A36', '#14213D', '#3A86FF']).find(x => !same(x, P.col[0]) && !same(x, N.col[0])), cols = [mid, N.col[0]], sk = H * 0.35;   // 两条：一条和前后底色都不同的强调色＋新底色（以前第一条是字色，白字页前会整屏闪一帧白）
         const edge = q => lerp(-sk - 40, W + sk + 40, MO.expoInOut(clamp(q)));
         cols.forEach((col, i) => { const x = edge((p - i * 0.12) / 0.76); c.save(); c.beginPath(); c.moveTo(-sk - 60, 0); c.lineTo(x + sk, 0); c.lineTo(x, H); c.lineTo(-sk - 60, H); c.closePath(); c.clip(); c.fillStyle = col; c.fillRect(0, 0, W, H); c.restore(); });
       }
@@ -79,7 +86,7 @@ function drawPage(c, P, t, ctx) {
     if (hl > 0) lines.forEach((ln, i) => {
       const word = wd || ln, at = ln.indexOf(word); if (at < 0) return;
       const wPre = TY.width(c, ln.slice(0, at), size), wW = TY.width(c, word, size), wl = TY.width(c, ln, size), x = W / 2 - wl / 2 + wPre, y = y0 + i * lh;
-      const mc = ctx.alpha ? '#FF5A36' : (P.col[0] === '#FFD23F' ? '#FF5A36' : '#FFD23F'), mr = [x - 12 * u, y - size * 0.86, wW + 24 * u, size * 1.0, MO.at(hl, 0, 0.3)];
+      const mc = ctx.alpha ? (TP ? TP.accent : '#FF5A36') : TP ? (same(P.col[0], TP.accent) ? TP.accent2 : TP.accent) : (P.col[0] === '#FFD23F' ? '#FF5A36' : '#FFD23F'), mr = [x - 12 * u, y - size * 0.86, wW + 24 * u, size * 1.0, MO.at(hl, 0, 0.3)];
       TY.marker(c, ...mr, mc);
       if (mc.toLowerCase() === fg.toLowerCase()) (knock = knock || []).push({ i, mr });   // 荧光笔和字同色（深蓝页黄字）：笔下面的字反白成底色，不然整个词被涂没
     });
@@ -100,7 +107,7 @@ function drawPage(c, P, t, ctx) {
     const key = q.data && q.data.key, ki = key ? ln.indexOf(key) : -1, x0 = W / 2 - sw / 2;
     if (ki < 0) return TY.rise(c, ln, x0, sy, sp, so);
     const pre = ln.slice(0, ki), post = ln.slice(ki + key.length), wp = TY.width(c, pre, subSz, 'PuHui-Heavy'), wk = TY.width(c, key, subSz, 'PuHui-Heavy');
-    if (pre) TY.rise(c, pre, x0, sy, sp, so); TY.rise(c, key, x0 + wp, sy, sp, { ...so, color: ctx.alpha ? '#FFD23F' : accentOf(P.col) }); if (post) TY.rise(c, post, x0 + wp + wk, sy, sp, so);
+    if (pre) TY.rise(c, pre, x0, sy, sp, so); TY.rise(c, key, x0 + wp, sy, sp, { ...so, color: ctx.alpha ? (TP ? TP.accent : '#FFD23F') : accentOf(P.col) }); if (post) TY.rise(c, post, x0 + wp + wk, sy, sp, so);
   });
 }
 // 背景巨型序号：清单页右下角（竖屏落在下半屏），低对比、弹簧落位后斜向慢漂；不和主词抢（字色 12% 透明度）

@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "navy",
   "cues": [
     { "at": 0.0, "kind": "card", "text": "一份 JSON 出的图", "sub": "数据：英伟达 10-K 年报", "image": "assets/财经图表_横屏.png" },
     { "at": 1.8, "kind": "highlight", "data": { "rect": [0.648, 0.245, 0.104, 0.105] } },

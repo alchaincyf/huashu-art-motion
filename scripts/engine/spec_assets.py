@@ -4,7 +4,7 @@
   cues[].image                 一张图（截图、照片、录像的一帧）
   cues[].frames                帧序列：目录（按文件名排序取 .png/.jpg/.jpeg/.webp）或路径数组；配 cues[].fps（默认 30）
   data.image                   语法级的一张图（y1 用作中心物的图）
-  data.character               y4 角色：预设名（neutral / bun / author）原样放行；目录 → 帧库（文件名去扩展名 = 姿势名）；
+  data.character               y4 角色：预设名（neutral / bun / author）原样放行（y4 已停用代码画的角色，启动时会报错要帧库）；目录 → 帧库（文件名去扩展名 = 姿势名）；
                                对象 {frames: {姿势: 路径} | 目录} 同理
 文件不存在 → FileNotFoundError（调用方拒绝渲染，不出空白帧）。
 """

@@ -106,7 +106,7 @@
 - **复用 skill**：引擎（段落表、转场时新旧两段离屏合成、`GLOBAL_OVERLAY`）、`render.py`、`PAINT.cached`（房间背景整张缓存）、`U.rng` 种子随机（代码瀑布的色块布局）。
 - **engine 两处改动（已并进 skill 引擎）**：段落表任何段都可以直接写 `dur`（秒），不必凑八分音符——storytime 按口播切，不按节拍；转场可以写 `punch: 0`（或片级 `window.PUNCH = 0`）关掉引擎默认的拍点冲击（storytime 没有拍点）。
 - **新写、现已统一进库**（`lib/toon.js` / `typo.js` / `camera.js` / `motion.js`，转场进 `transitions.js`）：
-  - `TOON.bean(c, {x, y, s, char, pose, expr, mouth, blink, look, squash, bob, tilt, lw})`：正面豆子角色，全部 Path2D 程序化，返回双手和头的坐标（给道具、符号定位）。`char` 默认 `'neutral'`（短发、蓝 T），另有 `'bun'`（丸子头），`'author'` 是示范片里作者本人的造型（白渔夫帽、圆眼镜），只在讲作者自己的故事时显式写；也可以传造型对象覆盖颜色、发型、帽子、眼镜（见 `TOON.LOOKS`）。参数化片段 y4 用 `data.character` 选，也接受自己的帧库目录。
+  - `TOON.bean(c, {x, y, s, char, pose, expr, mouth, blink, look, squash, bob, tilt, lw})`：正面豆子角色，全部 Path2D 程序化，返回双手和头的坐标（给道具、符号定位）。这套代码画的豆子角色只留给示范片和白模预演：作者看过多个模型做的片子后，判代码画的小人是一眼 AI 味（原话「很多视频里用到的小人和机器人角色都太差了」）。参数化片段 y4 只接受你自己的帧库（`data.character.frames`，AI 生帧，见 10 号和 `references/角色精细度.md`），没有帧库启动就失败。
   - `TOON.POSES`：rest / talk / point / type / shrug / stiff，每个姿势只是两只手相对肩的目标点（单位：头半径）。
   - `TOON.mouth(t)`：读 `window.VO_ENV`（音频脚本导出的 60fps RMS 包络），一拍二量化成 0/1/2。
   - `MO.springHz / settle / backOut / expoOut / step`，`CAM.with`、`CAM.drift`（示范片用过的手持微漂；新片定住就是定住，不加），`TOON.sweat`、`TOON.mark`。

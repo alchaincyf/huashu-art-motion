@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "ink",
   "cues": [
     { "at": 0.0, "kind": "card", "text": "for 循环累加", "sub": "一百万个整数", "image": "assets/终端_for循环求和.png" },
     { "at": 1.4, "kind": "highlight", "text": "318 毫秒", "data": { "rect": [0.292, 0.212, 0.115, 0.07] } },

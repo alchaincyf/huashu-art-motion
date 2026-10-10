@@ -11,10 +11,16 @@
 // 公式太宽就整体缩字号（所有公式同一字号，Transform 时不跳），竖屏长公式不出画。
 // 字形：CMU 斜体把 θ 画成 ϑ，θ 改用 EB Garamond 斜体（闭合的 θ）；连续两个以上的字母（softmax、ReLU）按正体单词排，单个字母才是斜体变量。
 // alpha：透明底时字外面描一圈深色边，压在亮画面上也看得见。
+// spec.theme（全片色板 ctx.pal）：底 bg、字 ink、变灰的旧要点和坐标轴 sub、强调框与 Indicate accent、默认曲线色 accent2；
+//   cue 里写的 manim 色名也映射进色板（YELLOW/GOLD/ORANGE/RED/MAROON/PINK → accent，BLUE/TEAL/GREEN/PURPLE → accent2，GREY → sub，WHITE → ink），#hex 照写的用。
 CLIPS.t1_3b1b = (() => {
 const { clamp, lerp } = U;
-let M, L;
+let M, L, INK = '#fff';
 const col = v => !v ? null : M[v] || v;
+// 全片色板时 manim 色名 → 色板里的色（只认 DG.MANIM 里有的名字；#hex 原样）
+const palMap = p => { const m = { ...DG.MANIM };
+  for (const k in m) m[k] = /^(YELLOW|GOLD|ORANGE|RED|MAROON|PINK)/.test(k) ? p.accent : /^(BLUE|TEAL|GREEN|PURPLE)/.test(k) ? p.accent2 : /^GRE[YA]_[AB]$/.test(k) ? PAL.mix(p.sub, p.ink, 0.4) : /^GRE[YA]/.test(k) ? p.sub : k === 'WHITE' ? p.ink : k === 'BLACK' ? p.bg : m[k];
+  return m; };
 const isZh = ch => ch.codePointAt(0) >= 0x2E80;
 // 一段字 → token：汉字/全角走普惠体；连续 ≥2 个字母是单词（正体）；单个字母斜体；其余（数字、符号、希腊字母）正体
 const toks = text => (String(text).match(/[A-Za-z]{2,}|./gu) || []).flatMap(s => s.length > 1 && !/[a-z]/.test(s) ? [...s] : [s])   // 全大写的一串（QK）是几个变量，拆开
@@ -52,7 +58,7 @@ return {
   fonts: ['PuHui-Medium'],
   safe: true,
   init(ctx) {
-    M = DG.MANIM; DG.FONT.zh = 'PuHui-Medium';                         // 任意中文：普惠体（思源宋子集只有示范片用到的字）
+    M = ctx.pal ? palMap(ctx.pal) : DG.MANIM; INK = ctx.pal ? ctx.pal.ink : '#fff'; DG.FONT.zh = 'PuHui-Medium';                         // 任意中文：普惠体（思源宋子集只有示范片用到的字）
     const { W, H, u, safe } = ctx, g = document.createElement('canvas').getContext('2d');
     const pad = (ctx.portrait ? 70 : 140) * u, yTop = safe.top, yBot = H - safe.bottom - (ctx.portrait ? 90 : 70) * u;
     const hasLine = ctx.of('line').length > 0, hasEq = ctx.of('equation').length > 0;
@@ -99,13 +105,13 @@ return {
   draw(c0, t, ctx) {
     const { W, H, u } = ctx;
     const c = ctx.alpha ? (BUF = BUF || document.createElement('canvas'), BUF.width = W, BUF.height = H, BUF.getContext('2d')) : c0;
-    if (!ctx.alpha) { c.fillStyle = '#000'; c.fillRect(0, 0, W, H); }
+    if (!ctx.alpha) { c.fillStyle = ctx.pal ? ctx.pal.bg : '#000'; c.fillRect(0, 0, W, H); }
     // ---- 标题（同一时间只有一个，换标题 = 旧的上移淡出、新的 Write） ----
     L.titles.forEach((z, i) => {
       const q = z.q, nx = L.titles[i + 1], out = nx ? MO.smooth(MO.seg(t, nx.q.at - 0.45, nx.q.at)) : 0; if (out >= 1 || ctx.lt(t, q.at) <= 0) return;
       const n = [...(q.text || '')].length, dur = q.dur || clamp(n / 14, 0.6, 1.6);
       c.save(); c.globalAlpha = 1 - out; c.translate(0, -50 * u * out);
-      z.lines.forEach((ln, k) => writeT(c, toks(ln), W / 2, L.titleY + k * z.size * 1.25, z.size, ctx.p(t, q.at + k * dur / z.lines.length, dur / z.lines.length), { col: col(q.data && q.data.color) || '#fff' }));
+      z.lines.forEach((ln, k) => writeT(c, toks(ln), W / 2, L.titleY + k * z.size * 1.25, z.size, ctx.p(t, q.at + k * dur / z.lines.length, dur / z.lines.length), { col: col(q.data && q.data.color) || INK }));
       c.restore();
     });
     // ---- 公式：第一个 Write，之后每个从上一个 TransformMatchingTex 过来 ----
@@ -115,15 +121,15 @@ return {
     let k = -1; eqCues.forEach((q, i) => { if (ctx.lt(t, q.at) > 0) k = i; });
     if (k >= 0) {
       const q = eqCues[k], tk = eqs[k], Ln = layoutT(c, tk, sz), tot = Ln.length ? Ln[Ln.length - 1].x + Ln[Ln.length - 1].w : 0, x0 = W / 2 - tot / 2;
-      if (k === 0) writeT(c, tk, W / 2, L.eqY, sz, ctx.p(t, q.at, q.dur || 1.2));
+      if (k === 0) writeT(c, tk, W / 2, L.eqY, sz, ctx.p(t, q.at, q.dur || 1.2), { col: INK });
       else {
         const p = MO.smooth(ctx.p(t, q.at, q.dur || 1.5)), old = eqs[k - 1], Lo = layoutT(c, old, sz), toto = Lo.length ? Lo[Lo.length - 1].x + Lo[Lo.length - 1].w : 0, xo = W / 2 - toto / 2;
         const used = new Set(), from = tk.map(nt => { const j = old.findIndex((ot, jj) => !used.has(jj) && ot.s === nt.s && (ot.sub || '') === (nt.sub || '') && (ot.sup || '') === (nt.sup || '')); if (j >= 0) used.add(j); return j; });
         const one = (tok, x, a, cl) => { if (a <= 0) return; c.save(); c.globalAlpha *= a; withFont(tok, t2 => DG.math(c, [{ ...t2, col: cl }], x, L.eqY, sz, { p: 1, align: 'left' })); c.restore(); };
-        old.forEach((ot, j) => { if (!used.has(j)) { c.save(); c.translate(0, -30 * u * p); one(ot, xo + Lo[j].x, 1 - clamp(p * 1.6), ot.col || '#fff'); c.restore(); } });   // 对不上的旧符号：淡出上移
+        old.forEach((ot, j) => { if (!used.has(j)) { c.save(); c.translate(0, -30 * u * p); one(ot, xo + Lo[j].x, 1 - clamp(p * 1.6), ot.col || INK); c.restore(); } });   // 对不上的旧符号：淡出上移
         tk.forEach((nt, i) => { const j = from[i];
-          if (j >= 0) one(nt, lerp(xo + Lo[j].x, x0 + Ln[i].x, p), 1, DG.mix(old[j].col || '#ffffff', nt.col || '#ffffff', p));    // 同名符号：移到新位置，颜色插值
-          else { c.save(); c.translate(0, 30 * u * (1 - p)); one(nt, x0 + Ln[i].x, clamp((p - 0.35) / 0.65), nt.col || '#fff'); c.restore(); } });   // 新符号：淡入
+          if (j >= 0) one(nt, lerp(xo + Lo[j].x, x0 + Ln[i].x, p), 1, DG.mix(old[j].col || INK, nt.col || INK, p));    // 同名符号：移到新位置，颜色插值
+          else { c.save(); c.translate(0, 30 * u * (1 - p)); one(nt, x0 + Ln[i].x, clamp((p - 0.35) / 0.65), nt.col || INK); c.restore(); } });   // 新符号：淡入
       }
       if (Ln.length) eqBox = { x: x0 - 20 * u, y: L.eqY - sz * 0.95, w: tot + 40 * u, h: sz * 1.35 };
     }
@@ -143,7 +149,7 @@ return {
         if (j === 0) {
           const cp = MO.smooth(ctx.p(t, l.q.at + 0.5, l.q.dur || 1.4));
           if (cp > 0) { const cum = DG.cum(l.scr); c.strokeStyle = lc; const tip = DG.drawPartial(c, l.scr, cum, cum[cum.length - 1] * cp);
-            if (cp < 1) DG.neuron(c, tip[0], tip[1], 10 * u, 1, { fill: lc, stroke: '#fff', lw: 2 * u }); }
+            if (cp < 1) DG.neuron(c, tip[0], tip[1], 10 * u, 1, { fill: lc, stroke: INK, lw: 2 * u }); }
           label(c, l, MO.smooth(MO.seg(cp, 0.8, 1)), lc, u);
         } else {
           const pv = L.lines[j - 1], p = MO.smooth(ctx.p(t, l.q.at, l.q.dur || 1.5)), pc = col(pv.d.color) || M.BLUE_C;
@@ -168,7 +174,7 @@ return {
       // Indicate：放大 1.2、染黄、回来；之后这一条保持黄色（被强调的留住），其余变灰
       const ip = h && !hOther ? ctx.p(t, h.at, 0.8) : 0, ind = DG.indicate(ip), keep = h && !hOther ? MO.smooth(clamp(ip * 2)) : 0;
       const dim = keep > 0 ? 0 : dimN;
-      const base = DG.mixA(DG.mixA('#ffffff', M.GREY_C, dim), M.YELLOW, Math.max(keep, ind.k)), colr = DG.rgba(base);
+      const base = DG.mixA(DG.mixA(INK, M.GREY_C, dim), M.YELLOW, Math.max(keep, ind.k)), colr = DG.rgba(base);
       const bx = L.text.x + 14 * u, by = it.y - size * 0.36;
       c.save(); c.translate(bx, by); c.scale(ind.s, ind.s); c.translate(-bx, -by);
       DG.neuron(c, bx, by, 12 * u, 1 - dim * 0.6, { lw: 2 * u, stroke: colr, fill: col(q.data && q.data.color) || M.BLUE_C, sa: MO.smooth(ctx.p(t, q.at, 0.3)) });
@@ -189,9 +195,9 @@ function label(c, l, a, colr, u) { if (!l.q.text || a <= 0) return; const e = l.
   c.save(); c.globalAlpha *= a; c.font = `${40 * u}px "PuHui-Medium"`; c.fillStyle = colr; c.textAlign = 'right'; c.fillText(l.q.text, e[0], e[1] - 30 * u); c.restore(); }
 // 强调框：Circumscribe 先绕一圈（1s），同时 SurroundingRectangle 画出来并留住（末帧有焦点）
 function box(c, x, y, w, h, lt, u) {
-  if (lt <= 0) return; DG.circumscribe(c, x - 8 * u, y - 8 * u, w + 16 * u, h + 16 * u, MO.seg(lt, 0, 1.0), { lw: 4 * u });
+  if (lt <= 0) return; DG.circumscribe(c, x - 8 * u, y - 8 * u, w + 16 * u, h + 16 * u, MO.seg(lt, 0, 1.0), { lw: 4 * u, col: M.YELLOW });
   const p = MO.smooth(MO.seg(lt, 0.3, 1.0)); if (p <= 0) return;
-  const pts = DG.rectPts(x + w / 2, y + h / 2, w, h, 120); c.save(); c.strokeStyle = DG.MANIM.YELLOW; c.lineWidth = 3 * u; c.lineJoin = 'round';
+  const pts = DG.rectPts(x + w / 2, y + h / 2, w, h, 120); c.save(); c.strokeStyle = M.YELLOW; c.lineWidth = 3 * u; c.lineJoin = 'round';
   DG.drawPartial(c, [...pts, pts[0]], DG.cum([...pts, pts[0]]), DG.len([...pts, pts[0]]) * p); c.restore();
 }
 })();

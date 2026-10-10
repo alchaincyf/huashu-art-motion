@@ -9,9 +9,11 @@
 // 每一笔都在 at 这一帧落下第一点；写字速度＝max(基准速度, 字数 / 到下一个 cue 的间隔)，说到下一句时这句已写完。
 // 笔：两笔之间空档 <0.6s 沿弧线滑过去；更长就 0.35s 退出右下屏外，下一笔前 0.3s 再进来；最后一笔画完一定退场，不留在字上。
 // safe（spec.safe）：内容只排在 top..H−bottom 之间，收尾拉远也只拉进这一带。alpha：墨色外面描一圈白边，叠在深色画面上也看得见。
+// spec.theme（全片色板 ctx.pal）：板面就是片子的底色 bg（和前后镜头连成一片；深底色板就是一块黑板），字和线 ink，
+//   项目符号、箭头、圈重点 accent，图标里的浅色铺底是 accent 的淡色。
 CLIPS.y3_whiteboard = (() => {
 const { clamp, lerp } = U;
-const INK = '#0A0503', ORANGE = '#EF7226', WASH = 'rgba(239,114,38,.22)', BOARD = '#FBFBFB';
+let INK = '#0A0503', ORANGE = '#EF7226', WASH = 'rgba(239,114,38,.22)', BOARD = '#FBFBFB';
 const FONT = 'LXGWWenKai-500';
 // ---------- 手绘图标：单位框 [-0.5,0.5]²（y 朝下）里的笔画；o:1 = 橙色强调，seg:1 = 快速直线（网络连线），fill = 铺浅橙 ----------
 const A = (cx, cy, rx, ry, a0, a1, n = 22) => DG.arcPts(cx, cy, rx, ry, a0, a1, n);
@@ -158,7 +160,8 @@ return {
   fonts: [FONT],
   safe: true,
   init(ctx) {
-    const { W, H, u, safe } = ctx;
+    const { W, H, u, safe } = ctx, p = ctx.pal;
+    if (p) { INK = p.ink; ORANGE = p.accent; WASH = PAL.alpha(p.accent, 0.22); BOARD = p.bg; } else { INK = '#0A0503'; ORANGE = '#EF7226'; WASH = 'rgba(239,114,38,.22)'; BOARD = '#FBFBFB'; }
     band = { y0: safe.top, y1: H - safe.bottom }; band.h = band.y1 - band.y0;
     // 字号系数 f 从 1.2 往下试：内容少就放大撑满版面，内容多就缩（最小 0.72），还放不下才让相机往下走
     let L; for (let f = 1.2; f >= 0.7; f -= 0.04) { L = layout(ctx, f); if (L.bottom + 70 * u <= band.y1) break; }   // 内容少就放大（最大 1.2）把版面撑满

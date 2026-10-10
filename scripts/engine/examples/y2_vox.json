@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "wood",
   "cues": [
     { "at": 0.0, "kind": "image", "image": "assets/K线图_横屏.png", "text": "日 K 线·示意数据" },
     { "at": 1.8, "kind": "highlight", "data": { "rect": [0.74, 0.22, 0.22, 0.11] } },

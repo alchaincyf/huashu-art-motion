@@ -16,10 +16,20 @@
 //                 说明是黑底撕边标签。数字讲的就是这张截图里的事（两次计时之比、这一页的结论）时用它；和截图无关的数字照旧单独一屏
 // 竖屏：第一张卡进来时标题缩成页眉留在顶上（不让上下大片空着）；卡片按剩余高度放大。safe：版面只排在 top..H−bottom 之间。
 // alpha：不画光斑底；卡片垫一层深色、字带投影，压在亮画面上也看得清。
+// 不写 theme：近黑底上琥珀/青绿/浅青/珊瑚四团慢飘的光斑（不再有蓝紫光斑）。
+// spec.theme（全片色板 ctx.pal）：平涂 bg 底（只有极轻的暗角，不画光斑、不画毛玻璃和扫光），卡片 surface 实色，标题与卡标题 ink、说明 sub，
+//   强调色（步骤号、框、副标签）accent（data.accent 写了照用），框不发光；满幅截图四周的模糊底压一层 bg，撕边标签 ink 底 bg 字。
 CLIPS.t2_keynote_ui = (() => {
 const { clamp, lerp } = U;
 const SANS = '"Inter", "PuHui-Medium"', SANSB = '"Inter", "PuHui-Bold"', ZH = '"PuHui-Medium"', ZHB = '"PuHui-Bold"';
-let BL, slides, scr = {}, G;
+let BL, slides, scr = {}, G, T;
+// 文字与小件的颜色：默认（深色光斑底上的白字）一套，全片色板时从 6 个键派生一套
+const T0 = { title: '#f5f3ff', eyebrow: '#a7a7b4', subtitle: '#c9c9d4', head: '#f5f5f7', body: 'rgba(235,235,245,0.66)', body2: 'rgba(235,235,245,0.62)', tile: 'rgba(255,255,255,0.10)', icon: '#f2f2f7',
+  num: '#fff', numLabel: 'rgba(235,235,245,0.6)', rule: 'rgba(255,255,255,0.12)', frame: 'rgba(255,255,255,0.22)', bigLabel: '#a7a7b4', bigCap: 'rgba(235,235,245,0.78)', fullBg: '#0b0b0f', accent: '#3d6bff' };
+const fromPal = p => ({ pal: p, title: p.ink, eyebrow: p.sub, subtitle: p.sub, head: p.ink, body: p.sub, body2: p.sub, tile: PAL.alpha(p.ink, 0.07), icon: p.ink,
+  num: p.ink, numLabel: p.sub, rule: PAL.alpha(p.ink, 0.14), frame: PAL.alpha(p.sub, 0.35), bigLabel: p.sub, bigCap: PAL.alpha(p.ink, 0.78), fullBg: p.bg, accent: p.accent,
+  labBg: p.ink, labFg: p.bg, vig: PAL.dark(p) ? '0,0,0' : PAL.rgb(p.ink).join(',') });
+const onAcc = acc => T.pal ? PAL.on(acc, [T.pal.surface, T.pal.ink, T.pal.bg]) : '#fff';
 const track = (c, size, em = -0.02) => { c.letterSpacing = (size * em).toFixed(2) + 'px'; };
 // 本语法自带的几个线性图标（UI.icon 只有 wave/memory/agent）：单位框 ±0.5，圆头等线宽
 const ICON = {
@@ -46,8 +56,9 @@ return {
   safe: true,
   init(ctx) {
     const { W, H, u, safe } = ctx;
-    BL = [{ x: .22 * W, y: .28 * H, r: .4 * Math.max(W, H), col: [150, 90, 238], a: .75, ax: .11 * W, ay: .11 * H, period: 11, ph: 0 },
-      { x: .79 * W, y: .24 * H, r: .37 * Math.max(W, H), col: [56, 104, 255], a: .7, ax: .1 * W, ay: .15 * H, period: 13, ph: 2.1 },
+    T = ctx.pal ? fromPal(ctx.pal) : T0;
+    BL = [{ x: .22 * W, y: .28 * H, r: .4 * Math.max(W, H), col: [214, 140, 52], a: .7, ax: .11 * W, ay: .11 * H, period: 11, ph: 0 },
+      { x: .79 * W, y: .24 * H, r: .37 * Math.max(W, H), col: [38, 150, 136], a: .7, ax: .1 * W, ay: .15 * H, period: 13, ph: 2.1 },
       { x: .69 * W, y: .86 * H, r: .3 * Math.max(W, H), col: [120, 214, 255], a: .5, ax: .13 * W, ay: .09 * H, period: 9.5, ph: 4 },
       { x: .27 * W, y: .89 * H, r: .27 * Math.max(W, H), col: [255, 96, 84], a: .42, ax: .09 * W, ay: .08 * H, period: 12, ph: 1.3 }];
     const hasTitle = ctx.of('title').length > 0, hdr = ctx.portrait && hasTitle;
@@ -104,11 +115,14 @@ return {
     }
   },
   draw(c, t, ctx) {
-    const { W, H, u, data: d } = ctx, acc = d.accent || '#3d6bff';
+    const { W, H, u, data: d } = ctx, acc = d.accent || T.accent;
     // ---- 底：光斑（只依赖片段时间，连续） ----
     let bd = null;
     const covered = slides.some(s => s.full && t >= s.start + (s.panIn ? MO.PULSE.pan : 0) - 1e-6 && t < s.next - 1e-6);   // 满幅截图整屏盖住时不画光斑底（省 2/3 的渲染时间）
-    if (!ctx.alpha && !covered) {
+    if (!ctx.alpha && !covered && T.pal) {                              // 全片色板：平涂底＋极轻暗角
+      c.drawImage(PAINT.cached('clip_t2flat_' + T.pal.bg + W + 'x' + H, W, H, g => { g.fillStyle = T.pal.bg; g.fillRect(0, 0, W, H);
+        const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.7); vg.addColorStop(0, `rgba(${T.vig},0)`); vg.addColorStop(1, `rgba(${T.vig},0.08)`); g.fillStyle = vg; g.fillRect(0, 0, W, H); }), 0, 0);
+    } else if (!ctx.alpha && !covered) {
       const bgc = UI.scratch('clip_t2bg', W, H), g = bgc.getContext('2d'); g.clearRect(0, 0, W, H);   // 先清空：不清的话上一帧的残留会透过半透明边缘，同一时刻先后渲出来差 1 个色阶（qa 确定性 ✗）
       UI.mesh(g, t, { base: '#050508', blobs: BL, blur: 90, scale: 0.25, grain: 0.035, key: 'clip_t2mesh' });
       const vg = g.createRadialGradient(W / 2, H / 2, 100 * u, W / 2, H / 2, Math.max(W, H) * 0.55); vg.addColorStop(0, 'rgba(0,0,0,0.38)'); vg.addColorStop(1, 'rgba(0,0,0,0.1)');
@@ -130,10 +144,10 @@ return {
         c.translate(W / 2, cy + ty); c.scale(sc, sc); c.translate(-W / 2, -cy);
         const aSide = 1 - out;
         if (!keep) { c.globalAlpha = 1 - out; if (out > 0) c.filter = `blur(${(20 * out * u).toFixed(1)}px)`; }
-        if (eb && aSide > 0) { c.save(); c.globalAlpha *= keep ? aSide : 1; c.font = `500 ${34 * u}px ${ZH}`; c.fillStyle = '#a7a7b4'; c.letterSpacing = `${6 * u}px`; TY.blurIn(c, eb, W / 2, cy - sz.size * 0.95, MO.appleOut(ctx.p(t, qt.at, 0.7)), { blur: 10 * u, dy: 16 * u }); c.restore(); }
-        c.font = `600 ${sz.size}px ${SANSB}`; track(c, sz.size); c.fillStyle = '#f5f3ff';
+        if (eb && aSide > 0) { c.save(); c.globalAlpha *= keep ? aSide : 1; c.font = `500 ${34 * u}px ${ZH}`; c.fillStyle = T.eyebrow; c.letterSpacing = `${6 * u}px`; TY.blurIn(c, eb, W / 2, cy - sz.size * 0.95, MO.appleOut(ctx.p(t, qt.at, 0.7)), { blur: 10 * u, dy: 16 * u }); c.restore(); }
+        c.font = `600 ${sz.size}px ${SANSB}`; track(c, sz.size); c.fillStyle = T.title;
         sz.lines.forEach((ln, i) => TY.blurIn(c, ln, W / 2, cy + i * sz.size * 1.1, MO.appleOut(ctx.p(t, qt.at + 0.15 + i * 0.12, 1.0)), { blur: 26 * u, dy: 40 * u }));
-        if (sub && aSide > 0) { c.save(); c.globalAlpha *= keep ? aSide : 1; c.letterSpacing = '0px'; c.font = `400 ${46 * u}px ${ZH}`; c.fillStyle = '#c9c9d4';
+        if (sub && aSide > 0) { c.save(); c.globalAlpha *= keep ? aSide : 1; c.letterSpacing = '0px'; c.font = `400 ${46 * u}px ${ZH}`; c.fillStyle = T.subtitle;
           TY.wrap(c, sub, W * 0.84).forEach((ln, i) => TY.blurIn(c, ln, W / 2, cy + (sz.lines.length - 1) * sz.size * 1.1 + 110 * u + i * 62 * u, MO.appleOut(ctx.p(t, qt.at + 0.5, 0.9)), { blur: 12 * u, dy: 22 * u })); c.restore(); }
         c.restore();
       }
@@ -166,9 +180,10 @@ function drawFull(c, s, t, ctx, acc) {
   const slam = s.panIn ? 1 : MO.slamK(ctx.lt(t, s.start) / P.slam, 1.06, 0.985);
   const cam = CAM.track(s.base, s.events, t), im = ctx.frame(q, t);
   c.save(); c.translate(dx, 0);
-  if (!ctx.alpha) { c.fillStyle = '#0b0b0f'; c.fillRect(0, 0, W, H); }
+  if (!ctx.alpha) { c.fillStyle = T.fullBg; c.fillRect(0, 0, W, H); }
   CAM.with(c, { x: cam.x, y: cam.y, z: cam.z * slam }, g => {
-    if (!ctx.alpha) { const bg = PAINT.cached('t2full_bg_' + slides.indexOf(s) + '_' + W + 'x' + H, W, H, gg => { gg.filter = 'blur(48px) brightness(0.42) saturate(0.8)'; MD.cover(gg, cd.im, { x: -80, y: -80, w: W + 160, h: H + 160, clip: false }); gg.filter = 'none'; });
+    if (!ctx.alpha) { const bg = PAINT.cached('t2full_bg_' + slides.indexOf(s) + '_' + W + 'x' + H + (T.pal ? T.pal.bg : ''), W, H, gg => { gg.filter = T.pal ? 'blur(48px) saturate(0.5)' : 'blur(48px) brightness(0.42) saturate(0.8)'; MD.cover(gg, cd.im, { x: -80, y: -80, w: W + 160, h: H + 160, clip: false }); gg.filter = 'none';
+        if (T.pal) { gg.fillStyle = PAL.alpha(T.pal.bg, 0.8); gg.fillRect(0, 0, W, H); } });   // 全片色板：模糊底上再压八成底色，四周和前后镜头同色、只透一点截图的影子
       g.drawImage(bg, -W * 0.5, -H * 0.5, W * 2, H * 2); }
     const f = s.f;
     g.save(); g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 40 * u; g.shadowOffsetY = 14 * u; g.fillStyle = '#000'; g.fillRect(f.x, f.y, f.w, f.h); g.restore();
@@ -179,8 +194,8 @@ function drawFull(c, s, t, ctx, acc) {
   // 标签：屏幕层，不跟镜头；压在内容框左下角（截图自己的标题多在上面，不挡它），at 这一帧出现、12fps 打字
   const size = (ctx.portrait ? 54 : 46) * u, ss = size * 0.66, lx = ctx.box.x + 56 * u, yb = ctx.box.y + ctx.box.h - (ctx.portrait ? 110 : 60) * u;
   const ySub = yb - ss * 0.75, yMain = q.sub ? ySub - ss * 0.75 - 12 * u - size * 0.75 : yb - size * 0.75;
-  if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size });
-  if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, fam: 'PuHui-Bold', bg: acc, fg: '#ffffff' });
+  if (q.text) MD.label(c, q.text, lx, yMain, { t, at: q.at, size, bg: T.labBg, fg: T.labFg });
+  if (q.sub) MD.label(c, q.sub, lx, q.text ? ySub : yb - ss * 0.75, { t, at: q.at + (q.text ? 0.25 : 0), size: ss, fam: 'PuHui-Bold', bg: acc, fg: onAcc(acc) });
   for (const qn of s.nums || []) overNumber(c, qn, t, ctx);
   c.restore();
 }
@@ -193,9 +208,9 @@ function overNumber(c, q, t, ctx) {
   const fw = c.measureText(fmtNum(nd, 1)).width; if (fw > bx.w * 0.86) size *= bx.w * 0.86 / fw;
   const cx = bx.x + bx.w / 2, cy = bx.y + bx.h / 2 + size * 0.3 - (cap ? 40 * u : 0), my = cy - size * 0.3, z = MO.slamK(ctx.lt(t, t0) / MO.PULSE.slam, 1.35, 0.96);
   c.save(); c.translate(cx, my); c.scale(z, z); c.translate(-cx, -my);
-  c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = '#ffffff'; c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 30 * u;
+  c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = T.pal ? (PAL.dark(T.pal) ? T.pal.ink : T.pal.surface) : '#ffffff'; c.shadowColor = 'rgba(0,0,0,0.6)'; c.shadowBlur = 30 * u;
   TY.tabular(c, fmtNum(nd, k), cx, cy, { align: 'center' }); c.restore();
-  if (cap) MD.label(c, cap, cx, cy + 110 * u, { t, at: t0 + 0.2, size: (ctx.portrait ? 54 : 48) * u, align: 'center' });
+  if (cap) MD.label(c, cap, cx, cy + 110 * u, { t, at: t0 + 0.2, size: (ctx.portrait ? 54 : 48) * u, align: 'center', bg: T.labBg, fg: T.labFg });
 }
 // 截图上的 highlight：at 这一帧框开始弹出，其余压暗，一道光扫过框内；只认落在这一屏在屏期间的 highlight
 function hlOn(g, cd, f, t, ctx, acc, u, until) {
@@ -205,11 +220,11 @@ function hlOn(g, cd, f, t, ctx, acc, u, until) {
     const hl = ctx.lt(t, qh.at); if (hl <= 0) continue;
     const R = CLIP.sub(qh.data.rect, f), s = MO.spring(hl, { duration: 0.45, bounce: 0.25 }), e = 8 * u * (1 - s);
     g.save(); g.fillStyle = 'rgba(0,0,0,0.38)'; g.beginPath(); g.rect(f.x, f.y, f.w, f.h); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.globalAlpha = clamp(hl / 0.3); g.fill('evenodd'); g.restore();
-    g.save(); g.strokeStyle = acc; g.lineWidth = 5 * u; g.shadowColor = acc; g.shadowBlur = 18 * u * 0.85; g.globalAlpha = clamp(hl / 0.15);
+    g.save(); g.strokeStyle = acc; g.lineWidth = 5 * u; if (!T.pal) { g.shadowColor = acc; g.shadowBlur = 18 * u * 0.85; } g.globalAlpha = clamp(hl / 0.15);   // 全片色板：框不发光
     g.beginPath(); g.roundRect(R.x - e, R.y - e, R.w + 2 * e, R.h + 2 * e, 10 * u); g.stroke(); g.restore();
     UI.sheen(g, UI.rrPath(R.x, R.y, R.w, R.h, 10 * u), MO.seg(hl, 0.25, 1.0), { x0: R.x, x1: R.x + R.w, width: Math.max(60 * u, R.w * 0.2), alpha: 0.35 });
     if (qh.text) { g.font = `600 ${30 * u}px ${ZHB}`; const lw = g.measureText(qh.text).width + 36 * u, ly = R.y + R.h + 16 * u + 48 * u > f.y + f.h ? R.y - 64 * u : R.y + R.h + 16 * u;
-      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(clamp(R.x, f.x, f.x + f.w - lw), ly, lw, 48 * u, 24 * u); g.fill(); g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.fillText(qh.text, clamp(R.x, f.x, f.x + f.w - lw) + 18 * u, ly + 25 * u); g.restore(); }
+      g.save(); g.globalAlpha = clamp((hl - 0.15) / 0.25); g.fillStyle = acc; g.beginPath(); g.roundRect(clamp(R.x, f.x, f.x + f.w - lw), ly, lw, 48 * u, 24 * u); g.fill(); g.fillStyle = onAcc(acc); g.textBaseline = 'middle'; g.fillText(qh.text, clamp(R.x, f.x, f.x + f.w - lw) + 18 * u, ly + 25 * u); g.restore(); }
   }
 }
 // 截图卡的屏幕几何
@@ -224,53 +239,54 @@ function rowGeo(j, n, ctx, total) {
 // 一张卡：弹簧从下方升起＋绕 Y 轴转正；内容画进离屏纹理（毛玻璃按卡片的屏幕位置取样），再伪 3D 贴回
 function drawCard(c, cd, i, t, leave, ctx, bd, geo, key) {
   const { u, data: d } = ctx, q = cd.q, lt = ctx.lt(t, q.at); if (lt <= 0) return;
-  const sp = MO.spring(lt, { duration: 0.7, bounce: 0.15 }), acc = d.accent || '#3d6bff';
+  const sp = MO.spring(lt, { duration: 0.7, bounce: 0.15 }), acc = d.accent || T.accent;
   const Bw = geo.w, Bh = geo.h, cx = geo.cx - leave * ctx.W * 0.35, cy = geo.cy + (1 - sp) * 170 * u;   // 落定后停住：不漂浮、不摇
   const sc = (0.9 + 0.1 * sp) * (1 - 0.12 * leave) * lerp(0.97, 1, geo.focus), ry = (1 - sp) * -0.45 - 0.35 * leave, a = clamp(lt / 0.2) * (1 - leave) * lerp(0.6, 1, geo.focus);
   const pad = 60, tex = scr[key] || (scr[key] = document.createElement('canvas')); tex.width = Math.ceil(Bw + 2 * pad); tex.height = Math.ceil(Bh + 2 * pad);
   const g = tex.getContext('2d'); g.reset();
   const sw = Bw * sc, sh = Bh * sc;
   if (ctx.alpha) { g.fillStyle = 'rgba(12,12,22,0.62)'; g.beginPath(); g.roundRect(pad, pad, Bw, Bh, 34 * u); g.fill(); }
-  UI.glass(g, { x: pad, y: pad, w: Bw, h: Bh, r: 34 * u, bd, sample: { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh }, tint: ctx.alpha ? 0.08 : 0.075, stroke: 0.22, light: 0.14, shadow: false });
+  if (T.pal && !ctx.alpha) { g.fillStyle = T.pal.surface; g.beginPath(); g.roundRect(pad, pad, Bw, Bh, 34 * u); g.fill(); g.strokeStyle = PAL.alpha(T.pal.sub, 0.3); g.lineWidth = 1.5; g.stroke(); }   // 全片色板：实色卡片，不是毛玻璃
+  else UI.glass(g, { x: pad, y: pad, w: Bw, h: Bh, r: 34 * u, bd, sample: { x: cx - sw / 2, y: cy - sh / 2, w: sw, h: sh }, tint: ctx.alpha ? 0.08 : 0.075, stroke: 0.22, light: 0.14, shadow: false });
   g.save(); g.translate(pad, pad);
   if (cd.im) imgContent(g, cd, Bw, Bh, t, ctx, acc); else featContent(g, cd, Bw, Bh, lt, t, ctx, acc);
-  UI.sheen(g, UI.rrPath(0, 0, Bw, Bh, 34 * u), MO.seg(lt, 0.4, 1.2), { x0: 0, x1: Bw, width: 120 * u, angle: -0.35, alpha: 0.16 });   // 光扫过整张卡（入场后 0.4s）
+  if (!T.pal) UI.sheen(g, UI.rrPath(0, 0, Bw, Bh, 34 * u), MO.seg(lt, 0.4, 1.2), { x0: 0, x1: Bw, width: 120 * u, angle: -0.35, alpha: 0.16 });   // 光扫过整张卡（入场后 0.4s）
   g.restore();
   c.save(); c.globalAlpha = a;
-  UI.shadow(c, cx - sw / 2 + 10 * u, cy - sh / 2 + 20 * u, sw - 20 * u, sh - 20 * u, 34 * u, { blur: 80 * u, oy: 40 * u, alpha: 0.55 });
+  UI.shadow(c, cx - sw / 2 + 10 * u, cy - sh / 2 + 20 * u, sw - 20 * u, sh - 20 * u, 34 * u, { blur: 80 * u, oy: 40 * u, alpha: T.pal && !PAL.dark(T.pal) ? 0.16 : 0.55 });
   UI.persp(c, tex, { cx, cy, w: tex.width * sc, h: tex.height * sc, ry, persp: 1800 * u, strip: 3, shade: 0.35 });
   c.restore();
 }
 // 步骤号徽章
 function badge(g, x, y, s, n, acc, u) { g.fillStyle = acc; g.beginPath(); g.roundRect(x, y, s, s, s * 0.28); g.fill();
-  g.fillStyle = '#fff'; g.font = `700 ${s * 0.5}px ${SANSB}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n).padStart(2, '0'), x + s / 2, y + s / 2 + 2 * u); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; }
+  g.fillStyle = onAcc(acc); g.font = `700 ${s * 0.5}px ${SANSB}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n).padStart(2, '0'), x + s / 2, y + s / 2 + 2 * u); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; }
 // 截图卡的内容：步骤号＋标题＋说明，截图 contain；highlight 框出一块
 function imgContent(g, cd, Bw, Bh, t, ctx, acc) {
   const { u } = ctx, q = cd.q, B = cd.box, I = B.img, hp = 40 * u, bs = 70 * u;
   badge(g, hp, hp, bs, cd.n, acc, u);
   if (B.side) {                                                           // 左字右图：标题、说明在左栏往下排
     const tw = B.side - hp, tl = fitB(g, q.text || '', tw, 58 * u, 'PuHui-Bold', { maxLines: 3, weight: '600 ' });
-    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = '#f5f5f7'; tl.lines.forEach((ln, k) => g.fillText(ln, hp, hp + bs + 70 * u + k * tl.size * 1.25));
-    if (q.sub) { const sl = fitB(g, q.sub, tw, 34 * u, 'PuHui-Medium', { maxLines: 5 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.66)';
+    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head; tl.lines.forEach((ln, k) => g.fillText(ln, hp, hp + bs + 70 * u + k * tl.size * 1.25));
+    if (q.sub) { const sl = fitB(g, q.sub, tw, 34 * u, 'PuHui-Medium', { maxLines: 5 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body;
       sl.lines.forEach((ln, k) => g.fillText(ln, hp, hp + bs + 70 * u + tl.lines.length * tl.size * 1.25 + 30 * u + k * sl.size * 1.4)); }
   } else {
     const tx = hp + bs + 26 * u, tw = Bw - tx - hp;
     if (ctx.portrait) {                                                    // 竖屏：卡头高一些，标题、说明字大一号
-      const tl = fitB(g, q.text || '', tw, 56 * u, 'PuHui-Bold', { maxLines: 2, weight: '600 ', min: 0.7 }); g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = '#f5f5f7';
+      const tl = fitB(g, q.text || '', tw, 56 * u, 'PuHui-Bold', { maxLines: 2, weight: '600 ', min: 0.7 }); g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head;
       tl.lines.forEach((ln, k) => g.fillText(ln, tx, hp + tl.size * 0.85 + k * tl.size * 1.2));
       // 标题占两行时说明只留一行，卡头放得下
-      if (q.sub) { const sl = fitB(g, q.sub, tw, 34 * u, 'PuHui-Medium', { maxLines: tl.lines.length > 1 ? 1 : 2, min: 0.75 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.66)';
+      if (q.sub) { const sl = fitB(g, q.sub, tw, 34 * u, 'PuHui-Medium', { maxLines: tl.lines.length > 1 ? 1 : 2, min: 0.75 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body;
         sl.lines.forEach((ln, k) => g.fillText(ln, tx, hp + tl.size * 0.85 + (tl.lines.length - 1) * tl.size * 1.2 + 24 * u + sl.size + k * sl.size * 1.35)); }
     } else {
     const tl = TY.fit(g, q.text || '', tw, 46 * u, 'PuHui-Bold', { maxLines: 1, weight: '600 ' });
-    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = '#f5f5f7'; g.fillText(tl.lines[0] || '', tx, hp + (q.sub ? 32 * u : 48 * u));
-    if (q.sub) { const sl = TY.fit(g, q.sub, tw, 28 * u, 'PuHui-Medium', { maxLines: 1 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.62)'; g.fillText(sl.lines[0] || '', tx, hp + 74 * u); }
+    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head; g.fillText(tl.lines[0] || '', tx, hp + (q.sub ? 32 * u : 48 * u));
+    if (q.sub) { const sl = TY.fit(g, q.sub, tw, 28 * u, 'PuHui-Medium', { maxLines: 1 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body2; g.fillText(sl.lines[0] || '', tx, hp + 74 * u); }
     }
   }
   const [iw, ih] = MD.size(cd.im), f = CLIP.fit(iw, ih, I.x, I.y, I.w, I.h);
   g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 30 * u; g.shadowOffsetY = 12 * u; g.fillStyle = '#000'; g.beginPath(); g.roundRect(f.x, f.y, f.w, f.h, 10 * u); g.fill(); g.restore();
   g.save(); g.beginPath(); g.roundRect(f.x, f.y, f.w, f.h, 10 * u); g.clip(); g.drawImage(ctx.frame(q, t), f.x, f.y, f.w, f.h); g.restore();
-  g.strokeStyle = 'rgba(255,255,255,0.22)'; g.lineWidth = 1.5; g.beginPath(); g.roundRect(f.x + .75, f.y + .75, f.w - 1.5, f.h - 1.5, 10 * u); g.stroke();
+  g.strokeStyle = T.frame; g.lineWidth = 1.5; g.beginPath(); g.roundRect(f.x + .75, f.y + .75, f.w - 1.5, f.h - 1.5, 10 * u); g.stroke();
   // 框出重点（和满幅模式同一套）：只认落在这张卡在屏期间的 highlight
   const nxAt = (() => { const i = ctx.cues.indexOf(q); const n = ctx.cues.slice(i + 1).find(z => ['card', 'step', 'image', 'number'].includes(z.kind)); return n ? (n.kind === 'number' ? n.at - 0.9 : n.at) : 1e9; })();
   hlOn(g, cd, f, t, ctx, acc, u, nxAt);
@@ -278,29 +294,29 @@ function imgContent(g, cd, Bw, Bh, t, ctx, acc) {
 // 无图功能卡的内容：图标（或步骤号）→ 大标题 → 说明 →（可选）大数字计数。横屏竖卡上下排，竖屏横卡左右排
 function featContent(g, cd, Bw, Bh, lt, t, ctx, acc) {
   const { u } = ctx, q = cd.q, dd = q.data || {}, hasNum = dd.value != null, pad = 48 * u, tile = (ctx.portrait ? 110 : 120) * u;
-  const drawTile = (x, y) => { g.fillStyle = 'rgba(255,255,255,0.10)'; g.beginPath(); g.roundRect(x, y, tile, tile, 26 * u); g.fill();
-    if (!dd.icon || icon(g, dd.icon, x + tile / 2, y + tile / 2, tile * 0.6, '#f2f2f7', t) === false) {
-      g.fillStyle = acc; g.beginPath(); g.roundRect(x, y, tile, tile, 26 * u); g.fill(); g.fillStyle = '#fff'; g.font = `700 ${tile * 0.46}px ${SANSB}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const drawTile = (x, y) => { g.fillStyle = T.tile; g.beginPath(); g.roundRect(x, y, tile, tile, 26 * u); g.fill();
+    if (!dd.icon || icon(g, dd.icon, x + tile / 2, y + tile / 2, tile * 0.6, T.icon, t) === false) {
+      g.fillStyle = acc; g.beginPath(); g.roundRect(x, y, tile, tile, 26 * u); g.fill(); g.fillStyle = onAcc(acc); g.font = `700 ${tile * 0.46}px ${SANSB}`; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(String(cd.n).padStart(2, '0'), x + tile / 2, y + tile / 2 + 3 * u); g.textAlign = 'left'; g.textBaseline = 'alphabetic'; } };
-  const num = (x, y, size, align) => { const v = MO.expoOut(clamp((lt - 0.35) / 0.9)); g.save(); g.font = `600 ${size}px ${SANSB}`; track(g, size, -0.03); g.fillStyle = '#fff';
-    TY.tabular(g, fmtNum(dd, v), x, y, { align }); g.restore(); if (dd.label) { g.font = `400 ${28 * u}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.6)'; g.textAlign = align; g.fillText(dd.label, x, y + 46 * u); g.textAlign = 'left'; } };
+  const num = (x, y, size, align) => { const v = MO.expoOut(clamp((lt - 0.35) / 0.9)); g.save(); g.font = `600 ${size}px ${SANSB}`; track(g, size, -0.03); g.fillStyle = T.num;
+    TY.tabular(g, fmtNum(dd, v), x, y, { align }); g.restore(); if (dd.label) { g.font = `400 ${28 * u}px ${ZH}`; g.fillStyle = T.numLabel; g.textAlign = align; g.fillText(dd.label, x, y + 46 * u); g.textAlign = 'left'; } };
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
   if (!ctx.portrait) {
     drawTile(pad, pad);
     const tl = fitB(g, q.text || '', Bw - 2 * pad, 64 * u, 'PuHui-Bold', { maxLines: 2, weight: '600 ', min: 0.6 });
-    let y = pad + tile + 40 * u + tl.size; g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = '#f5f5f7'; tl.lines.forEach((ln, k) => g.fillText(ln, pad, y + k * tl.size * 1.2)); y += (tl.lines.length - 1) * tl.size * 1.2;
-    if (q.sub) { const sl = fitB(g, q.sub, Bw - 2 * pad, (hasNum ? 32 : 38) * u, 'PuHui-Medium', { maxLines: hasNum ? 2 : 4, min: 0.75 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.66)';
+    let y = pad + tile + 40 * u + tl.size; g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head; tl.lines.forEach((ln, k) => g.fillText(ln, pad, y + k * tl.size * 1.2)); y += (tl.lines.length - 1) * tl.size * 1.2;
+    if (q.sub) { const sl = fitB(g, q.sub, Bw - 2 * pad, (hasNum ? 32 : 38) * u, 'PuHui-Medium', { maxLines: hasNum ? 2 : 4, min: 0.75 }); g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body;
       sl.lines.forEach((ln, k) => g.fillText(ln, pad, y + 26 * u + sl.size + k * sl.size * 1.45)); }
-    if (hasNum) { g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(pad, Bh - pad - 200 * u, Bw - 2 * pad, 1.5); num(pad, Bh - pad - 66 * u, Math.min(128 * u, (Bw - 2 * pad) / Math.max(3, fmtNum(dd, 1).length) * 1.6), 'left'); }
+    if (hasNum) { g.fillStyle = T.rule; g.fillRect(pad, Bh - pad - 200 * u, Bw - 2 * pad, 1.5); num(pad, Bh - pad - 66 * u, Math.min(128 * u, (Bw - 2 * pad) / Math.max(3, fmtNum(dd, 1).length) * 1.6), 'left'); }
   } else {
     drawTile(pad, (Bh - tile) / 2);
     const tx = pad + tile + 34 * u, nw = hasNum ? Math.min(340 * u, Bw * 0.36) : 0, tw = Bw - tx - pad - nw;
     const tl = fitB(g, q.text || '', tw, 62 * u, 'PuHui-Bold', { maxLines: 2, weight: '600 ', min: 0.6 });   // 标题放不下就折两行，不再截掉后半句
     const sl = q.sub ? fitB(g, q.sub, tw, 38 * u, 'PuHui-Medium', { maxLines: tl.lines.length > 1 ? 1 : 2, min: 0.75 }) : { lines: [], size: 0 };
     const tH = tl.size + (tl.lines.length - 1) * tl.size * 1.15, blk = tH + (sl.lines.length ? 22 * u + sl.lines.length * sl.size * 1.4 : 0), y0 = (Bh - blk) / 2 + tl.size * 0.85;
-    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = '#f5f5f7'; tl.lines.forEach((ln, k) => g.fillText(ln, tx, y0 + k * tl.size * 1.15));
+    g.font = `600 ${tl.size}px ${ZHB}`; g.fillStyle = T.head; tl.lines.forEach((ln, k) => g.fillText(ln, tx, y0 + k * tl.size * 1.15));
     const ys = y0 + (tl.lines.length - 1) * tl.size * 1.15;
-    g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = 'rgba(235,235,245,0.66)'; sl.lines.forEach((ln, k) => g.fillText(ln, tx, ys + 22 * u + sl.size + k * sl.size * 1.4));
+    g.font = `400 ${sl.size}px ${ZH}`; g.fillStyle = T.body; sl.lines.forEach((ln, k) => g.fillText(ln, tx, ys + 22 * u + sl.size + k * sl.size * 1.4));
     if (hasNum) num(Bw - pad, Bh / 2 + 20 * u, Math.min(96 * u, nw / Math.max(3, fmtNum(dd, 1).length) * 1.7), 'right');
   }
 }
@@ -312,12 +328,12 @@ function drawNumber(c, s, t, leave, ctx, shadowText) {
   if (leave > 0) { c.filter = `blur(${(16 * leave * u).toFixed(1)}px)`; }
   const str = fmtNum(nd, k), full = fmtNum(nd, 1);
   c.font = `600 ${220 * u}px ${SANSB}`; track(c, 220 * u, -0.03); let size = 220 * u; const fw = c.measureText(full).width; if (fw > W * 0.88) size *= W * 0.88 / fw;
-  c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = '#fff';
+  c.font = `600 ${size}px ${SANSB}`; track(c, size, -0.03); c.fillStyle = T.num;
   const y = G.cy + size * 0.32 - (cap ? 30 * u : 0);
   TY.tabular(c, str, W / 2, y, { align: 'center' });
   c.letterSpacing = '0px';
-  if (nd.label) { c.font = `500 ${34 * u}px ${ZH}`; c.fillStyle = '#a7a7b4'; c.fillText(nd.label, W / 2, y - size * 0.85); }
-  if (cap) { c.font = `400 ${(ctx.portrait ? 46 : 44) * u}px ${ZH}`; c.fillStyle = 'rgba(235,235,245,0.78)'; TY.wrap(c, cap, W * 0.84).forEach((ln, i) => c.fillText(ln, W / 2, y + 100 * u + i * 60 * u)); }
+  if (nd.label) { c.font = `500 ${34 * u}px ${ZH}`; c.fillStyle = T.bigLabel; c.fillText(nd.label, W / 2, y - size * 0.85); }
+  if (cap) { c.font = `400 ${(ctx.portrait ? 46 : 44) * u}px ${ZH}`; c.fillStyle = T.bigCap; TY.wrap(c, cap, W * 0.84).forEach((ln, i) => c.fillText(ln, W / 2, y + 100 * u + i * 60 * u)); }
   c.restore();
 }
 })();

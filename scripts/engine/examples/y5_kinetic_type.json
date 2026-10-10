@@ -4,6 +4,7 @@
   "fps": 30,
   "width": 1920,
   "height": 1080,
+  "theme": "poster",
   "cues": [
     { "at": 0.7, "kind": "number", "text": "一句话换来的代码", "data": { "value": 3000, "suffix": " 行" } },
     { "at": 2.6, "kind": "point", "text": "补全", "sub": "以前它补一行", "data": { "label": "从前", "key": "一行" } },

@@ -6,9 +6,14 @@
 //       highlight（当前这张图上 data.rect=[x,y,w,h]（0..1，相对图片）：at 起荧光笔扫过 → 红笔圈住 → 相机推近那一块）
 // 照片和截图是主角：镜头停在一张上时它占画面八九成（横屏宽 ≈90%、或高 ≈86%）。横屏素材左→右排、竖屏上→下排；
 // 镜头是脉冲：在下一件的 at 之前 0.30s 横移过去（红线先描出去、镜头再追），highlight 这一刻快推 0.28s 到那一块，其余时间停住，不慢推。
+// spec.theme（全片色板 ctx.pal）：桌面纸纹底色 bg，索引卡 surface、字 ink，标题条 ink 底 surface 字，红线/图钉/红圈 accent，
+//   索引卡横线 accent2 淡色，荧光笔 accent 提亮；照片的冲印白边、胶带是实物，照旧。
 CLIPS.y2_vox = (() => {
 const { clamp, lerp, rng } = U;
-const C = { desk: '#e4ddcf', ink: '#171716', red: '#b8433f', paper: '#eeedeb', card: '#f6f4ee' };
+const C0 = { desk: '#e4ddcf', ink: '#171716', red: '#b8433f', paper: '#eeedeb', card: '#f6f4ee', fiber: [110, 95, 70], rule: 'rgba(80,140,200,.3)', margin: 'rgba(184,67,63,.5)', vig: '40,30,20', hi: undefined };
+let C = C0;
+const fromPal = p => ({ desk: p.bg, ink: p.ink, red: p.accent, paper: p.surface, card: p.surface, fiber: PAL.rgb(p.sub), rule: PAL.alpha(p.accent2, 0.3), margin: PAL.alpha(p.accent, 0.5),
+  vig: PAL.rgb(PAL.dark(p) ? '#000000' : p.ink).join(','), hi: PAL.alpha(PAL.mix(p.accent, '#FFFFFF', 0.35), 0.85) });
 const BOLD = '"PuHui-Heavy"', TXT = '"PuHui-Bold"';
 let items, keys, strings;
 // 一拍二的片内时间：at 这一帧就 >0
@@ -18,6 +23,7 @@ return {
   safe: true,
   init(ctx) {
     const { W, H, u, portrait } = ctx, r = rng(7), g = document.createElement('canvas').getContext('2d');
+    C = ctx.pal ? fromPal(ctx.pal) : C0;
     items = []; let cur = 0, prev = null;
     for (const q of ctx.of('image', 'clip', 'title', 'point')) {
       let w, h, kind = q.kind === 'clip' ? 'image' : q.kind, lines = null, size = 0;
@@ -87,7 +93,7 @@ return {
     const { W, H, u } = ctx, cam = CAM.at(keys, t);
     const buf = UI.scratch('clip_vox', W, H), g = buf.getContext('2d'); g.reset();
     g.save(); g.translate(0, (ctx.safe.top - ctx.safe.bottom) / 2); CAM.apply(g, cam);
-    if (!ctx.alpha) { g.fillStyle = g.createPattern(CL.paperTile('clipdesk', C.desk, { amt: 12, fibers: 320, fiberCol: [110, 95, 70] }), 'repeat'); const s = 4 / cam.z; g.fillRect(cam.x - W * s, cam.y - H * s, W * 2 * s, H * 2 * s); }
+    if (!ctx.alpha) { g.fillStyle = g.createPattern(CL.paperTile('clipdesk' + (C === C0 ? '' : '_' + C.desk), C.desk, { amt: 12, fibers: 320, fiberCol: C.fiber }), 'repeat'); const s = 4 / cam.z; g.fillRect(cam.x - W * s, cam.y - H * s, W * 2 * s, H * 2 * s); }
     // 红线：跟着下一件的到场描出（12fps）
     for (const s of strings) { const q = MO.sineInOut(clamp(ls(t, s.at - 0.9) / 0.7)); if (t < s.at - 0.9) continue;
       CL.string(g, s.pts, s.cum, s.cum[s.cum.length - 1] * q, { col: C.red, lw: 5 * u }); CL.pin(g, s.a[0], s.a[1], C.red); if (q >= 1) CL.pin(g, s.b[0], s.b[1], C.red); }
@@ -101,7 +107,7 @@ return {
     if (Math.hypot(vx, vy) >= 1.5) c.drawImage(buf, 0, 0);   // 先垫一张不偏移的：motionBlur 第一张就是偏移的，画面四边会留一圈半透明（出片是灰边）
     CAM.motionBlur(c, buf, vx * 0.6, vy * 0.6, 7);
     if (!ctx.alpha) {                                                   // 暗角＋静态颗粒（纸纹是贴死的，不逐帧抖）
-      const v = PAINT.cached('clip_vox_vig' + W + 'x' + H, W, H, gg => { const r = gg.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.62); r.addColorStop(0, 'rgba(40,30,20,0)'); r.addColorStop(1, 'rgba(40,30,20,.34)'); gg.fillStyle = r; gg.fillRect(0, 0, W, H); });
+      const v = PAINT.cached('clip_vox_vig' + W + 'x' + H + C.vig, W, H, gg => { const r = gg.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) * 0.62); r.addColorStop(0, `rgba(${C.vig},0)`); r.addColorStop(1, `rgba(${C.vig},${C === C0 ? .34 : .18})`); gg.fillStyle = r; gg.fillRect(0, 0, W, H); });
       c.drawImage(v, 0, 0);
     }
   },
@@ -122,7 +128,7 @@ function drawItem(g, it, t, ctx) {
       const own = ctx.of('image', 'clip').filter(z => z.at <= hq.at).pop(); if (own !== q) continue;
       const l = t - hq.at; if (l < -1e-6) continue;
       const R = hq.data.rect, x0 = -w / 2 + f.x + R[0] * f.w, y0 = -h / 2 + f.y + R[1] * f.h, rw = R[2] * f.w, rh = R[3] * f.h;
-      CL.highlight(g, x0 - 6 * u, y0 - 4 * u, rw + 12 * u, rh + 8 * u, MO.sineInOut(clamp(ls(t, hq.at) / 0.6)));
+      CL.highlight(g, x0 - 6 * u, y0 - 4 * u, rw + 12 * u, rh + 8 * u, MO.sineInOut(clamp(ls(t, hq.at) / 0.6)), C.hi);
       const cq = MO.cubicOut(clamp((ls(t, hq.at) - 0.5) / 0.6));
       const newer = ctx.of('highlight').find(z => z.at > hq.at && z.at <= t + 1e-6 && z.data && z.data.rect && ctx.of('image', 'clip').filter(y => y.at <= z.at).pop() === q);
       const fa = newer ? 1 - 0.75 * clamp((t - newer.at) / 0.3) : 1;   // 同一张图圈了下一处：旧红圈退成淡痕，免得两个圈叠着、旧圈出画
@@ -132,8 +138,8 @@ function drawItem(g, it, t, ctx) {
   } else {
     const n = Math.ceil(ls(t, q.at) * (it.cps || 13)), title = it.kind === 'title';
     CL.shadowed(g, () => { g.fillStyle = title ? C.ink : C.card; g.save(); g.translate(-w / 2, -h / 2); CL.tornRect(g, w, h, it.seed, 3 * u); g.fill(); g.restore(); }, { blur: 10 * u, x: 3 * u, y: 6 * u });
-    if (!title) { g.strokeStyle = 'rgba(80,140,200,.3)'; g.lineWidth = 2 * u; for (let y = -h / 2 + 90 * u; y < h / 2; y += it.size * 1.45) { g.beginPath(); g.moveTo(-w / 2, y); g.lineTo(w / 2, y); g.stroke(); }
-      g.strokeStyle = 'rgba(184,67,63,.5)'; g.beginPath(); g.moveTo(-w / 2, -h / 2 + 56 * u); g.lineTo(w / 2, -h / 2 + 56 * u); g.stroke(); }
+    if (!title) { g.strokeStyle = C.rule; g.lineWidth = 2 * u; for (let y = -h / 2 + 90 * u; y < h / 2; y += it.size * 1.45) { g.beginPath(); g.moveTo(-w / 2, y); g.lineTo(w / 2, y); g.stroke(); }
+      g.strokeStyle = C.margin; g.beginPath(); g.moveTo(-w / 2, -h / 2 + 56 * u); g.lineTo(w / 2, -h / 2 + 56 * u); g.stroke(); }
     g.fillStyle = title ? C.paper : C.ink; g.font = `${it.size}px ${title ? BOLD : TXT}`; g.textBaseline = 'alphabetic';
     let k = 0; it.lines.forEach((ln, li) => { let x = -w / 2 + (title ? 40 : 55) * u; const y = -h / 2 + (title ? 25 * u : 70 * u) + (li + 1) * it.size * 1.3;
       for (const ch of ln) { if (k < n) g.fillText(ch, x, y); x += g.measureText(ch).width; k++; } });

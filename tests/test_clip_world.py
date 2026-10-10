@@ -38,6 +38,7 @@ def setUpModule():
     W['tmp'] = tempfile.TemporaryDirectory()
     tmp = Path(W['tmp'].name)
     base = json.loads((EX / 't3_finance_chart.json').read_text(encoding='utf-8'))
+    base.pop('theme', None)                                               # 样例带了全片色板；这里量的是不写 theme 时的默认和旧写法
     specs = {'t3_default': base, 't3_dark': {**base, 'theme': 'dark'},
              't3_fill': {**base, 'width': 1080, 'height': 1920, 'safe': {'top': 0, 'bottom': 520, 'fill': '#141a2b'}}}
     for k, spec in specs.items():

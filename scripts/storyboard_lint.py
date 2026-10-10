@@ -8,7 +8,12 @@
 用法：
   uv run storyboard_lint.py 镜头表.md [--script 文稿.txt]     # 或 python3 storyboard_lint.py …
 
-镜头表是一张 markdown 表（模板与示例见 references/镜头表模板.md），每行一镜，列：
+镜头表开头先锁画风（表外三行，写在表前）：
+  画风：一句话（一张风格卡或一种画法，全片只用这一种）
+  色板：色板名（paper/poster/ink/navy/bauhaus/snow/wood/chalk，或中文名）或 3–6 个色值
+  角色：无 ／ 只出手和背影 ／ 帧库 <路径>（AI 生帧）
+  允许蓝紫：<理由>（可选，只在用户点名要蓝紫时写）
+然后是一张 markdown 表（模板与示例见 references/镜头表模板.md），每行一镜，列：
   时间段 ｜ 画面里的物 ｜ 它在做什么 ｜ 镜头 ｜ 屏上字 ｜ 做法（可选，建议写）｜ 标签（可选）
 代码块（```）里的表不检查。文件里有多张表时只查第一张带「物」和「做什么」两列的表。
 
@@ -27,7 +32,11 @@
   ⑩ 有「标签」列时：一镜标签超过 3 个                                                             → 黄
 整表检查：
   ⑤ 文字主导的镜头占比 ≤ 30%                                                                     → 红
-  做法列（写了才查）：同一个参数化片段（同一个 .json）合计超过 8 秒 → 红；20 秒以上的片子画面做法少于 3 种 → 红
+  做法列（写了才查）：同一个参数化片段（同一个 .json）合计超过 8 秒 → 红；参数化片段语法超过 2 种（拼贴）→ 红
+  ⑫ 画风锁：缺「画风」「色板」「角色」任一行                                                      → 红
+  ⑬ 色板：色值落在蓝紫区（色相 225°–300°、饱和度 ≥0.30）→ 红（写了「允许蓝紫」降黄）；超过 6 色 → 黄
+  ⑭ 角色：角色行写代码画／Q 版小人／机器人 → 红；物列有机器人、小人、火柴人、吉祥物、卡通人而角色不是帧库 → 红；
+       用了 y4 而角色不是帧库 → 红；物列给金币、小球、离子长脸 → 黄
   时间段前后接不上、整表没有一次快推/横移/砸入 → 黄
 
 退出码：有红灯 1；只有黄灯或全绿 0；读不了文件或找不到表 2。只用标准库。
@@ -56,6 +65,38 @@ CAM_FAST = ("快推", "横移", "砸入", "推近", "甩")
 EMPTY_SCENE = re.compile(r"空镜|空景|空画面|空屏|黑场|黑屏|白屏|全黑|全白|暗场|留白|纯色|渐变|^背景$|^底色$|^[黑白]底$")
 EMPTY_CELL = {"", "-", "—", "–", "无", "空", "（空）", "(空)", "/", "／", "——"}
 GRAMMAR = re.compile(r"\b([ty][1-9])(?:_[a-z_]+)?\b", re.I)
+# ⑫–⑭ 画风锁
+LOCK = re.compile(r"^\s*[-*]?\s*(?:\*\*)?(画风|色板|角色|允许蓝紫)(?:\*\*)?\s*[:：]\s*(.+?)\s*$")
+PALETTES = {"paper", "poster", "ink", "navy", "bauhaus", "snow", "wood", "chalk",
+            "纸本", "海报黄", "深墨", "海军", "包豪斯", "雪原", "暖木", "黑板"}
+HEX = re.compile(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+CHAR_BAD = re.compile(r"代码画|手写|svg|SVG|Q\s*版|q\s*版|小人|机器人|火柴人|卡通人")
+CHAR_FRAMES = re.compile(r"帧库|frames|\.png|/")
+CHAR_NONE = re.compile(r"无|没有|不出人|不出脸|只出手|手|背影|剪影")
+OBJ_CHAR = re.compile(r"机器人|小人|火柴人|吉祥物|卡通人|Q\s*版|q\s*版")
+OBJ_FACE = re.compile(r"(笑脸|表情|长脸|眼睛|五官).{0,6}(金币|硬币|小球|球|离子|电子|粒子|分子)|(金币|硬币|小球|离子|电子|粒子|分子).{0,6}(笑脸|表情|长脸|眼睛|五官)")
+
+
+def read_lock(text, table_line=None):
+    """表外的画风锁：{画风, 色板, 角色, 允许蓝紫}。代码块里的不算；同一项写了几次，取表前离表最近的那一行（表前没有才看表后）。"""
+    before, after, fence = {}, {}, False
+    for i, ln in enumerate(text.splitlines(), 1):
+        if ln.strip().startswith("```"):
+            fence = not fence; continue
+        m = None if fence else LOCK.match(ln)
+        if not m: continue
+        if table_line is None or i < table_line: before[m.group(1)] = m.group(2).strip()
+        else: after.setdefault(m.group(1), m.group(2).strip())
+    return {**after, **before}
+
+
+def blue_purple_hex(h):
+    h = h if len(h) == 6 else "".join(c * 2 for c in h)
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    mx, mn = max(r, g, b), min(r, g, b); d = mx - mn
+    if d == 0 or mx == 0: return False
+    hue = (((g - b) / d) % 6 if mx == r else (b - r) / d + 2 if mx == g else (r - g) / d + 4) * 60
+    return 225 <= hue <= 300 and d / mx >= 0.30 and 0.06 <= mx <= 0.90
 
 
 def strip_cells(line):
@@ -347,15 +388,46 @@ def lint(text, script=None):
             if s > 8:
                 table.append((RED, "做法", f"参数化片段 {c} 撑了 {s:g} 秒（第 {'、'.join(str(r['n']) for r in rs)} 镜）",
                               "单个参数化片段最多 8 秒，撑久了读成一页 PPT；拆成几个 spec，中间换别的做法"))
-        kinds = {how_kind(r["how"]) for r in rows} - {None}
-        if total >= 20 and len(kinds) < 3:
-            table.append((RED, "做法", f"全片只用了 {len(kinds)} 种画面做法（{'、'.join(sorted(kinds)) or '没写'}）",
-                          "至少 3 种：不同语法的片段、scenes 代码画、真实素材满幅，各算一种"))
+        grams = sorted({k for k in (how_kind(r["how"]) for r in rows) if k and GRAMMAR.fullmatch(k)})
+        if len(grams) > 2:
+            table.append((RED, "做法", f"用了 {len(grams)} 种片段语法（{'、'.join(grams)}），拼起来是几种画风",
+                          "一支片最多 2 种片段语法，所有 spec 写同一个 theme；其余镜头用 scenes 按同一套色板画，或真实素材满幅"))
         empty_how = [r["n"] for r in rows if how_kind(r["how"]) is None]
         if empty_how:
             table.append((YELLOW, "做法", f"第 {'、'.join(map(str, empty_how))} 镜没写做法", "写上用哪个语法的片段（镜NN.json）、scenes/<id>.js 还是素材"))
     else:
-        table.append((YELLOW, "做法", "没有「做法」列，查不了单个片段撑多久、用了几种做法", "加一列：y4 片段 镜01.json／scenes/<id>.js／素材 照片"))
+        table.append((YELLOW, "做法", "没有「做法」列，查不了单个片段撑多久、用了几种语法", "加一列：y2 片段 镜01.json／scenes/<id>.js／素材 照片"))
+
+    # ⑫–⑭ 画风锁：整片一套视觉语言、配色不落蓝紫、角色要么精细要么不出脸
+    lock = read_lock(text, raw[0][0] - 2 if raw else None)
+    miss = [k for k in ("画风", "色板", "角色") if not lock.get(k)]
+    if miss:
+        table.append((RED, "⑫画风锁", f"表前缺「{'」「'.join(miss)}」", "表前写三行——画风：一句话，全片只用这一种；色板：色板名或 3–6 个色值（references/色板.md）；"
+                      "角色：无／只出手和背影／帧库 <路径>（references/角色精细度.md）"))
+    pal = lock.get("色板", "")
+    if pal:
+        hexes = HEX.findall(pal)
+        named = any(n in pal for n in PALETTES)
+        bp = [f"#{h}" for h in hexes if blue_purple_hex(h)]
+        if bp:
+            table.append((YELLOW if lock.get("允许蓝紫") else RED, "⑬色板", f"色板里有蓝紫：{'、'.join(bp)}" + ("（已写允许蓝紫的理由）" if lock.get("允许蓝紫") else ""),
+                          "换成 references/色板.md 里的一套，或把这几个色挪出色相 225°–300°；用户点名要蓝紫才写「允许蓝紫：理由」"))
+        if len(hexes) > 6:
+            table.append((YELLOW, "⑬色板", f"色板有 {len(hexes)} 个色", "一支片 3–6 个色：底、面、主字、次字、一两个强调色"))
+        if not hexes and not named:
+            table.append((YELLOW, "⑬色板", f"色板「{pal}」不是色板名也没写色值", "写 references/色板.md 里的名字，或 3–6 个 #色值"))
+    ch = lock.get("角色", "")
+    frames = bool(ch and CHAR_FRAMES.search(ch))
+    if ch and CHAR_BAD.search(ch) and not frames:
+        table.append((RED, "⑭角色", f"角色写的是「{ch}」：代码画的小人和机器人已停用", "有生图能力就 AI 生帧（references/10-角色.md），没有就只出手、背影、剪影，或干脆不出人"))
+    for r in rows:
+        if OBJ_CHAR.search(r["obj"]) and not frames:
+            r["issues"].append((RED, "⑭角色", f"物列里有「{OBJ_CHAR.search(r['obj']).group(0)}」，角色却不是帧库",
+                                "这一镜换成手、背影或一个物；要出角色先按 references/角色精细度.md 做帧库"))
+        if OBJ_FACE.search(r["obj"] + r["act"]):
+            r["issues"].append((YELLOW, "⑭角色", "给金币、小球、离子这类东西长了脸", "物就画成物：靠形状、颜色、动作讲，不加表情"))
+        if how_kind(r["how"]) == "y4" and not frames:
+            r["issues"].append((RED, "⑭角色", "y4 要角色帧库，角色行不是帧库", "换 y2/y5 或 scenes 用手和物讲；有生图能力就先做帧库"))
 
     issues = [x for r in rows for x in r["issues"]] + table
     verdict = RED if any(x[0] == RED for x in issues) else YELLOW if issues else GREEN
@@ -383,7 +455,7 @@ def report(res):
               GREEN: "结论：绿灯。可以开始做。"}[res["verdict"]])
     if not res.get("script") and res.get("numbered"):
         L.append(f"第 {'、'.join(map(str, res['numbered']))} 镜屏上有数字：加 --script 文稿.txt 可以核对它们和口播是不是同一个数。")
-    L.append("机器查不了、要你自己对的：全片是不是一个具体例子或角色贯穿；相邻两镜的版式是不是不同；开头 3 秒是不是一个小场景而不是题目。")
+    L.append("机器查不了、要你自己对的：全片是不是一个具体例子贯穿、是不是同一种画风；相邻两镜的构图是不是不同；开头 3 秒是不是一个小场景而不是题目。")
     return L
 
 
