@@ -1,5 +1,7 @@
 # t3_finance_chart · 财经数据图表动画
 
+**中文** · [English](../en/animation-grammars/t3_finance_chart.md)
+
 > 一句话语法：**先搭坐标系、再让数据「长」出来、最后只标一件事；一个颜色讲主角、其余变灰；数值永远诚实（柱从 0 起、单位和来源写在图上），动画只决定「怎么出现」，不改变「是多少」。**
 >
 > 示范片：`scripts/engine/demos/t3_finance_chart/`（渲染 `render.py --film demos/t3_finance_chart`）（8s，3 镜头，数据全部虚构，每镜右下角「示意数据」）· 总览 `assets/动画语法/t3_finance_chart_总览.jpg` · 代码 `scripts/engine/demos/t3_finance_chart/`

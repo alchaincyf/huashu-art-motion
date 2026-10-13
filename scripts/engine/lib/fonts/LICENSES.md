@@ -1,5 +1,7 @@
 # 字体许可 · Font licenses
 
+**中文** · [English](LICENSES.en.md)
+
 本目录的字体都不属于本仓库的 MIT 授权，各自沿用原许可。全部是 SIL Open Font License 1.1（全文见同目录 `OFL.txt`），可以随软件再分发、可商用，但不能单独售卖字体文件。部分文件是按 GB2312 或按用字抽出的子集（`scripts/font_subset.py`），转成了 woff。
 
 The fonts in this directory are NOT covered by the repository's MIT license. Each keeps its own license; all of them are SIL Open Font License 1.1 (full text in `OFL.txt`). Some files are subsets converted to WOFF.

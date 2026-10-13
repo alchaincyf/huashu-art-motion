@@ -1,10 +1,10 @@
-"""图表、数字镜头留在片子的世界里：
+"""Charts/number shots remain in the film's visual world:
 
-  t3 默认还是白底（旧 spec 逐像素不变由人工比过）；theme:"dark" 是深底浅字；
-  没写 theme 但 safe.fill 是深色时，图表底就用 fill 色，和让开的字幕带连成一片，不出白卡。
-  t2 样例 t2_fullbleed_pulse：数字 data.over 砸在第二张终端截图上，5.5 秒前后不再有一段空的光斑底。
+  t3 default still white (legacy spec manually confirmed pixel-identical); theme:"dark" gives light text on dark;
+  no theme but dark safe.fill uses fill as chart background, joining reserved subtitle band without a white card.
+  t2_fullbleed_pulse: number data.over slams onto second terminal screenshot; no empty light-spot background around 5.5s.
 
-需要 uv 和 Playwright Chromium（没装就跳过，和 test_film_gate 一样）；像素只用 Pillow 读。
+Requires uv and Playwright Chromium (skip if absent, like test_film_gate); Pillow reads pixels.
 """
 import json
 import shutil
@@ -38,7 +38,7 @@ def setUpModule():
     W['tmp'] = tempfile.TemporaryDirectory()
     tmp = Path(W['tmp'].name)
     base = json.loads((EX / 't3_finance_chart.json').read_text(encoding='utf-8'))
-    base.pop('theme', None)                                               # 样例带了全片色板；这里量的是不写 theme 时的默认和旧写法
+    base.pop('theme', None)                                               # Example has whole-film palette; measure default and legacy behavior without theme here
     specs = {'t3_default': base, 't3_dark': {**base, 'theme': 'dark'},
              't3_fill': {**base, 'width': 1080, 'height': 1920, 'safe': {'top': 0, 'bottom': 520, 'fill': '#141a2b'}}}
     for k, spec in specs.items():

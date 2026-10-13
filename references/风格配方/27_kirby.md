@@ -1,5 +1,7 @@
 # 27_kirby · 1966 漫威银河时代（Jack Kirby ＋ 四色胶印）
 
+**中文** · [English](../en/style-recipes/27_kirby.md)
+
 > 来源：迁移测试 C（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/27_kirby.js`。
 
 实验时的文件名：`scenes/k1_kirby.js`（255 行）。每帧约 20ms，帧差 7.5%。

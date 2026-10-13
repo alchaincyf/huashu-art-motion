@@ -1,7 +1,7 @@
-// S08 · 发射越来越密（快档：四张卡，一张一个点子）。
-// ①坐标纸上用撕下的纸条贴出柱状图（猎鹰火箭年发射次数：2017、2022–2025，只画有权威出处的年份），2025 那根是红纸，长到 165 落定；
-// ②一页月历，红笔每隔两天多划一道——「平均两天多一发」；③剪纸天平往「猎鹰9号」那边沉下去——「比其他火箭加起来还多」；
-// ④一枚沾烟灰的剪纸助推器躺在索引卡上，红笔一道道划记，37 道写满。
+// S08 · Increasing launch frequency (fast pace: four cards, one idea each).
+// ① Torn-paper strips form bar chart on graph paper (annual Falcon launches: 2017, 2022–2025; only years with authoritative sources); red 2025 strip grows to 165;
+// ② Monthly calendar, red stroke every two-plus days — just over two days per launch; ③ paper-cut balance scale tips toward Falcon 9 — more than all other rockets combined;
+// ④ Sooty paper-cut booster lies on index card, red tally strokes accumulate to 37.
 (() => {
 const ID = 's08', V = VOX, C = V.C, F = V.F, PH = V.PH, TAU = Math.PI * 2;
 const { clamp, lerp } = U, seg = MO.seg, step = V.step;
@@ -10,7 +10,7 @@ const cue = k => TM.cue(ID, k), G = k => V.cue(ID, k), t0 = V.t0(ID);
 const T = { title: '猎鹰系列火箭年发射次数', unit: '次', src: '来源：SpaceNews、CBS、CNBC、Ars Technica', avg: '≈2.2天一发', month: '一个月', l: '猎鹰9号', r: '全世界其他公司', one: '一枚助推器', n37: '37次' };
 const DATA = [['2017', 18], ['2022', 61], ['2023', 96], ['2024', 134], ['2025', 165]];
 
-// ① 坐标纸柱状图
+// ① Graph-paper bar chart
 const CW = 1240, CH = 800, CP = xy(1480, 860), BASE = 300, KH = 3.25, BW = 140, bx = i => -CW / 2 + 190 + i * 205 + (i > 0 ? 40 : 0);
 const graph = () => V.spr('s08graph', CW, CH, (g, w, h) => {
   g.fillStyle = '#f3f1e8'; g.fillRect(0, 0, w, h);
@@ -19,7 +19,7 @@ const graph = () => V.spr('s08graph', CW, CH, (g, w, h) => {
   V.text(g, T.title, 60, 84, 54, F.heavy, C.ink); V.text(g, T.src, 62, 122, 22, F.med, C.ink2);
   g.strokeStyle = C.ink; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(70, h / 2 + BASE); g.lineTo(w - 50, h / 2 + BASE); g.stroke();
   DATA.forEach(([y], i) => V.text(g, y, w / 2 + bx(i), h / 2 + BASE + 54, 40, F.type, i === 4 ? C.red : C.ink, 'center'));
-  const zx = w / 2 + (bx(0) + bx(1)) / 2; g.lineWidth = 4; g.beginPath(); g.moveTo(zx - 16, h / 2 + BASE - 14); g.lineTo(zx - 4, h / 2 + BASE + 14); g.moveTo(zx + 4, h / 2 + BASE - 14); g.lineTo(zx + 16, h / 2 + BASE + 14); g.stroke();   // 年份不连续的断开记号
+  const zx = w / 2 + (bx(0) + bx(1)) / 2; g.lineWidth = 4; g.beginPath(); g.moveTo(zx - 16, h / 2 + BASE - 14); g.lineTo(zx - 4, h / 2 + BASE + 14); g.moveTo(zx + 4, h / 2 + BASE - 14); g.lineTo(zx + 16, h / 2 + BASE + 14); g.stroke();   // Break mark for nonconsecutive years
 });
 const strip = (key, hgt, col) => V.spr('s08bar' + key, BW, hgt, (g, w, h) => V.paper(g, w, h, 50 + hgt % 13, { col, amp: 3, age: 0.1 }), { pad: 16, sh: { blur: 6, x: 2, y: 4 } });
 const tBar = [G('回收') + 0.05, G('越来越密') + 0.2], t165 = [G('2025') + 0.1, G('165') + 0.2];
@@ -35,7 +35,7 @@ V.item({ key: 's08chart', ...CP, r: -0.01, z: 10, at: t0 - 1, draw(g, T_) {
   if (st >= G('165') + 0.3) V.text(g, '全为猎鹰9号', bx(4), BASE + 100, 26, F.bold, C.red, 'center');
   const hq = MO.sineInOut(seg(st, G('165'), G('165') + 0.6)); if (hq > 0) { g.save(); g.translate(bx(4), BASE - 165 * KH - 22); V.hl(g, -96, -80, 192, 84, hq); g.restore(); }
 } });
-// ② 月历：每 2.2 天一道红划
+// ② Monthly calendar: one red stroke every 2.2 days
 const MW = 520, MH = 560, MP = xy(560, 760);
 const DAYS = (() => { const o = []; for (let k = 0; k * 365 / 165 < 30; k++) o.push(Math.round(k * 365 / 165)); return o; })();
 const SL = DAYS.map((d, k) => V.handPts('s08sl' + k, [[-26, 18], [26, -18]], { amp: 1.4, seed: k + 3, per: 5 }));
@@ -51,7 +51,7 @@ V.item({ key: 's08month', ...MP, r: 0.03, z: 13, at: G('平均') - 0.35, enter: 
   DAYS.forEach((d, k) => { const t = tCal[0] + k * (tCal[1] - tCal[0]) / DAYS.length; if (st < t) return; g.save(); g.translate(-MW / 2 + 20 + (d % 7) * 68 + 34, -MH / 2 + 100 + Math.floor(d / 7) * 86 + 50); V.pen(g, SL[k], clamp((st - t) / 0.08), { lw: 7 }); g.restore(); });
   if (st >= tCal[1] - 0.15) { g.save(); g.translate(0, MH / 2 + 50); g.rotate(-0.03); V.label(g, T.avg, 56, { bg: C.red2, n: V.nTyped(T_, tCal[1] - 0.15, 16) }); g.restore(); }
 } });
-// ③ 剪纸天平
+// ③ Paper-cut balance scale
 const SC = xy(620, 1430), tTip = G('其他') - 0.05;
 const mini = () => V.cutout('s08mini', 22, 120, (g, w, h) => PH.rocket(g, RK.falcon9({ payload: 'fairing' }), w / 2, h - 4, 1.65), { cell: 3, edge: 3 });
 const pan = (key) => V.cutout('s08pan' + key, 300, 70, (g, w, h) => { g.fillStyle = '#7d7d7a'; g.beginPath(); g.moveTo(0, 10); g.lineTo(w, 10); g.quadraticCurveTo(w / 2, h * 1.6, 0, 10); g.fill(); }, { ht: false, edge: 5 });
@@ -64,7 +64,7 @@ V.item({ key: 's08scale', ...SC, r: 0, z: 12, at: G('比全') - 0.25, enter: { f
     const lab = s < 0 ? T.l : T.r; g.font = V.font(44, F.heavy); const lw = g.measureText(lab).width + 36; g.fillStyle = s < 0 ? C.red2 : C.card; g.fillRect(-lw / 2, 160, lw, 66); V.text(g, lab, 0, 208, 44, F.heavy, s < 0 ? C.paper : C.ink, 'center'); g.restore(); }
   g.restore();
 } });
-// ④ 37 道划记
+// ④ 37 tally strokes
 const KP = xy(1800, 1500), KW = 1000, KHh = 340, tT = [G('飞了') - 0.55, G('37') - 0.1];
 const booster = () => V.cutout('s08boost', 96, 420, (g, w, h) => {
   RK.at(g, w / 2, h - 34, 9.2, 0, q => V.shadeFill(q, RK.falcon9({ stage: 'booster', legs: 0, fins: 0.4 }), { ...V.GREY, body: '#c4c4c4' }));
@@ -79,10 +79,10 @@ V.item({ key: 's08tally', ...KP, r: -0.02, z: 13, at: G('有一枚') - 0.3, ente
   if (st >= tT[1] - 0.05) { g.save(); g.translate(KW / 2 - 150, 70); g.rotate(-0.05); const s = 1 + 0.25 * (1 - MO.quartOut(clamp(step(T_ - tT[1] + 0.05) / 0.25))); g.scale(s, s); V.text(g, T.n37, 0, 34, 104, F.heavy, C.red, 'center'); g.restore(); }
 } });
 
-// ---------- 相机 ----------
+// ---------- Camera ----------
 const at = (x, y, z, sy) => V.at(X0 + x, Y0 + y, z, sy);
 const cam = (lt) => CAM.at([
-  V.key(0, at(1470, 845, 1.0)),                                 // 句读处硬切（Vox 最常用的转场）
+  V.key(0, at(1470, 845, 1.0)),                                 // Hard cuts at sentence breaks (Vox's most common transition)
   V.key(0.9, at(1480, 840, 1.02), MO.sineInOut),
   V.key(cue('165'), at(1560, 860, 1.08), MO.sineInOut),
   V.key(cue('平均') - 0.05, at(1600, 870, 1.14), MO.sineInOut),

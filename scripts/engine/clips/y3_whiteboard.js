@@ -1,21 +1,21 @@
-// 片段 · 白板手绘（y3，RSA 型）：说一句写一句、讲到东西就画出来。一支马克笔在白板上写字、画图标、画箭头、圈重点，相机跟着往下走，最后拉远看全图。
-// cues：title（标题，7.5 字/秒起，赶不上下一个 cue 会自动提速）· point（要点：先画一个小圈当项目符号再写，16 字/秒起）
-//       draw（画一个手绘图标：data.icon 见下方 ICONS，text = 图标下的手写说明；和刚写的那条字并排；连续的 draw 用橙箭头连起来，像示范片「一摞图 → 网络」；data.arrow:false 不画箭头）
-//       image（截图/草图：笔走之字形把它「揭开」，再描一圈手绘框；等比放，不裁）
-//       highlight（橙圈圈住一条：data.index = 第几个要点（只数 point，从 0 起，和 t1/y1 同一口径）；
-//                 data.target = 'title' | 'draw' | 'image' 改圈那一类（配 index 数那一类，默认最新）；不写 = 最新写出的那一条；data.style:'underline' 改成划线）
-// 版式：横屏有 draw/image 时左文右图，竖屏有 draw 时图标在右侧窄栏；图标和刚写的那条字并排，连续的图标之间画往下的橙箭头。
-//       横屏纯文字、要点 ≥5 条时分左右两栏。字号随内容多少在 0.72–1.2 倍之间取，尽量一屏放下并撑满；放不下才让相机往下走。
-// 每一笔都在 at 这一帧落下第一点；写字速度＝max(基准速度, 字数 / 到下一个 cue 的间隔)，说到下一句时这句已写完。
-// 笔：两笔之间空档 <0.6s 沿弧线滑过去；更长就 0.35s 退出右下屏外，下一笔前 0.3s 再进来；最后一笔画完一定退场，不留在字上。
-// safe（spec.safe）：内容只排在 top..H−bottom 之间，收尾拉远也只拉进这一带。alpha：墨色外面描一圈白边，叠在深色画面上也看得见。
-// spec.theme（全片色板 ctx.pal）：板面就是片子的底色 bg（和前后镜头连成一片；深底色板就是一块黑板），字和线 ink，
-//   项目符号、箭头、圈重点 accent，图标里的浅色铺底是 accent 的淡色。
+// Clip · whiteboard drawing (y3, RSA): write as spoken, draw concepts as mentioned. Marker writes text/icons/arrows/circles; camera follows downward, then pulls back to whole board.
+// cues: title (starts 7.5 chars/s, speeds up before next cue) · point (small bullet circle then writing, starts 16 chars/s)
+//       draw (hand-drawn icon: data.icon from ICONS below, text handwritten caption; alongside latest text; consecutive draws linked by orange arrows, e.g. image stack → network; data.arrow:false disables)
+//       image (screenshot/sketch: pen reveals in zigzag, then hand-drawn border; contain, no crop)
+//       highlight (orange circle around entry: data.index point index (points only, from 0, same as t1/y1);
+//                 data.target = 'title'|'draw'|'image' selects type (index counts that type, default latest); omitted = latest written entry; data.style:'underline' underlines)
+// Layout: landscape with draw/image uses text left/image right; portrait draw icons in narrow right column alongside text; orange downward arrows connect icons.
+//       Landscape text-only with ≥5 points uses two columns. Font scales 0.72–1.2 to fill one screen when possible; camera scrolls only on overflow.
+// First pen point visible at at; writing speed=max(base, character count/next cue interval), so finished before next sentence.
+// Pen: gaps <0.6s glide along arc; longer gaps exit lower-right in 0.35s, return 0.3s before next stroke; always exit after last stroke.
+// safe (spec.safe): layout and final pullback within top..H−bottom. alpha: white ink outline for visibility on dark footage.
+// spec.theme (film-wide ctx.pal): bg board matches adjacent shots (dark palette becomes blackboard), ink text/lines,
+//   accent bullets/arrows/highlights; pale accent icon fills.
 CLIPS.y3_whiteboard = (() => {
 const { clamp, lerp } = U;
 let INK = '#0A0503', ORANGE = '#EF7226', WASH = 'rgba(239,114,38,.22)', BOARD = '#FBFBFB';
 const FONT = 'LXGWWenKai-500';
-// ---------- 手绘图标：单位框 [-0.5,0.5]²（y 朝下）里的笔画；o:1 = 橙色强调，seg:1 = 快速直线（网络连线），fill = 铺浅橙 ----------
+// ---------- Hand-drawn icons: strokes within [-0.5,0.5]² (y downward); o:1 orange emphasis, seg:1 fast straight line (network edges), fill pale orange ----------
 const A = (cx, cy, rx, ry, a0, a1, n = 22) => DG.arcPts(cx, cy, rx, ry, a0, a1, n);
 const box = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0 + 0.01]];
 const ICONS = {
@@ -48,40 +48,40 @@ const ICONS = {
   chart: () => [{ p: [[-0.42, -0.42], [-0.42, 0.38], [0.44, 0.38]] }, { p: [[-0.32, 0.22], [-0.12, 0.04], [0.06, 0.12], [0.34, -0.26]], o: 1 }, { p: [[0.18, -0.26], [0.34, -0.26], [0.34, -0.1]], o: 1 }],
 };
 let B, keys, items, OFF, lastEnd, band;
-const halo = (c, src, W, H, col, r) => {                          // 透明底：墨色外描一圈白边（8 个方向各压一次剪影）
+const halo = (c, src, W, H, col, r) => {                          // Transparent background: white ink outline (silhouette composited in 8 directions)
   const s2 = UI.scratch('clip_y3halo', W, H), g = s2.getContext('2d'); g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H);
   g.drawImage(src, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
   for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; c.drawImage(s2, Math.cos(a) * r, Math.sin(a) * r); }
   c.drawImage(src, 0, 0);
 };
-// 折行但各行等长：先按栏宽折出 n 行，再找「仍是 n 行」的最窄宽度重折（不留一个字孤零零挂在第二行）
+// Balanced wrapping: wrap to n lines at column width, then find narrowest width retaining n lines (avoid lone character on second line)
 const balance = (g, text, maxW, font) => { const n = TY.wrap(g, text, maxW, font).length; if (n < 2) return [text];
   let lo = maxW * 0.4, hi = maxW; for (let k = 0; k < 14; k++) { const m = (lo + hi) / 2; if (TY.wrap(g, text, m, font).length > n) lo = m; else hi = m; } return TY.wrap(g, text, hi, font); };
-// 手绘矩形：先把四条边各加密成多点，再加抖动，角还是角（直接对 4 个角点做 Catmull-Rom 会画成一个圆团）
+// Hand-drawn rectangle: densify all four edges before jitter to preserve corners (Catmull-Rom on only 4 corners yields a rounded blob)
 const rectPts = (x, y, w, h) => { const P = [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y + 3]], out = [];
   for (let i = 0; i < 4; i++) for (let k = 0; k < 12; k++) out.push([lerp(P[i][0], P[i + 1][0], k / 12), lerp(P[i][1], P[i + 1][1], k / 12)]); out.push(P[4]); return out; };
 function layout(ctx, f) {
   const { W, H, u, FPS, safe } = ctx, pad = (ctx.portrait ? 80 : 150) * u, lw = 6.5 * u, g = document.createElement('canvas').getContext('2d');
   const cues = ctx.cues, next = q => { const i = cues.indexOf(q); const n = cues.slice(i + 1).find(z => z.at > q.at + 1e-6); return n ? n.at : ctx.dur; };
   const hasDraw = cues.some(q => q.kind === 'draw'), hasImg = cues.some(q => q.kind === 'image' && ctx.IMG[q.image]);
-  // 栏：横屏有图就左文右图；竖屏有 draw 时图标排在右侧窄栏、和它说的那条字并排（截图仍整宽）
+  // Columns: landscape graphics use text left/image right; portrait draw icons narrow right beside matching text (screenshots full width)
   const S = (ctx.portrait ? 250 : 210) * u * f, gap = 70 * u * f;
   const two = ctx.portrait ? hasDraw : (hasDraw || hasImg);
   const colP = !two ? null : ctx.portrait ? { x: W - pad - S, w: S } : { x: W * 0.55, w: W * 0.45 - pad };
-  const nPt = cues.filter(q => q.kind === 'point').length, split = !ctx.portrait && !two && nPt >= 5 ? Math.ceil(nPt / 2) : 0;   // 横屏纯文字、要点 ≥5 条：分左右两栏写
+  const nPt = cues.filter(q => q.kind === 'point').length, split = !ctx.portrait && !two && nPt >= 5 ? Math.ceil(nPt / 2) : 0;   // Landscape text-only, ≥5 points: write in two columns
   const colT = { x: pad, w: split ? W / 2 - pad - 40 * u : !two ? W - 2 * pad : ctx.portrait ? colP.x - gap - pad : W * 0.5 - pad };
   let kPt = 0, col0 = null;
-  // 同一份清单的要点用同一个字号：取「放进一行」要缩到的最小那个（最小 0.72），还放不下的那条再折行
+  // One font size per list: smallest scale needed for single-line fit (minimum 0.72), wrap remaining overflow
   const pSize = Math.min(74 * u * f, ...cues.filter(q => q.kind === 'point').map(q => { const r = TY.fit(g, q.text || '', colT.w - 80 * u, 74 * u * f, FONT, { maxLines: 1, min: 0.72, soft: true }); return r.ok ? r.size : 74 * u * f * 0.72; }));
   const B = DG.board({ ink: INK, lw, speed: 2600 * u, font: `"${FONT}"` }), items = [];
   const top = (ctx.portrait ? 240 : 130) * u + safe.top;
-  let yT = top, yP = top, lastText = null, lastDraw = null;               // 文字流 / 图流的当前 y
-  const start = q => B.at(Math.max(0, q.at - 1 / FPS));                  // 第一笔在 at 这一帧可见
-  const capSz = (ctx.portrait ? 52 : 50) * u * Math.max(0.85, Math.min(1.1, f)), capRight = !ctx.portrait;   // 横屏说明写在图标右边，竖屏写在下面
+  let yT = top, yP = top, lastText = null, lastDraw = null;               // Current y for text/image flow
+  const start = q => B.at(Math.max(0, q.at - 1 / FPS));                  // First stroke visible on frame at at
+  const capSz = (ctx.portrait ? 52 : 50) * u * Math.max(0.85, Math.min(1.1, f)), capRight = !ctx.portrait;   // Caption right of icon in landscape, below in portrait
   for (const q of cues) {
     if (q.kind === 'title' || q.kind === 'point') {
       const title = q.kind === 'title', indent = title ? 0 : 80 * u, colW = title ? W - 2 * pad : colT.w;
-      const ft = title ? TY.fit(g, q.text || '', colW - indent, 112 * u * f, FONT, { maxLines: 1, min: 0.72, soft: true }) : { size: pSize, lines: TY.wrap(g, q.text || '', colW - indent, `${pSize}px "${FONT}"`) };   // 标题先缩字号放一行，放不下再折行
+      const ft = title ? TY.fit(g, q.text || '', colW - indent, 112 * u * f, FONT, { maxLines: 1, min: 0.72, soft: true }) : { size: pSize, lines: TY.wrap(g, q.text || '', colW - indent, `${pSize}px "${FONT}"`) };   // Shrink title to one line first, then wrap if needed
       const size = ft.size, lines = ft.lines.length > 1 ? balance(g, q.text || '', colW - indent, `${size}px "${FONT}"`) : ft.lines;
       const n = [...(q.text || '')].length, room = Math.max(0.35, next(q) - q.at - 0.15 - (title ? 0 : 0.15)), rate = Math.max(title ? 7.5 : 16, n / room);
       if (title) yT = Math.max(yT, yP);
@@ -97,7 +97,7 @@ function layout(ctx, f) {
     } else if (q.kind === 'draw') {
       const icon = (q.data && q.data.icon) || '', mk = ICONS[icon];
       if (!mk && icon) console.warn(`y3 draw：没有图标「${icon}」，可用：${Object.keys(ICONS).join(' ')}（只写说明字）`);
-      // 和刚写的那条字并排（那条字还没配图、且在图流下面）；否则接在图流下面
+      // Beside latest text (if no image yet and below image flow); otherwise below image flow
       const pair = lastText && !lastText.pic && lastText.y0 >= yP - 1;
       const y0 = two ? (pair ? lastText.y0 + (lastText.y1 - lastText.y0) / 2 - S / 2 : yP) : yT;
       const x0 = two ? colP.x : pad, cx = x0 + S / 2, cy = Math.max(y0, two ? yP : y0) + S / 2;
@@ -109,7 +109,7 @@ function layout(ctx, f) {
       const capN = [...(q.text || '')].length, arrowL = prev ? Math.max(0, cy - S / 2 - prev.y1) : 0;
       const len = strokes.reduce((s, k) => s + (k.p ? DG.len(P(k.p)) : 0), 0) + arrowL;
       const budget = clamp(room - (capN ? Math.max(0.3, capN / 16) : 0) - 0.1, 0.4, 1.4), sp = Math.max(2600 * u, len / budget);
-      if (prev && arrowL > 30 * u) { const ax = prev.cx, ay0 = prev.y1 + 8 * u, ay1 = cy - S / 2 - 8 * u;   // 箭头：上一个图标 → 这一个（往下）
+      if (prev && arrowL > 30 * u) { const ax = prev.cx, ay0 = prev.y1 + 8 * u, ay1 = cy - S / 2 - 8 * u;   // Arrow: previous icon → this icon (downward)
         B.line([[ax, ay0], [ax + 6 * u, lerp(ay0, ay1, 0.5)], [ax, ay1]], { col: ORANGE, w: lw, speed: sp });
         const h = Math.min(20 * u, (ay1 - ay0) * 0.4); B.line([[ax - h, ay1 - h], [ax, ay1], [ax + h, ay1 - h]], { col: ORANGE, w: lw, speed: sp, smooth: false }); }
       for (const k of strokes) {
@@ -120,9 +120,9 @@ function layout(ctx, f) {
         if (k.fill) B.fill(U.poly(P(k.fill)), WASH);
       }
       B.at(B.cur + 0.02);
-      const capMax = capRight ? W - pad - (x0 + S + 24 * u) : W - 2 * pad, cs = q.text ? TY.fit(g, q.text, capMax, capSz, FONT, { maxLines: 1 }).size : capSz;   // 说明字放不下先缩字号
+      const capMax = capRight ? W - pad - (x0 + S + 24 * u) : W - 2 * pad, cs = q.text ? TY.fit(g, q.text, capMax, capSz, FONT, { maxLines: 1 }).size : capSz;   // Shrink caption if needed first
       g.font = `${cs}px "${FONT}"`; const cw = q.text ? g.measureText(q.text).width : 0, crate = Math.max(16, capN / Math.max(0.3, room - (B.cur - q.at)));
-      const capX = capRight ? x0 + S + 24 * u : clamp(cx, pad + cw / 2, W - pad - cw / 2), capY = capRight ? cy + cs * 0.35 : cy + S / 2 + cs * 1.05;   // 竖屏图标在右侧窄栏：居中的说明字夹回画内
+      const capX = capRight ? x0 + S + 24 * u : clamp(cx, pad + cw / 2, W - pad - cw / 2), capY = capRight ? cy + cs * 0.35 : cy + S / 2 + cs * 1.05;   // Portrait icons in narrow right column: clamp centered caption into frame
       if (q.text) B.text(q.text, capX, capY, cs, { col: INK, align: capRight ? 'left' : 'center', rate: crate });
       const it = { q, kind: 'draw', x: x0, w: S, cx, y0: cy - S / 2, y1: cy + S / 2 + (capRight ? 0 : cs * 1.3),
         hx: capRight ? x0 : Math.min(x0, capX - cw / 2), hw: capRight ? S + 24 * u + cw : Math.max(x0 + S, capX + cw / 2) - Math.min(x0, capX - cw / 2) };
@@ -131,7 +131,7 @@ function layout(ctx, f) {
       else yT = it.y1 + gap;
     } else if (q.kind === 'image') {
       const im = ctx.IMG[q.image]; if (!im) continue;
-      // 右栏的图只用剩下的高度，不让相机为右栏往下走、把左栏的字推出画
+      // Right graphics use remaining height; avoid scrolling camera for right column and pushing left text out
       const inCol = two && !ctx.portrait, y = (inCol ? yP : Math.max(yT, yP)) + 30 * u, box = inCol ? colP : { x: pad, w: W - 2 * pad };
       const f2 = CLIP.fit(im.width, im.height, box.x, y, box.w, inCol ? Math.max(H * 0.2, Math.min(H * 0.5 * Math.max(0.8, f), H - safe.bottom - 80 * u - y)) : H * (ctx.portrait ? 0.32 : 0.45) * Math.max(0.8, f)), it = { q, kind: 'image', x: f2.x, y0: f2.y, w: f2.w, y1: f2.y + f2.h };
       const zz = DG.zigzag(f2.x - 20 * u, f2.y - 10 * u, f2.w + 40 * u, f2.h + 20 * u, 7), cum = DG.cum(zz), rowH = (f2.h + 20 * u) / 7;
@@ -163,12 +163,12 @@ return {
     const { W, H, u, safe } = ctx, p = ctx.pal;
     if (p) { INK = p.ink; ORANGE = p.accent; WASH = PAL.alpha(p.accent, 0.22); BOARD = p.bg; } else { INK = '#0A0503'; ORANGE = '#EF7226'; WASH = 'rgba(239,114,38,.22)'; BOARD = '#FBFBFB'; }
     band = { y0: safe.top, y1: H - safe.bottom }; band.h = band.y1 - band.y0;
-    // 字号系数 f 从 1.2 往下试：内容少就放大撑满版面，内容多就缩（最小 0.72），还放不下才让相机往下走
-    let L; for (let f = 1.2; f >= 0.7; f -= 0.04) { L = layout(ctx, f); if (L.bottom + 70 * u <= band.y1) break; }   // 内容少就放大（最大 1.2）把版面撑满
+    // Try f down from 1.2: enlarge sparse content, shrink dense content (minimum 0.72), only then scroll camera
+    let L; for (let f = 1.2; f >= 0.7; f -= 0.04) { L = layout(ctx, f); if (L.bottom + 70 * u <= band.y1) break; }   // Enlarge sparse content (maximum 1.2) to fill layout
     ({ B, items } = L);
     OFF = [W + 140 * u, H + 280 * u];
     lastEnd = Math.max(0, ...B.S.map(s => s.t1));
-    // 相机：内容超出可用带就在下一条开写前平移过去（sineInOut）；最后有空就拉远看全图（只拉进 safe 带）
+    // Camera: overflow pans before next writing starts (sineInOut); final pullback if time allows (only into safe band)
     keys = [{ t: 0, x: W / 2, y: H / 2, z: 1 }]; let cy = H / 2, panned = false;
     for (const it of items) {
       const need = it.y1 + 70 * u - (cy + band.y1 - H / 2); if (need <= 0) continue;
@@ -177,11 +177,11 @@ return {
     }
     const y0c = Math.min(L.top, ...items.map(z => z.y0)) - 50 * u, y1c = L.bottom + 40 * u, total = y1c - y0c;
     const zEnd = Math.min(0.94, band.h / total * 0.96);
-    // 收尾拉远：最后一笔后有 ≥0.6s 才拉；相机走过了的话，就算时间紧也在最后 0.8s 拉（不然末帧标题被切在顶上）
+    // Final pullback: ≥0.6s after last stroke; if camera scrolled, pull back in last 0.8s even when tight (otherwise title clipped in final frame)
     const tz0 = Math.max(keys[keys.length - 1].t + 0.01, panned ? Math.min(lastEnd + 0.1, ctx.dur - 0.8) : lastEnd + 0.1);
     if (ctx.dur - tz0 >= 0.6) {
       const prev = keys[keys.length - 1]; keys.push({ ...prev, t: tz0, ease: undefined });
-      const midW = (y0c + y1c) / 2, ty = midW - ((band.y0 + band.y1) / 2 - H / 2) / zEnd;     // 全图中心落在 safe 带中心
+      const midW = (y0c + y1c) / 2, ty = midW - ((band.y0 + band.y1) / 2 - H / 2) / zEnd;     // Align whole-board center to safe-band center
       keys.push({ t: Math.min(ctx.dur - 0.15, tz0 + 0.8), x: W / 2, y: ty, z: zEnd, ease: MO.sineInOut });
     }
   },
@@ -195,13 +195,13 @@ return {
     if (ctx.alpha) halo(c, g.canvas, W, H, 'rgba(255,255,255,0.92)', 4 * u);
   },
 };
-// 笔的位置（屏幕）：在画 → 笔尖；空档短 → 沿弧线滑；空档长 → 退出右下再进来；画完最后一笔 → 0.35s 退场（返回 null = 不画）
+// Pen screen position: drawing → tip; short gap → arc; long gap → exit lower-right/return; final stroke → exit 0.35s (null = hidden)
 function penAt(t, cam, tip, ctx) {
   if (tip) return CAM.toScreen(cam, tip[0], tip[1]);
   const hs = B.S.filter(s => s.kind !== 'pop' && s.kind !== 'fill' && (s.kind !== 'custom' || s.handed !== false));
   let prev = null, next = null; for (const s of hs) { if (s.t1 <= t) prev = s; else if (s.t0 > t && !next) next = s; }
   if (prev && next && next.t0 - prev.t1 <= 0.6) return B.penAt(t, cam, null);
-  const end = s => B.penAt(s.t1, cam, null);                       // 上一笔终点（屏幕）
+  const end = s => B.penAt(s.t1, cam, null);                       // Previous stroke endpoint (screen)
   if (next && next.t0 - t <= 0.3) { const b = CAM.toScreen(cam, ...(next.kind === 'custom' ? next.start() : next.kind === 'line' ? next.pts[0] : [next.x, next.y - next.size * 0.3])), q = MO.cubicOut(1 - (next.t0 - t) / 0.3); return [lerp(OFF[0], b[0], q), lerp(OFF[1], b[1], q)]; }
   if (prev && t - prev.t1 < 0.35) { const a = end(prev), q = MO.cubicIn((t - prev.t1) / 0.35); return [lerp(a[0], OFF[0], q), lerp(a[1], OFF[1], q)]; }
   return null;

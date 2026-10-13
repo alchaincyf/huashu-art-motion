@@ -1,7 +1,7 @@
-// S01 · 开头钩子（快切段，13 秒六个知识点）：第 0 帧就是「2008」＋第一张失败卡已盖红叉＋讲解员竖一根手指。
-// ① 连败三次：三张猎鹰1号卡依次盖红叉、火箭歪倒冒烟，讲解员 1→2→3 比数字 ② 钱只够最后一发：小猪存钱罐抖出最后一枚金币，飞进第四张卡
-// ③ 9月28号那一发成了：日历弹出，第四枚火箭点火升空，绿勾＋彩纸，讲解员跳起来 ④ 整整18年后的同一天：两张 9月28号日历并排、弧线箭头「18年后」、等号
-// ⑤ 星舰第一次进入地球轨道：小地球＋轨道虚线，星舰入轨绕圈 ⑥ 两分钟看完这24年：标题卡＋秒表＋2002→2026 时间轴，时间轴缩进顶栏，成为全片的进度条。
+// S01 · Opening hook (fast cuts, six facts in 13 seconds): frame 0 already shows 2008, the first failed-launch card stamped with a red cross, and the presenter holding up one finger.
+// ① Three consecutive failures: three Falcon 1 cards receive red crosses in sequence; rockets tip over and smoke; the presenter counts 1→2→3 on their fingers. ② Money for one last launch: the piggy bank shakes out its last coin, which flies into the fourth card.
+// ③ The September 28 launch succeeds: a calendar pops up, the fourth rocket ignites and lifts off, a green tick and confetti appear, and the presenter jumps. ④ The same day exactly 18 years later: two September 28 calendars side by side, a curved 18-years-later arrow, and an equals sign.
+// ⑤ Starship first enters Earth orbit: a small Earth and dashed orbit, with Starship circling it. ⑥ These 24 years in two minutes: title card, stopwatch, and 2002→2026 timeline; the timeline shrinks into the header as the film's progress bar.
 (() => {
 const ID = 's01', L = LIN, { C, W, H, TAU } = L, { clamp, lerp } = U;
 let Q = null;
@@ -11,12 +11,12 @@ const q = () => Q || (Q = {
   xj: TM.cue(ID, '星舰'), dyc: TM.cue(ID, '第一次'), gd: TM.cue(ID, '地球轨道'), lfz: TM.cue(ID, '两分钟'), kw: TM.cue(ID, '看完'), n24: TM.cue(ID, '24年'), end: TM.dur(ID),
 });
 
-// ---------- ① 三张失败卡 ----------
+// ---------- ① Three failure cards ----------
 const CARD_X = [840, 1190, 1540], CARD_Y = 450;
-function failCard(g, lt, i, xT) {                  // xT：盖红叉的时刻
+function failCard(g, lt, i, xT) {                  // xT: time the red cross is stamped
   const k = lt - xT;
   L.card(g, -120, -165, 240, 330, { fill: C.white });
-  // 火箭：盖叉那一刻歪倒，冒烟
+  // Rocket: tips over and smokes when the cross lands
   const fall = MO.backOut(clamp(k / 0.45), 1.4) * 0.62 * (i % 2 ? -1 : 1);
   g.save(); g.beginPath(); g.rect(-116, -161, 232, 260); g.clip();
   L.rocket(g, L.F1(), 0, 72, 8.4, { fins: true, rot: fall, sx: 3.6, pal: { nose: C.mute, body: '#F1EEE8' } });
@@ -27,8 +27,8 @@ function failCard(g, lt, i, xT) {                  // xT：盖红叉的时刻
   L.stamp(g, 'x', 0, -20, k, { s: 1.25, rot: -0.1 + i * 0.08 });
 }
 function beat1(g, lt) {
-  const Qv = q(), xs = [-0.07, Qv.hj, Qv.sc - 0.05];   // 第 0 帧就是第一个红叉正砸下来
-  // 三张卡在 ② 时缩到上方一排，当背景证据
+  const Qv = q(), xs = [-0.07, Qv.hj, Qv.sc - 0.05];   // Frame 0 catches the first red cross slamming down
+  // During ②, the three cards shrink into a row at the top as background evidence
   const up = MO.cubicInOut(clamp((lt - (Qv.qian - 0.15)) / 0.45)), gone = L.outK(lt, Qv.d928 - 0.1, 0.3);
   if (gone >= 1) return;
   g.save(); g.globalAlpha = 1 - gone;
@@ -37,12 +37,12 @@ function beat1(g, lt) {
     const x = lerp(CARD_X[i], 700 + i * 150, up), y = lerp(CARD_Y, 250, up), s = lerp(1.22, 0.42, up);
     L.at(g, x, y + 4 * Math.sin(lt * 2.2 + i), k * s, h => failCard(h, lt, i, xs[i]), 0.02 * Math.sin(lt * 1.3 + i * 2));
   }
-  // 「连败三次」
+  // Three consecutive failures
   const kb = L.popK(lt, Qv.lb, 0.4, 2.6), ob = up;
   if (kb > 0 && ob < 1) { g.save(); g.globalAlpha *= 1 - ob; L.at(g, 1190, 800, kb, h => { L.kw(h, '连败三次', 0, 0, { size: 72, fill: C.red }); L.burstLines(h, 0, 0, 200, 270, clamp((lt - Qv.lb) / 0.45), { n: 10, col: C.red }); }); g.restore(); }
   g.restore();
 }
-// ---------- ② 存钱罐 → 最后一枚金币 ----------
+// ---------- ② Piggy bank → last coin ----------
 function piggy(g, shake) {
   g.save(); g.rotate(shake); g.lineWidth = 5; g.strokeStyle = C.ink; g.lineJoin = 'round';
   for (const lx of [-70, -30, 30, 70]) { g.fillStyle = C.pink; g.fill(L.rrp(lx - 16, 60, 32, 50, 10)); g.stroke(L.rrp(lx - 16, 60, 32, 50, 10)); }
@@ -61,16 +61,16 @@ function beat2(g, lt) {
   const shake = lt > Qv.qian + 0.35 && lt < Qv.zh ? 0.16 * Math.sin(lt * 42) : 0;
   if (out < 1) L.at(g, 870, 600, kp * (1 - out), h => {
     piggy(h, shake);
-    // 罐口上方一个「空」的小虚线框：只剩一枚
+    // Small dashed empty box above the opening: only one coin left
     if (lt > Qv.qian + 0.35) { h.save(); h.setLineDash([10, 9]); h.lineWidth = 4; h.strokeStyle = C.mute; h.beginPath(); h.ellipse(0, -170, 60, 22, 0, 0, TAU); h.stroke(); h.restore(); }
   });
-  // 金币：从罐口弹起，抛物线飞进第四张卡
+  // Coin: pops from the opening and follows a parabola into the fourth card
   const c0 = Qv.qian + 0.55, c1 = Qv.zh + 0.15, u = clamp((lt - c0) / (c1 - c0));
   if (lt >= c0 && u < 1) { const e = MO.sineInOut(u), x = lerp(870, LAST.x, e), y = lerp(500, LAST.y - 40, e) - Math.sin(Math.PI * e) * 260;
     g.save(); g.translate(x, y); g.rotate(lt * 9); g.scale(1, Math.abs(Math.cos(lt * 9)) * 0.8 + 0.2); g.rotate(-lt * 9); L.flatCoin(g, 0, 0, 60); g.restore(); }
   if (lt >= c0 && u >= 1 && lt < Qv.d928) L.spark(g, LAST.x + 70, LAST.y - 120, 22 * Math.abs(Math.sin((lt - c1) * 6)), C.yel);
 }
-// ---------- 第四张卡：最后一发 → 点火升空 → 成了 ----------
+// ---------- Fourth card: last launch → ignition and liftoff → success ----------
 function beat3(g, lt) {
   const Qv = q(); if (lt < Qv.zh - 0.1) return;
   const out = L.outK(lt, Qv.zz - 0.05, 0.3); if (out >= 1) return;
@@ -88,12 +88,12 @@ function beat3(g, lt) {
     L.stamp(h, 'v', 0, -10, lt - Qv.cl, { s: 1.6, rot: -0.12 });
   });
   g.restore();
-  // 日历 2008 年 9 月 28 号
+  // Calendar: September 28, 2008
   const kc = L.popK(lt, Qv.d928, 0.42, 2.2);
-  // 日历不退场：念到「整整」时它自己挪到左边，变成 ④ 的左日历（beat4 接手）
+  // Keep the calendar on screen: at the word exactly, it moves left to become ④'s left calendar (beat4 takes over)
   if (kc > 0 && lt < Qv.zz) L.at(g, 890, 560, kc, h => L.calPage(h, '2008年9月', '28', C.red, '号', { w: 280, h: 280 }), -0.05 + 0.02 * Math.sin(lt * 1.5));
 }
-// ---------- ④ 18 年后的同一天 ----------
+// ---------- ④ The same day 18 years later ----------
 const CL = { x: 820, y: 470 }, CR = { x: 1560, y: 470 };
 function beat4(g, lt) {
   const Qv = q(); if (lt < Qv.zz - 0.05) return;
@@ -104,22 +104,22 @@ function beat4(g, lt) {
   const lx = lerp(lerp(890, CL.x, mv), 760, toTop), ly = lerp(lerp(560, CL.y, mv), 330, toTop), ls = lerp(lerp(280 / 260, 1, mv), 0.62, toTop);
   const rx = lerp(CR.x, 1560, toTop), ry = lerp(CR.y, 260, toTop), rs = lerp(1, 0.55, toTop);
   L.at(g, lx, ly, kl * ls, h => { L.calPage(h, '2008年9月', '28', C.red, '号', { w: 260, h: 260 }); }, lerp(-0.05, 0, mv));
-  if (kl > 0) L.at(g, lx, ly + 230 * ls, kl * ls, h => L.rocket(h, L.F1(), 0, 50, 3.6, { fins: true, sx: 3.6 }));   // 小小的猎鹰1号
+  if (kl > 0) L.at(g, lx, ly + 230 * ls, kl * ls, h => L.rocket(h, L.F1(), 0, 50, 3.6, { fins: true, sx: 3.6 }));   // Tiny Falcon 1
   L.at(g, rx, ry, kr * rs, h => { L.calPage(h, '2026年9月', '28', C.blue, '号', { w: 260, h: 260 }); });
-  // 弧线箭头＋「整整18年」
+  // Curved arrow and exactly 18 years
   const ap = MO.cubicOut(clamp((lt - Qv.n18 + 0.25) / 0.45)) * (1 - toTop);
   L.arrow(g, lt, CL.x + 150, CL.y - 120, CR.x - 150, CR.y - 120, ap, { seed: 3, bend: 120, lw: 8 });
   const k18 = L.popK(lt, Qv.n18, 0.4, 2.4) * (1 - toTop);
   if (k18 > 0) L.at(g, (CL.x + CR.x) / 2, 250, k18, h => L.kw(h, '整整18年', 0, 0, { size: 50, fill: C.purple }));
-  // 同一天：等号＋两个「28」都被圈出来
+  // Same day: equals sign and circles around both 28s
   const ke = L.popK(lt, Qv.tyt, 0.36, 2.6) * (1 - toTop);
   if (ke > 0) { L.at(g, (CL.x + CR.x) / 2, CL.y + 30, ke, h => { h.lineCap = 'round'; for (const dy of [-18, 18]) { h.strokeStyle = C.ink; h.lineWidth = 22; h.beginPath(); h.moveTo(-54, dy); h.lineTo(54, dy); h.stroke(); h.strokeStyle = C.yel; h.lineWidth = 12; h.stroke(); } });
     L.at(g, (CL.x + CR.x) / 2, CL.y + 170, ke, h => L.kw(h, '同一天', 0, 0, { size: 48, fill: C.yel, col: C.ink }));
-    const rp = toTop > 0.02 ? 0 : clamp((lt - Qv.tyt) / 0.4);   // 日历一动就收掉圈，不留孤儿圈
+    const rp = toTop > 0.02 ? 0 : clamp((lt - Qv.tyt) / 0.4);   // Remove the circle as soon as the calendar moves; leave no orphan circle
     L.ring(g, lt, CL.x, CL.y + 40, 110, 80, rp, { seed: 11, col: C.red, lw: 7 }); L.ring(g, lt, CR.x, CR.y + 40, 110, 80, rp, { seed: 12, col: C.red, lw: 7 }); }
   g.restore();
 }
-// ---------- ⑤ 星舰第一次进入地球轨道 ----------
+// ---------- ⑤ Starship first enters Earth orbit ----------
 const EX = 1250, EY = 590, ER = 165, ORX = 370, ORY = 118, TILT = -0.16, ct = Math.cos(TILT), st = Math.sin(TILT);
 const orb = th => { const x = ORX * Math.cos(th), y = ORY * Math.sin(th); return [EX + x * ct - y * st, EY + x * st + y * ct]; };
 const orbV = th => { const x = -ORX * Math.sin(th), y = ORY * Math.cos(th); return [x * ct - y * st, x * st + y * ct]; };
@@ -150,12 +150,12 @@ function beat5(g, lt) {
   if (kk > 0) L.at(g, EX, 830, kk, h => L.kw(h, '星舰 · 第一次进入地球轨道', 0, 0, { size: 46, fill: C.blue }));
   g.restore();
 }
-// ---------- ⑥ 两分钟看完这 24 年 → 时间轴缩进顶栏 ----------
+// ---------- ⑥ These 24 years in two minutes → timeline shrinks into header ----------
 const TLX0 = 760, TLX1 = 1560, TLY = 640;
 function beat6(g, lt) {
   const Qv = q(); if (lt < Qv.lfz - 0.1) return;
   const fly = MO.cubicInOut(clamp((lt - (Qv.end - 0.62)) / 0.5));
-  const kt = L.popK(lt, Qv.lfz + 0.22, 0.45, 1.9), fade = 0;   // 标题留到转场（色带擦除），不留空帧
+  const kt = L.popK(lt, Qv.lfz + 0.22, 0.45, 1.9), fade = 0;   // Keep the title until the color-band wipe transition; no empty frame
   g.save(); g.globalAlpha = 1 - fade;
   L.at(g, 1160, 420, kt, h => {
     L.txt(h, 'SpaceX', -20, 0, 150, { w: 'Black', align: 'right' });
@@ -165,7 +165,7 @@ function beat6(g, lt) {
   const ks = L.popK(lt, Qv.lfz + 0.1, 0.4, 2.4);
   if (ks > 0) { L.stopwatch(g, 760, 250, 64, clamp((lt - Qv.lfz) / 2.2), { k: ks, col: C.teal }); L.at(g, 900, 250, ks, h => L.kw(h, '2分钟', 0, 0, { size: 44, fill: C.teal, align: 'left' })); }
   g.restore();
-  // 时间轴：念到「24年」画出来，片尾飞进顶栏
+  // Timeline: draw it at 24 years, then fly it into the header at segment end
   const tp = MO.cubicOut(clamp((lt - Qv.kw) / 0.7)); if (tp <= 0) return;
   const x0 = lerp(TLX0, L.TL.x0, fly), x1 = lerp(TLX0 + (TLX1 - TLX0) * tp, L.TL.x1, fly), y = lerp(TLY, L.TL.y, fly);
   g.save(); g.lineCap = 'round'; g.lineWidth = lerp(14, 8, fly); g.strokeStyle = C.red; g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
@@ -187,7 +187,7 @@ SCENES[ID] = {
     beat1(c, lt); beat2(c, lt); beat3(c, lt); beat4(c, lt); beat5(c, lt); beat6(c, lt);
   },
 };
-// 讲解员：第 0 帧就在（竖一根手指）
+// Presenter: present from frame 0 (holding up one finger)
 L.cast(ID, [
   { t: 0, pose: 'count', fr: [[0, 0], [TM.cue(ID, '火箭'), 1], [TM.cue(ID, '三次') - 0.05, 2]], x: 330, s: 0.66 },
   { t: TM.cue(ID, '钱只够') - 0.05, pose: 'nervous', fr: 'talk' },
@@ -197,7 +197,7 @@ L.cast(ID, [
   { t: TM.cue(ID, '两分钟') - 0.05, pose: 'wave', fr: 'loop' },
 ]);
 L.setHud(L.T0(ID) + TM.dur(ID) - 0.1);
-L.push(ID, TM.cue(ID, '成了') - 0.1, TM.cue(ID, '整整') - 0.05, 1.08, 1450, 900);   // 「成了」那一下整屏推近
+L.push(ID, TM.cue(ID, '成了') - 0.1, TM.cue(ID, '整整') - 0.05, 1.08, 1450, 900);   // Push the whole screen in at success
 L.year(ID, [[0, 2002]]);
-L.push(ID, TM.cue(ID, '星舰') - 0.1, TM.cue(ID, '两分钟') - 0.1, 1.1, 1250, 900);   // 开头的钩子：星舰入轨推近
+L.push(ID, TM.cue(ID, '星舰') - 0.1, TM.cue(ID, '两分钟') - 0.1, 1.1, 1250, 900);   // Opening hook: push in on Starship entering orbit
 })();

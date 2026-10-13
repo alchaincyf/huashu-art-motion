@@ -1,4 +1,4 @@
-"""storyboard_lint.py：模板里的示例镜头表要绿灯，一张「要点墙」镜头表要红灯，红灯理由要对。只用标准库，CI 里也跑。"""
+"""storyboard_lint.py: template example green; bullet-wall shot list red for correct reasons. Standard library only, also runs in CI."""
 import importlib.util
 import subprocess
 import sys
@@ -13,7 +13,7 @@ spec = importlib.util.spec_from_file_location("storyboard_lint", SCRIPT)
 SL = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(SL)
 
-# 一个白板片段从头撑到尾：标题开场、要点逐条出现、一镜十几秒、同一个片段 60 秒。
+# One whiteboard clip throughout: title opening, points appear, shots tens of seconds, same clip totals 60s.
 WALL = """# 镜头表
 
 | 时间段 | 画面里的物 | 它在做什么 | 镜头 | 屏上字 | 做法 |
@@ -32,6 +32,17 @@ def tags(res, level):
 
 
 class TemplateExample(unittest.TestCase):
+    def test_english_example_preserves_parser_contract(self):
+        text = (ROOT / "references" / "en" / "shot-list-template.md").read_text(encoding="utf-8")
+        head, _ = SL.find_table(text)
+        self.assertEqual(set(SL.columns(head)), {"time", "obj", "act", "cam", "text", "how"})
+        self.assertEqual(set(SL.read_lock(text)), {"画风", "色板", "角色"})
+        res = SL.lint(text)
+        self.assertNotIn("error", res)
+        self.assertEqual(len(res["rows"]), 14)
+        self.assertEqual(res["total"], 54)
+        self.assertEqual(res["verdict"], SL.GREEN, "\n".join(SL.report(res)))
+
     def test_example_is_green(self):
         res = SL.lint(TEMPLATE.read_text(encoding="utf-8"))
         self.assertNotIn("error", res)
@@ -40,7 +51,7 @@ class TemplateExample(unittest.TestCase):
         self.assertGreaterEqual(res["total"], 45)
 
     def test_blank_template_in_code_block_is_skipped(self):
-        # 模板里的空表在代码块里，lint 只认示例那张。
+        # Blank template fenced: lint only recognizes example table.
         res = SL.lint(TEMPLATE.read_text(encoding="utf-8"))
         self.assertTrue(res["rows"][0]["obj"].startswith("小满"))
 
@@ -61,7 +72,7 @@ class BulletWall(unittest.TestCase):
         red = tags(self.res, SL.RED)
         for t in ("①物", "②做什么", "③屏上字", "④开头", "⑤文字占比", "⑥时长", "做法"):
             self.assertIn(t, red, "\n".join(SL.report(self.res)))
-        self.assertIn("镜头", tags(self.res, SL.YELLOW))   # 全是「停」：⑦不报（停可以连着），整表报「没有任何镜头动作」
+        self.assertIn("镜头", tags(self.res, SL.YELLOW))   # All 停: no ⑦ (consecutive holds allowed); whole table reports no camera motion
 
     def test_points_appearing_is_not_an_action(self):
         r = self.res["rows"][1]
@@ -204,7 +215,7 @@ class TagsColumn(unittest.TestCase):
         self.assertEqual(res["rows"][0]["tags"], 4)
         self.assertIn((SL.YELLOW, "⑩标签"), {(lv, t) for lv, t, *_ in res["rows"][0]["issues"]})
         self.assertFalse(any(t == "⑩标签" for _, t, *_ in res["rows"][1]["issues"]))
-        self.assertEqual(res["rows"][0]["text"], "轻")          # 标签列不会被当成屏上字
+        self.assertEqual(res["rows"][0]["text"], "轻")          # Tag column not treated as on-screen text
 
     def test_tag_count(self):
         self.assertEqual(SL.tag_count("快 · 省 · 稳 · 准"), 4)
@@ -230,7 +241,7 @@ class NumberCardRule(unittest.TestCase):
 
 
 class StyleLock(unittest.TestCase):
-    """⑫–⑭：表前锁一种画风、一套不落蓝紫的色板、角色要么帧库要么不出脸；片段语法最多 2 种。"""
+    """⑫–⑭: one art-style lock, non-blue-purple palette, characters frame library or no visible faces; at most two clip grammars."""
     HEAD = "| 时间段 | 画面里的物 | 它在做什么 | 镜头 | 屏上字 | 做法 |\n|---|---|---|---|---|---|\n"
     LOCK = "画风：纸本插画\n色板：paper\n角色：只出手\n\n"
     ROWS = ["| 0–3 | 一只猫 | 跳上桌子 | 停 | | scenes/a.js |", "| 3–6 | 那只猫 | 打翻杯子 | 快推 | | scenes/a.js |"]
@@ -256,7 +267,7 @@ class StyleLock(unittest.TestCase):
         self.assertIn("⑬色板", {t for t, _ in self.red(res)})
         res = self.lint("画风：赛博朋克\n色板：#2A1A6E #FF3EA5 #0B0B12\n角色：无\n允许蓝紫：用户点名要赛博朋克紫\n\n")
         self.assertNotIn("⑬色板", {t for t, _ in self.red(res)})
-        res = self.lint("画风：海军蓝平涂\n色板：#0D1B2A #16293D #EEF3F6 #5CC8E0\n角色：无\n\n")   # 海军蓝色相约 210°，不算
+        res = self.lint("画风：海军蓝平涂\n色板：#0D1B2A #16293D #EEF3F6 #5CC8E0\n角色：无\n\n")   # Navy hue about 210°, excluded
         self.assertNotIn("⑬色板", {t for t, _ in self.red(res)})
 
     def test_code_drawn_character(self):
@@ -281,7 +292,7 @@ class StyleLock(unittest.TestCase):
 
 
 class CameraRhythm(unittest.TestCase):
-    """镜头列：推进去要有来有回、重音要少、「停」可以连着（2026-10-12 诺奖短片 102 秒推近约 48 次之后加）。"""
+    """Camera: inward pushes need outward returns, few accents, consecutive 停 allowed (added after 2026-10-12 Nobel short: 102s, about 48 pushes)."""
     HEAD = Rules.HEAD
     OBJ = ["一只猫 | 跳上桌子", "那只猫 | 打翻杯子", "杯子 | 摔成两半", "碎片 | 弹到地上", "猫爪 | 拨开碎片", "地板 | 映出猫影"]
 
@@ -303,7 +314,7 @@ class CameraRhythm(unittest.TestCase):
     def test_holds_can_repeat(self):
         self.assertNotIn("⑦镜头", self.issues(self.lint(["停", "停", "停", "缓推", "拉远", "横移"])))
         self.assertIn("⑦镜头", self.issues(self.lint(["快推", "快推", "快推", "横移", "拉远", "停"])))
-        self.assertNotIn("⑦镜头", self.issues(self.lint(["横移", "横移", "横移", "缓推", "拉远", "停"])))   # 调查桌一件件横移
+        self.assertNotIn("⑦镜头", self.issues(self.lint(["横移", "横移", "横移", "缓推", "拉远", "停"])))   # Pan across objects on investigation table
 
     def test_inward_synonyms(self):
         self.assertIn("⑮推近", self.issues(self.lint(["慢推", "推进", "zoom in", "停", "拉远", "横移"])))

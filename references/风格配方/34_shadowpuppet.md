@@ -1,5 +1,7 @@
 # 34_shadowpuppet · 中国皮影戏
 
+**中文** · [English](../en/style-recipes/34_shadowpuppet.md)
+
 > 来源：迁移测试 D（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/34_shadowpuppet.js`。
 
 实验时的文件名：`scenes/r3_piying.js`，每帧约 121ms（每块皮件单独离屏，multiply 次数多）。

@@ -1,5 +1,7 @@
 # y5 · 动态文字排版 / 信息图动效（kinetic typography）
 
+**中文** · [English](../en/animation-grammars/y5_kinetic_type.md)
+
 > 一句话语法：**字就是演员——每个关键词踩一个重音砸进来，主词大到一眼读完，其余的字从「槽」里升起给耳朵对位；画面里永远只有一个焦点，镜头和底纹一直在动，字落定后不动。**
 
 血统：Saul Bass《North by Northwest》（1959）片头被普遍认作第一次在长片里大规模用动态文字；2008 年后 YouTube 上的歌词/台词 kinetic type（After Effects 一代）把它变成解说视频、清单、语录、数据开场的标准语法。

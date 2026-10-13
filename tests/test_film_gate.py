@@ -1,14 +1,14 @@
-"""film_gate.py / deliver.py / qa.py 镜头事件的端到端测试。
+"""film_gate.py / deliver.py / qa.py end-to-end camera event tests.
 
-用引擎渲两支合成小片：同三张图（仓库 assets/ 里有纹理的总览图）、每镜 3 秒、硬切，
-  slow  —— 每镜匀速慢推 7.5%（翻页式 PPT 的做法）  → film_gate 应红灯
-  punch —— 每镜停住、一次 0.3 秒快推 30%、再停住    → film_gate 应绿灯
-  smooth —— 每镜停住、一次 0.9 秒缓推 25%、再停住   → film_gate 不应红灯（缓推不用改快也能过门）
-测试只在本机装了 uv、ffmpeg 和 Playwright Chromium 时跑（CI 的媒体契约任务没有这些，自动跳过）。
-测试用的语法文件写在临时复制的引擎里，不进仓库。
+Render two synthetic shorts: same three textured overview images (repository assets/), 3s shots, hard cuts,
+  slow   — constant 7.5% slow push each shot (slideshow-like) → film_gate red
+  punch  — hold, one 0.3s 30% punch, hold → film_gate green
+  smooth — hold, one 0.9s 25% slow push, hold → not red (no need to accelerate camera)
+Run only with local uv, ffmpeg, Playwright Chromium (media-contract CI lacks these, skips automatically).
+Test grammar files live in temporary engine copy, outside repository.
 """
 import os
-os.environ["FILM_GATE_MIN_S"] = "0"  # 合成片只有 9 秒；这里测判定本身，不测短片降级
+os.environ["FILM_GATE_MIN_S"] = "0"  # Synthetic film only 9s; test verdict itself, not short-film downgrading
 import json
 import os
 import shutil
@@ -20,12 +20,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / 'scripts'
 ENGINE = SCRIPTS / 'engine'
-_HERO = ROOT / 'assets' / 'showcase' / 'hero.png'   # 只在公开仓库里；私有版没有就用样例里的图表截图
+_HERO = ROOT / 'assets' / 'showcase' / 'hero.png'   # Public repository only; private version uses example chart screenshot if absent
 IMAGES = [_HERO if _HERO.exists() else ROOT / 'scripts' / 'engine' / 'examples' / 'assets' / 'K线图_横屏.png',
           ROOT / 'assets' / '全风格总览.jpg', ROOT / 'assets' / '动画语法' / 'y2_vox_总览.jpg']
 SHOT = 3.0
 
-# 测试专用语法：kind=shot 的 cue 一镜一张图，满幅（MD.cover），镜头由 data.mode 决定。
+# Test grammar: kind=shot cue, one full-bleed image (MD.cover) per shot; camera controlled by data.mode.
 PROBE = r'''
 CLIPS._gate_probe = { draw(c, t, ctx) {
   const shots = ctx.of('shot'); let i = 0;
@@ -40,7 +40,7 @@ CLIPS._gate_probe = { draw(c, t, ctx) {
 } };
 '''
 
-# 整片模式（qa --project --film gateprobe）：三段「停住→0.3 秒快推→停住」，第四段中间闪一下白。画面是种子随机的色块。
+# Whole-film mode (qa --project --film gateprobe): three hold→0.3s punch→hold sections, fourth flashes white mid-shot. Seeded-random color blocks.
 PROBE_FILM = r'''
 const tex = (c, seed) => { const r = U.rng(seed); c.fillStyle = '#1d2330'; c.fillRect(0, 0, 1920, 1080);
   for (let i = 0; i < 600; i++) { c.fillStyle = `hsl(${r() * 360},60%,${30 + r() * 50}%)`; const s = 20 + r() * 120; c.fillRect(r() * 1920, r() * 1080, s, s * (0.3 + r())); } };
@@ -58,7 +58,7 @@ def run(*args, cwd=None):
     return subprocess.run(['uv', 'run', '--quiet', *map(str, args)], cwd=cwd, capture_output=True, text=True, timeout=900)
 
 
-W = {}   # 模块级夹具：引擎副本、spec、渲好的两支片
+W = {}   # Module fixtures: engine copy, spec, rendered two films
 
 
 def setUpModule():
@@ -117,14 +117,14 @@ class FilmGateTests(unittest.TestCase):
         self.assertIsNone(res['explain']['fix'])
 
     def test_smooth_push_is_not_red(self):
-        # 0.9 秒缓推 25% 不用改成快推也能过门：门禁量的是运动量，不是速度
+        # 0.9s 25% slow push can pass without becoming punch-in: gate measures motion amount, not speed
         code, res = gate(W['smooth'] / 'smooth.mp4')
         self.assertEqual(code, 0, res['explain'])
         self.assertNotEqual(res['gate_light'], 'red')
         self.assertGreaterEqual(res['fast_ratio'], 0.035)
 
     def test_short_clip_only_warns(self):
-        # 短于 20 秒的片段读数没标定过：同一支慢推片默认只亮黄灯、不拦
+        # Readings for clips under 20s uncalibrated: same slow-push film default yellow only, nonblocking
         env = dict(os.environ, FILM_GATE_MIN_S='20')
         r = subprocess.run(['uv', 'run', '--quiet', str(SCRIPTS / 'film_gate.py'), str(W['slow'] / 'slow.mp4'), '--no-template'],
                            capture_output=True, text=True, timeout=900, env=env)
@@ -162,15 +162,15 @@ class DeliverTests(unittest.TestCase):
         self.assertTrue((out / 'punch.mp4').is_file())
         doc = (out / '交付说明.md').read_text()
         self.assertIn('没派审片', doc)
-        self.assertIn('没跑', doc)                       # 没跑 qa
+        self.assertIn('没跑', doc)                       # QA not run
         self.assertIn('960×540', doc)
         self.assertIn(f'{SHOT * len(IMAGES):.2f}s', doc)
         self.assertIn('快速运动帧占比', doc)
         self.assertEqual(run(SCRIPTS / 'deliver.py', '--verify', out / '交付说明.md').returncode, 0)
-        # 改了事实段 → verify 报出来
+        # Modified facts → verify reports it
         (out / '交付说明.md').write_text(doc.replace('没派审片', '已通过独立审片'))
         self.assertNotEqual(run(SCRIPTS / 'deliver.py', '--verify', out / '交付说明.md').returncode, 0)
-        # 只在制作说明段补主观描述 → verify 仍然通过
+        # Subjective additions only in 制作说明 → verify still passes
         (out / '交付说明.md').write_text(doc + '\n补充：节奏按口播停顿。\n')
         self.assertEqual(run(SCRIPTS / 'deliver.py', '--verify', out / '交付说明.md').returncode, 0)
 
@@ -198,7 +198,7 @@ class DeliverTests(unittest.TestCase):
 
 
 class QaCameraEventTests(unittest.TestCase):
-    """整片模式下段内中位数≈0，一次 0.3 秒快推以前会被整串记成跳变；现在记成一个镜头事件。闪一下白仍是跳变。"""
+    """Whole-film segment median≈0: a 0.3s punch formerly counted as jump run, now camera event. White flash remains jump."""
     @classmethod
     def setUpClass(cls):
         out = Path(W['tmp'].name) / 'qa_film'
@@ -213,7 +213,7 @@ class QaCameraEventTests(unittest.TestCase):
             self.assertEqual(len(s['camera_events_lt']), 1, s)
             t0, t1 = s['camera_events_lt'][0]
             self.assertLessEqual(t1 - t0, 0.35 + 2 / 30)
-            self.assertTrue(t0 <= 1.5 and t1 >= 1.2, s)                 # 落在快推那 0.3 秒上
+            self.assertTrue(t0 <= 1.5 and t1 >= 1.2, s)                 # Falls within 0.3s punch-in
 
     def test_single_frame_flash_is_still_spike(self):
         s = self.segs['flash']

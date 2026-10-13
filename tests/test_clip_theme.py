@@ -1,10 +1,10 @@
-"""全片主题色板（spec.theme → ctx.pal）与 y4 停用代码画的小人：
+"""Whole-film palettes (spec.theme → ctx.pal) and y4 code-drawn character removal:
 
-  色板名解析成完整 6 键；{name, 覆盖}用那套补缺的键；名字写错、对象缺键 → 启动失败，报错里列出可用名字 / 缺的键；
-  色板真的落到画面上（t3 的底色）；不写 theme 时 y1 的底不再是靛紫渐变；
-  y4 没有角色帧库（缺 data.character 或写预设名）→ 启动失败，报错说清楚；同一时刻渲两次逐像素一致。
+  Palette names resolve to six keys; {name, overrides} fills missing keys from preset; wrong name/missing keys → startup failure listing available names/missing keys;
+  Actual visual palette application (t3 background); y1 without theme no longer has indigo gradient;
+  y4 without frame library (missing data.character/preset name) → clear startup error; two renders at same time pixel-identical.
 
-需要 uv 和 Playwright Chromium（没装就跳过，和 test_clip_world 一样）；像素只用 Pillow 读。
+Requires uv and Playwright Chromium (skip if absent, like test_clip_world); Pillow reads pixels.
 """
 import colorsys
 import json
@@ -19,7 +19,7 @@ ENGINE = ROOT / 'scripts' / 'engine'
 EX = ENGINE / 'examples'
 W = {}
 
-# 在一张空页里加载 lib/palettes.js，逐个调用 PAL.resolve，结果（或报错信息）按 JSON 打出来
+# Load lib/palettes.js on blank page, call PAL.resolve for each case, print results/errors as JSON
 RESOLVE = r'''
 import json, sys
 from playwright.sync_api import sync_playwright
@@ -42,7 +42,7 @@ def uv(args, timeout=600):
 
 
 def render(spec, out, stills):
-    """渲几张静帧；返回 (CompletedProcess, {t: png 路径})。spec 是 dict（写进临时目录，图片路径要是绝对路径）或现成的 json 路径。"""
+    """Render stills; return (CompletedProcess, {t: png path}). spec is dict (written temporarily, image paths absolute) or existing JSON path."""
     if isinstance(spec, dict):
         p = Path(W['tmp'].name) / (out.name + '.json'); p.write_text(json.dumps(spec, ensure_ascii=False), encoding='utf-8'); spec = p
     r = uv([str(ENGINE / 'render.py'), '--spec', str(spec), '--stills', ','.join(map(str, stills)), '--out', str(out)])
@@ -50,7 +50,7 @@ def render(spec, out, stills):
 
 
 def absolutize(spec):
-    """样例 spec 拷到临时目录渲：帧库、图片的相对路径改成绝对路径。"""
+    """Render copied example spec in temporary directory: make frame/image paths absolute."""
     spec = json.loads(json.dumps(spec))
     ch = (spec.get('data') or {}).get('character')
     if isinstance(ch, dict) and isinstance(ch.get('frames'), dict):
@@ -62,7 +62,7 @@ def absolutize(spec):
 
 
 def ex(name):
-    if name == 'y4_storytime':   # 样例里的帧库是占位路径；测试用作者本人的帧（只给测试用，见 fixtures 里的说明）
+    if name == 'y4_storytime':   # Example frame paths are placeholders; tests use author's frames (test-only, see fixtures notes)
         return json.loads((ROOT / 'tests' / 'fixtures' / 'y4_storytime_test_frames.json').read_text(encoding='utf-8'))
     return json.loads((EX / f'{name}.json').read_text(encoding='utf-8'))
 
@@ -86,7 +86,7 @@ def setUpModule():
         't3_override': render({**t3, 'theme': {'name': 'snow', 'bg': '#102030'}}, tmp / 't3_override', [6.5]),
         'y1_default': render({k: v for k, v in ex('y1_kurzgesagt').items() if k != 'theme'}, tmp / 'y1_default', [0.2]),
         'bad_name': render({**t3, 'theme': 'purple'}, tmp / 'bad_name', [1]),
-        'bad_obj': render({**ex('y5_kinetic_type'), 'theme': {'bg': '#000000', 'ink': '#ffffff'}}, tmp / 'bad_obj', [1]),   # t3 把这种对象当旧主题写法，换 y5 测
+        'bad_obj': render({**ex('y5_kinetic_type'), 'theme': {'bg': '#000000', 'ink': '#ffffff'}}, tmp / 'bad_obj', [1]),   # t3 treats this object as legacy theme; test with y5
         't3_legacy_obj': render({**t3, 'theme': {'bg': '#000000', 'ink': '#ffffff'}}, tmp / 't3_legacy_obj', [6.5]),
         'y4_none': render({k: v for k, v in y4.items() if k != 'data'}, tmp / 'y4_none', [1]),
         'y4_preset': render({**y4, 'data': {'character': 'neutral'}}, tmp / 'y4_preset', [1]),
@@ -115,12 +115,12 @@ class Resolve(unittest.TestCase):
     def test_name_plus_override_fills_from_that_palette(self):
         r = W['resolve'][1]['ok']
         self.assertEqual(r['accent'], '#ABCDEF')
-        self.assertEqual(r['bg'], '#121417')                              # 其余键来自 ink 那套
+        self.assertEqual(r['bg'], '#121417')                              # Other keys from ink palette
         self.assertEqual(r['accent2'], '#5FB3A1')
 
     def test_full_object_without_name_is_accepted(self):
         r = W['resolve'][2]['ok']
-        self.assertEqual(r['bg'], '#000000')                              # #rgb 规整成 #RRGGBB
+        self.assertEqual(r['bg'], '#000000')                              # Normalize #rgb to #RRGGBB
         self.assertEqual(r['accent2'], '#00FF00')
 
     def test_unknown_name_lists_available(self):

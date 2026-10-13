@@ -1,8 +1,8 @@
-// S08 · 财经图表（t3 语法，经济学人式）：回收之后发射越来越密；2025 年猎鹰9号 165 次；一枚助推器飞了 37 次。
-// 版式先出（顶红线＋红色小旗＋结论标题＋单位副标题＋来源行）→ 网格从左往右画出 → 柱子从 0 依次长出 →「2025年」高亮、其余变灰 →
-// 2025 柱在「165」念完时落定 → 标注「平均两天多一发」→ 文字标注「比全世界其他火箭加起来还多」（不画没有出处的对比数字）→
-// 「有一枚助推器」版式不动、内容横推：助推器图标＋飞行计数一格格涨到 37，在「37」念完时落定。
-// 数据（事实核对表 16–18）：2017 18、2022 61、2023 96、2024 134、2025 165（2018–2021 只有维基汇总，不上图，用「…」断开）。真实数据，不加示意角标。
+// S08 · Economist-style finance chart (t3): launches increase after reuse; 165 Falcon 9 launches in 2025; one booster flew 37 times.
+// Layout first (top red line + flag + conclusion title + unit subtitle + source) → grid left-to-right → bars grow from 0 → 2025 highlighted, others gray →
+// 2025 bar settles as 165 ends → average one launch every two-plus days → text compares with all other rockets combined (no unsourced comparison figures) →
+// One-booster cue: layout stays fixed, content slides horizontally to booster icon + flight counter rising stepwise to 37, settling as 37 ends.
+// Data (fact-check rows 16–18): 2017 18, 2022 61, 2023 96, 2024 134, 2025 165 (2018–2021 only Wikipedia totals, omitted with … gap). Real data, no illustrative badge.
 (() => {
 const W = 1920, H = 1080, ID = 's08';
 const { clamp, lerp } = U;
@@ -17,14 +17,14 @@ const Q = {
   one: TM.cue(ID, '有一枚助推器'), n37: TM.cue(ID, '37次'), land37: TM.end(ID, '37') - 0.08, dur: TM.dur(ID),
 };
 
-// ---- 图表几何 ----
+// ---- Chart geometry ----
 const DATA = [{ l: '2017', v: 18 }, { l: '…', v: null }, { l: '2022', v: 61 }, { l: '2023', v: 96 }, { l: '2024', v: 134 }, { l: '2025', v: 165 }];
 const F = { x: 150, y: 300, w: 1590, h: 460 };
 const TICKS = [0, 50, 100, 150, 200], yS = CH.lin(0, 200, F.y + F.h, F.y);
 const SLOT = (F.w - 90) / DATA.length, XS = DATA.map((_, i) => F.x + SLOT * (i + 0.5)), BW = 132;
 const HI = 5;
 
-// 一根柱：从 0 长出（quintOut）＋数值同步计数（等宽数字）
+// Bar grows from 0 (quintOut) + synchronized monospaced count.
 function bar(c, i, p, col, { big = false } = {}) {
   const d = DATA[i]; if (p <= 0) return yS(0);
   const e = MO.quintOut(clamp(p)), v = d.v * e, y = yS(v), x = XS[i];
@@ -33,7 +33,7 @@ function bar(c, i, p, col, { big = false } = {}) {
   TY.tabular(c, TY.fmt(v, 0), x, y - (big ? 18 : 14), { align: 'center' }); c.restore();
   return y;
 }
-// 版式：顶红线、小旗、标题（可换）、副标题、来源
+// Layout: top red line, flag, changeable title, subtitle, source.
 function header(c, lt, title, sub, src, a = 1, dy = 0) {
   c.save(); c.globalAlpha *= a; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
   const tp = MO.quintOut(seg(lt, 0.05, 0.5)); c.globalAlpha *= tp; c.fillStyle = INK; c.font = f(60, CNB, '700 '); c.fillText(title, 96, 168 + (1 - tp) * 18 + dy);
@@ -41,7 +41,7 @@ function header(c, lt, title, sub, src, a = 1, dy = 0) {
   c.globalAlpha = a * seg(lt, 0.2, 0.6); c.font = f(26, CN); c.fillStyle = SRC; c.fillText(src, 96, 900);
   c.restore();
 }
-// 标注：红点弹出 → 引线画出 → 文字淡入
+// Annotation: red dot pops → leader draws → text fades in.
 function note(c, k, x, y, tx, ty, lines) {
   if (k <= 0) return;
   const s = MO.spring(k, { duration: 0.45, bounce: 0.25 }), lp = MO.quintOut(seg(k, 0.12, 0.45)), fp = MO.quintOut(seg(k, 0.3, 0.7));
@@ -53,7 +53,7 @@ function note(c, k, x, y, tx, ty, lines) {
   c.fillStyle = SUB; c.font = f(30, CN); c.fillText(lines[1], tx - 14 - (1 - fp) * 16, ty + 62);
   c.restore();
 }
-// 助推器（Falcon 9 一级，着陆腿展开）：经济学人式线描图标
+// Booster (Falcon 9 stage 1, legs deployed): Economist-style outline icon.
 const BOOST = RK.falcon9({ stage: 'booster', legs: 1, fins: 1 });
 function booster(c, x, y, s) {
   c.save(); c.translate(x, y); c.scale(s * 1.45, s);
@@ -62,7 +62,7 @@ function booster(c, x, y, s) {
   c.restore();
   RK.at(c, x, y, 1, 0, g => { g.scale(s * 1.45, s); g.lineWidth = 2.6 / s; g.strokeStyle = INK; g.lineJoin = 'round'; for (const q of BOOST.parts) if (q.k === 'body') g.stroke(q.p); });
 }
-// 计数标记：小火箭（圆角箭体＋尖头）
+// Count marker: small rocket (rounded body + pointed nose).
 function mark(c, x, y, s, col) {
   c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = col;
   c.beginPath(); c.moveTo(-11, 0); c.lineTo(-11, -52); c.quadraticCurveTo(-11, -70, 0, -78); c.quadraticCurveTo(11, -70, 11, -52); c.lineTo(11, 0); c.closePath(); c.fill();
@@ -78,19 +78,19 @@ SCENES[ID] = {
   },
   draw(c, lt) {
     c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, W, H);
-    // 顶红线＋小旗（全段不动）
+    // Top red line + flag (fixed throughout segment).
     const p0 = MO.quintOut(seg(lt, 0, 0.45)); c.fillStyle = RED; c.fillRect(0, 0, W * p0, 8); CH.tag(c, 96, 70, 96 * p0, 22, RED);
-    // 相机：匀速慢推 1 → 1.03（图表镜头的呼吸）
+    // Camera: constant slow push 1 → 1.03 (chart-shot breathing).
     const z = 1 + 0.03 * lt / (Q.dur + 0.6);
     c.save(); c.translate(960, 560); c.scale(z, z); c.translate(-960, -560);
-    // 内容横推：「有一枚助推器」时图表左移出、助推器面板右侧推入（版式不动）
+    // Horizontal content push: at booster cue chart exits left, booster panel enters right; layout stays fixed.
     const sw = MO.bezier(0.7, 0, 0.2, 1)(seg(lt, Q.one - 0.05, Q.one + 0.6));
-    // ---------- 第一页：年发射次数 ----------
+    // ---------- Page one: annual launches ----------
     if (sw < 1) {
       header(c, lt, '猎鹰火箭的发射越来越密', '猎鹰9号与重型猎鹰年发射次数，次（2025 年全部为猎鹰9号）', '来源：SpaceNews、CBS News、CNBC、Ars Technica', 1 - seg(sw, 0, 0.5));
       c.save(); c.translate(-sw * W, 0);
       CH.grid(c, F, TICKS, yS, seg(lt, 0.35, 0.95), { col: GRID, zeroCol: INK, font: `400 30px ${NUM}`, labelCol: '#5b666b', side: 'right', lw: 1.5, zeroLw: 3, labelDy: -10 });
-      // x 轴：年份；「…」是断开标记（中间年份未画）
+      // x axis: years; … marks omitted years.
       const xp = seg(lt, 0.5, 1.0), hiq = MO.smooth(seg(lt, Q.y25, Q.y25 + 0.35));
       DATA.forEach((d, i) => {
         const q = MO.quintOut(MO.lagged(i, DATA.length, xp, 0.1)); if (q <= 0) return;
@@ -105,17 +105,17 @@ SCENES[ID] = {
         }
         c.restore();
       });
-      // 「2025年」：这一格先亮出一道浅色高亮带
+      // 2025 cue: pale highlight band appears first.
       if (hiq > 0) { c.save(); c.globalAlpha = hiq * (0.55 + 0.1 * Math.sin(lt * 2.4)); c.fillStyle = 'rgba(227,18,11,0.07)'; c.fillRect(XS[HI] - SLOT / 2 + 8, F.y - 10, SLOT - 16, F.h + 10); c.restore(); }
-      // 柱：2017、2022–2024 在「越来越密」依次长出；「2025年」后变灰；2025 在「165」落定
+      // Bars: 2017 and 2022–2024 grow in sequence at density cue, gray after 2025 cue; 2025 settles at 165.
       const bp = seg(lt, Q.dense - 0.1, Q.dense + 1.25), dimP = MO.smooth(seg(lt, Q.y25 + 0.15, Q.y25 + 0.6));
       [0, 2, 3, 4].forEach((i, k) => bar(c, i, MO.lagged(k, 4, bp, 0.22), CH.mixHex(BLUE, DIM, dimP)));
       const g0 = Q.land - 1.5, top = bar(c, HI, seg(lt, g0, Q.land) ** 0.8, BLUE, { big: true });
-      // 标注：平均两天多一发（365 ÷ 165 ≈ 2.2，算术）
+      // Annotation: average every two-plus days (365 ÷ 165 ≈ 2.2, arithmetic).
       note(c, lt - Q.avg, XS[HI] - BW / 2, top + 4, 1060, 352, ['平均两天多一发', '365 天 ÷ 165 次 ≈ 2.2 天']);
-      // 关键数据点的脉冲环（每 1.3s 一次，持续微动）
+      // Key-point pulse ring every 1.3s (continuous micro-motion).
       if (lt > Q.avg + 0.8) { const q = ((lt - Q.avg - 0.8) / 1.3) % 1; c.save(); c.strokeStyle = RED; c.globalAlpha = (1 - q) * 0.7; c.lineWidth = 3; c.beginPath(); c.arc(XS[HI] - BW / 2, top + 4, 12 + q * 40, 0, 7); c.stroke(); c.restore(); }
-      // 文字标注：比全世界其他火箭加起来还多（只用文字，不画对比数字）
+      // Text compares with all other rockets combined (words only, no comparison figures).
       const mk = lt - Q.more;
       if (mk > 0) {
         const fp = MO.quintOut(seg(mk, 0, 0.45)), tx = 1046, ty = 478;
@@ -127,13 +127,13 @@ SCENES[ID] = {
       }
       c.restore();
     }
-    // ---------- 第二页：一枚助推器飞了 37 次 ----------
+    // ---------- Page two: one booster, 37 flights ----------
     if (sw > 0) {
       header(c, lt - Q.one - 0.1, '一枚助推器的飞行次数', '同一枚猎鹰9号一级助推器，次', '来源：Space.com、Spaceflight Now', seg(sw, 0.4, 1));
       c.save(); c.translate((1 - sw) * W, 0);
       const bx = 300, by = 862;
       booster(c, bx, by + MO.float(lt, 3, 4.1) * 0, 11.6);
-      // 计数：37 个小火箭标记一格格出现，与大数字同一条缓动，在「37」念完时落定
+      // 37 rocket markers appear stepwise with same easing as large count, settling as 37 ends.
       const c0 = Q.one + 0.55, cp = MO.sineInOut(seg(lt, c0, Q.land37)), n = Math.floor(cp * 37 + 1e-6);
       for (let i = 0; i < 37; i++) {
         const col = i % 10, row = Math.floor(i / 10), x = 560 + col * 84, y = 448 + row * 128;
@@ -144,11 +144,11 @@ SCENES[ID] = {
           mark(c, x, y, s * (1 + wave), i === 36 ? RED : BLUE);
         }
       }
-      // 后段：一道浅光沿标记扫过（持续微动）
+      // Later: faint light sweeps across markers (continuous micro-motion).
       if (lt > Q.land37 + 0.3) { const sp = ((lt - Q.land37 - 0.3) * 0.55) % 1.4;
         const gx = lerp(480, 1400, sp); const g = c.createLinearGradient(gx - 60, 0, gx + 60, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
         c.fillStyle = g; c.fillRect(gx - 60, 360, 120, 420); }
-      // 大数字
+      // Large number.
       const v = Math.round(cp * 37);
       c.save(); c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.globalAlpha = seg(lt, c0 - 0.2, c0 + 0.1);
       c.fillStyle = SUB; c.font = f(36, CN); c.fillText('已经飞了', 1724, 500);
@@ -162,6 +162,6 @@ SCENES[ID] = {
   },
 };
 
-// 进入本段：经济学人式面板横推，品牌红竖条领路（新面板推入时就在搭版式）
+// Entry: Economist-style panel push led by vertical brand-red strip (layout assembles during entrance).
 ERAS.find(e => e.id === ID).transition = { type: 'slidePush', dur: 0.55, bar: RED };
 })();

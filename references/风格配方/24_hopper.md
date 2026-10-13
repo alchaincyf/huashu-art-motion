@@ -1,5 +1,7 @@
 # 24_hopper · 1942 霍珀美国现实主义（硬光块面）
 
+**中文** · [English](../en/style-recipes/24_hopper.md)
+
 > 来源：迁移测试 B（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/24_hopper.js`。
 
 实验时的文件名：`scenes/c3_hopper.js`（约 150 行）。每帧中位 13ms（首帧 54ms）；帧差 6.0%。

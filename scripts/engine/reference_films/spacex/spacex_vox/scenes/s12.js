@@ -1,7 +1,7 @@
-// S12 · 接下来（还没发生的事一律是硫酸纸上的铅笔草图＋虚线，和桌上已发生的网点照片区分开）。
-// ①草图：发射塔两只臂夹住飞船（铅笔一笔笔扫出来）；②草图：两艘星舰尾对尾，红虚线箭头「加油」；
-// ③地球剪纸到月球网点照片之间，红虚线描出航线「重返月球」；④「再往后，是火星」：红线从月球一路牵到桌子最右边的一颗红色网点火星；
-// ⑤口播结束，相机长尾拉到全桌——24 年的证据铺满整张桌子，「24年」黑标签再落一次（回扣开场）。
+// S12 · Next (future events use pencil sketches and dashed lines on tracing paper, distinct from halftone photos of past events).
+// ① Sketch: tower arms catch spacecraft (pencil reveals stroke by stroke); ② sketch: two Starships tail-to-tail, dashed red refueling arrow;
+// ③ Dashed red return-to-Moon route from paper-cut Earth to lunar halftone photo; ④ Later, Mars: red thread leads from Moon to red halftone Mars at far right of desk;
+// ⑤ Narration ends, long-tail pullback to whole desk — 24 years of evidence fills it, 24-years black label lands again (opening callback).
 (() => {
 const ID = 's12', V = VOX, C = V.C, F = V.F, PH = V.PH, TAU = Math.PI * 2;
 const { clamp, lerp } = U, seg = MO.seg, step = V.step;
@@ -10,24 +10,24 @@ const cue = k => TM.cue(ID, k), G = k => V.cue(ID, k), t0 = V.t0(ID);
 const T = { catch: '用筷子夹住飞船', fuel: '太空加油', moon: '重返月球', mars: '火星', plan: '计划', earth: '地球' };
 const GR = 'rgba(52,52,48,.95)', NONE = 'rgba(0,0,0,0)';
 const pencil = { body: 'rgba(80,80,74,.10)', dark: 'rgba(80,80,74,.25)', nose: 'rgba(255,255,255,.18)', engine: 'rgba(80,80,74,.3)', window: NONE, trunk: NONE, flap: 'rgba(80,80,74,.2)', tiles: 'rgba(80,80,74,.12)', truss: 'rgba(80,80,74,.25)', line: GR, lw: 0.95 };
-// 硫酸纸＋铅笔草图（缓存），用之字形「揭开」模拟一笔笔画出来
+// Cached tracing paper and pencil sketch, zigzag reveal simulates drawing strokes
 const sheet = (key, w, h) => V.spr('s12sh' + key, w, h, (g) => { g.fillStyle = 'rgba(248,248,242,.55)'; CL.tornRect(g, w, h, key.length * 17, 4); g.fill(); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 2; g.stroke(); }, { sh: { blur: 6, y: 3, col: 'rgba(50,40,25,.18)' } });
 const trace = (key, w, h, draw, dash = [14, 9]) => V.spr('s12' + key, w, h, (g) => { g.save(); g.setLineDash(dash); draw(g, w, h); g.restore(); }, { shadow: false });
 const reveal = (g, sp, w, h, q, rows = 7, bx = [-w / 2, -h / 2, w, h]) => { if (q <= 0) return; if (q >= 1) { V.blit(g, sp); return; } const pts = DG.zigzag(bx[0], bx[1], bx[2], bx[3], rows), L = DG.cum(pts), m = DG.revealMask(pts, L, L[L.length - 1] * q, h / rows * 1.25); g.save(); g.clip(m); V.blit(g, sp); g.restore(); if (q < 1) { const tip = DG.pointAt(pts, L, L[L.length - 1] * q); g.save(); g.translate(tip[0], tip[1]); g.rotate(-0.6); g.fillStyle = '#d7b46a'; g.fillRect(0, -6, 70, 12); g.fillStyle = '#3a3a36'; g.beginPath(); g.moveTo(0, -6); g.lineTo(-16, 0); g.lineTo(0, 6); g.fill(); g.restore(); } };
 V.item({ key: 's12bg', ...xy(1180, 1120), r: 0.008, z: 5, at: t0 - 1, draw(g) { V.blit(g, V.spr('s12bg', 1700, 1250, (gg, w, h) => V.paper(gg, w, h, 97, { col: '#d9cba9', amp: 6, age: 0.3 }), { sh: { blur: 14, y: 8 } })); V.tape(g, -790, -590, -0.6, 150); V.tape(g, 790, -590, 0.55, 150); } });
-// ① 塔夹飞船
+// ① Tower catches spacecraft
 const S1W = 760, S1H = 980, S1 = xy(600, 1000), S1t = [-0.25 + t0, G('飞船') + 0.1];
-const sk1 = () => trace('catch', S1W, S1H, (g, w, h) => {   // 铅笔实线：塔（下半截画出纸外）、两只臂合拢、臂间夹着一艘飞船
+const sk1 = () => trace('catch', S1W, S1H, (g, w, h) => {   // Solid pencil: tower (lower part extends off paper), two closed arms holding spacecraft
   const s = 6.2, base = h + 220, tx = w * 0.68; RK.at(g, tx, base, s, 0, q => RK.fill(q, RK.tower({ armY: 100, open: 0, len: 28 }), pencil));
   RK.at(g, tx - 22 * s, base - 100 * s + 40 * s, s, 0, q => RK.fill(q, RK.ship(), pencil));
-  g.strokeStyle = GR; g.lineWidth = 3; g.strokeRect(tx, base - 146 * s, 12 * s, 146 * s);   // 塔身外框连续描一遍（不再断成几段）
+  g.strokeStyle = GR; g.lineWidth = 3; g.strokeRect(tx, base - 146 * s, 12 * s, 146 * s);   // Trace tower outline continuously (no fragmented segments)
   g.strokeStyle = 'rgba(52,52,48,.35)'; g.lineWidth = 2; for (let k = 0; k < 14; k++) { const y = base - 100 * s - 30 + k * 4; g.beginPath(); g.moveTo(tx - 28 * s, y); g.lineTo(tx - 28 * s + 30, y - 18); g.stroke(); }
 }, []);
 V.item({ key: 's12s1', ...S1, r: -0.025, z: 12, at: t0 - 1, draw(g, T_) {
   V.blit(g, sheet('catch', S1W, S1H)); V.tape(g, -S1W / 2 + 40, -S1H / 2 + 14, -0.6, 110); V.tape(g, S1W / 2 - 40, -S1H / 2 + 14, 0.55, 110); reveal(g, sk1(), S1W, S1H, MO.cubicOut(seg(step(T_), S1t[0], S1t[1])), 6, [-200, -S1H / 2, 460, S1H]);
   g.save(); g.translate(-60, -S1H / 2 + 70); g.rotate(0.02); V.label(g, T.catch, 46, { bg: C.card, col: C.ink, n: V.nTyped(T_, G('用筷子'), 12) }); g.restore();
 } });
-// ② 两艘星舰尾对尾加油
+// ② Two Starships refuel tail-to-tail
 const S2W = 640, S2H = 300, S2 = xy(1360, 720), S2t = [G('飞船') - 0.05, G('加油') + 0.15];
 const sk2 = () => trace('fuel', S2W, S2H, (g, w, h) => { RK.at(g, w / 2 - 6, h / 2, 5.0, -Math.PI / 2, q => RK.fill(q, RK.ship(), pencil)); RK.at(g, w / 2 + 6, h / 2, 5.0, Math.PI / 2, q => RK.fill(q, RK.ship(), pencil)); });
 const FA = V.handPts('s12fa', [[-150, -96], [-40, -122], [80, -110], [150, -80]], { amp: 1.4, seed: 4 });
@@ -36,7 +36,7 @@ V.item({ key: 's12s2', ...S2, r: 0.02, z: 12, at: G('飞船') - 0.4, enter: { fr
   g.save(); g.setLineDash([18, 12]); V.pen(g, FA, MO.sineInOut(seg(st, G('加油') - 0.1, G('加油') + 0.3)), { lw: 7 }); g.restore();
   if (st >= G('加油')) { g.save(); g.translate(150, -80); g.rotate(0.5); g.strokeStyle = C.red; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(-26, -18); g.lineTo(0, 0); g.lineTo(-26, 18); g.stroke(); g.restore(); g.save(); g.translate(0, -170); V.label(g, T.fuel, 46, { bg: C.card, col: C.ink, n: V.nTyped(T_, G('加油'), 10) }); g.restore(); }
 } });
-// ③ 地球 → 月球
+// ③ Earth → Moon
 const ER = 165, MR = 105, EP = xy(1000, 1480), MP = xy(1660, 1290);
 const earth = () => V.cutout('s12earth', ER * 2, ER * 2, (g) => PH.globe(g, ER, ER, ER, 4), { cell: 4, edge: 5 });
 const moon = () => V.cutout('s12moon', MR * 2, MR * 2, (g) => PH.moon(g, MR, MR, MR, 31, '#e0e0e0'), { cell: 5, edge: 6 });
@@ -48,7 +48,7 @@ V.item({ key: 's12route', x: (EP.x + MP.x) / 2, y: EP.y - 150, z: 13, rad: 900, 
   g.save(); g.translate(-(EP.x + MP.x) / 2, -(EP.y - 150)); g.setLineDash([22, 16]); CL.string(g, ROUTE.p, ROUTE.L, Lq, { col: C.red, lw: 7, shadow: null }); g.setLineDash([]);
   const tip = DG.pointAt(ROUTE.p, ROUTE.L, Lq); g.fillStyle = C.red; g.beginPath(); g.arc(tip[0], tip[1], 13, 0, TAU); g.fill(); g.restore();
 } });
-// ④ 红线牵到桌子最右边的火星
+// ④ Red thread leads to Mars at far right of desk
 const MARS = xy(2150, 880), MRR = 140;
 const mars = () => V.cutout('s12mars', MRR * 2, MRR * 2, (g) => PH.moon(g, MRR, MRR, MRR, 47, '#d6d6d6'), { cell: 6, edge: 7, ink: C.red2 });
 const SM = (() => { const a = [MP.x + MR * 0.7, MP.y - MR * 0.7], b = [MARS.x - MRR * 0.75, MARS.y + MRR * 0.6], pts = CL.stringPts(a, b, 0.06); return { a, b, pts, cum: DG.cum(pts) }; })();
@@ -57,12 +57,12 @@ V.item({ key: 's12str', x: (SM.a[0] + SM.b[0]) / 2, y: (SM.a[1] + SM.b[1]) / 2, 
   const q = MO.sineInOut(seg(step(T_), G('再往后') - 0.05, G('再往后') + 0.75)); g.save(); g.translate(-(SM.a[0] + SM.b[0]) / 2, -(SM.a[1] + SM.b[1]) / 2);
   CL.string(g, SM.pts, SM.cum, SM.cum[SM.cum.length - 1] * q, { col: C.red, lw: Math.max(5, 2.4 / V.zoom) }); V.pin(g, SM.a[0], SM.a[1]); if (q >= 1) V.pin(g, SM.b[0], SM.b[1]); g.restore();
 } });
-// ⑤ 全桌：「24年」再落一次
+// ⑤ Whole desk: 24 years lands again
 V.item({ key: 's12big', x: 5750, y: 1975, r: 0.012, z: 60, rad: 3000, at: t0 + TM.cue(ID, '火星') + 0.85, enter: { drop: 0.3, dur: 0.3 }, draw(g) { g.scale(0.68, 0.68);
   V.blit(g, V.spr('s12big', 1500, 640, (gg, w, h) => { gg.save(); CL.tornRect(gg, w, h, 57, 6); gg.fillStyle = C.black; gg.fill(); gg.restore(); V.text(gg, '24', 120, h / 2 + 205, 560, F.num, C.yel); V.text(gg, '年', 120 + 470, h / 2 + 200, 420, F.heavy, C.paper); }, { S: 0.6, pad: 40, sh: { blur: 30, y: 20 } }));
 } });
 
-// ---------- 相机 ----------
+// ---------- Camera ----------
 const at = (x, y, z, sy) => V.at(X0 + x, Y0 + y, z, sy);
 const OV0 = V.overview(), OV = { ...OV0, y: OV0.y + 220, z: OV0.z * 0.92 }, vEnd = TM.vo(ID)[1];
 const cam = (lt) => CAM.at([
@@ -73,9 +73,9 @@ const cam = (lt) => CAM.at([
   V.key(cue('争取') - 0.05, at(1340, 790, 1.15), MO.sineInOut),
   V.key(cue('争取') + 0.45, at(1330, 1270, 0.98), MO.cubicInOut),
   V.key(cue('再往后') - 0.05, at(1340, 1270, 1.03), MO.sineInOut),
-  V.key(cue('再往后') + 0.85, at(1820, 1020, 0.95), MO.longTail),          // 沿红线追到火星
+  V.key(cue('再往后') + 0.85, at(1820, 1020, 0.95), MO.longTail),          // Follow red thread to Mars
   V.key(cue('火星') - 0.15, at(1840, 1020, 0.98), MO.sineInOut),
-  V.key(cue('火星') + 0.95, OV, MO.longTail),                               // 拉出揭示：整张桌子，留足一拍
+  V.key(cue('火星') + 0.95, OV, MO.longTail),                               // Pullback reveal: whole desk, hold a full beat
   V.key(TM.dur(ID) + 0.01, { ...OV, z: OV.z * 1.015 }, MO.sineInOut),
 ], lt);
 V.scene(ID, { cam, init() { V.prewarm(); V.glyphs(ID, [[F.heavy, T.catch + T.fuel + T.moon + T.mars + T.earth + '年'], [F.num, '24']]); } });

@@ -1,5 +1,7 @@
 # 18_klimt · 克里姆特金色时期（1907）
 
+**中文** · [English](../en/style-recipes/18_klimt.md)
+
 > 来源：迁移测试 A（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/18_klimt.js`。
 
 实验时的文件名 `scenes/02_klimt.js`（223 行）。0.45↔0.9s 为 32.9%（主要来自流光），相邻帧中位 0.40%，但 48 对里有 14 对几乎静止（见 ②-2）。

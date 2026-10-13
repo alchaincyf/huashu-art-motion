@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""逐帧渲染：起本地 http 服务 → 无头 Chromium 打开 index.html → 对每帧调用 window.renderFrame(t)
-→ 读 canvas 像素 → 管道送 ffmpeg 出 60fps mp4，最后混入音轨。
+"""Frame-by-frame rendering: local HTTP server → headless Chromium opens index.html → call window.renderFrame(t) each frame
+→ read canvas pixels → pipe to ffmpeg for 60fps mp4, then mix audio.
 
 uv run --with playwright python render.py --out ../成片/复刻_v1.mp4 [--audio ../音频/复刻音轨.wav] [--from 0 --to 片长] [--fps 60]
-    [--film gallery]（读 eras_gallery.js）[--solo <id> --stills 0.2,0.6 --no-counter] [--width 1080 --height 1920]（竖屏整片：传给 index.html?w=&h=，
-    引擎、转场、相机和各库按这个画布算；不写就用 eras.js 的 window.FILM_SIZE，再不写 1920×1080）
+    [--film gallery] (read eras_gallery.js) [--solo <id> --stills 0.2,0.6 --no-counter] [--width 1080 --height 1920] (portrait film: pass to index.html?w=&h=,
+    engine/transitions/camera/libraries use that canvas; default eras.js window.FILM_SIZE, then 1920×1080)
 uv run --with playwright python render.py --spec clip.json --out 片段.mp4 [--alpha] [--stills 0.5,2]
-    参数化片段（口播管线的「动画段」，契约见 references/09）：时长严格 = spec.duration（帧数 round(duration×fps)），
-    宽高/fps 从 spec 读；默认无声 H.264 yuv420p、每秒一个关键帧（GOP=fps，管线渲染器按秒 seek），--alpha 出 ProRes 4444 带透明（.mov）。spec 里图片路径相对 spec 文件。
-页面里有 pageerror 或 console.error（场景报错、缺字形）→ 渲完后非零退出。
+    Parameterized clips (voiceover pipeline animation segments, contract in references/09): duration exactly spec.duration (frames round(duration×fps)),
+    width/height/fps from spec; default silent H.264 yuv420p, one keyframe per second (GOP=fps for seeking); --alpha gives transparent ProRes 4444 (.mov). Image paths relative to spec.
+Page pageerror or console.error (scene errors/missing glyphs) → nonzero exit after rendering.
 """
 import argparse, base64, http.server, json, socketserver, subprocess, sys, threading, functools, time, urllib.parse
 from pathlib import Path
@@ -37,11 +37,11 @@ root = Path(__file__).parent
 spec, ALLOWED = None, set()
 if a.spec:
     sp = Path(a.spec).resolve(); spec = json.loads(sp.read_text())
-    try: spec_assets.localize(spec, sp.parent, ALLOWED)   # image / frames / data.character 里的本地路径 → /__file__/<绝对路径>（只服务 spec 里点名的文件）
+    try: spec_assets.localize(spec, sp.parent, ALLOWED)   # Local image / frames / data.character paths → /__file__/<绝对路径> (serve only files named in spec)
     except FileNotFoundError as e: raise SystemExit(str(e))
     if a.alpha: spec['alpha'] = True
     if a.width or a.height: spec['width'], spec['height'] = a.width or spec.get('width', 1920), a.height or spec.get('height', 1080)
-# 单个参数化片段撑太久会读成一页 PPT（一个版式到底、要点越堆越长）。只警告不报错：管线里有合法的长片段。
+# An overlong parameterized clip reads like one PPT slide (same layout, accumulating points). Warn only: the pipeline has legitimate long clips.
 LONG_CLIP = None
 if spec and float(spec.get('duration', 0)) > 8:
     LONG_CLIP = ('\n' + '!' * 72 + f'\n!! 警告：这个片段 duration = {spec["duration"]} 秒，超过 8 秒。\n'
@@ -101,7 +101,7 @@ with sync_playwright() as p:
         vid = a.out if not a.audio else a.out + '.noaudio.mp4'
         enc = ['-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le', '-alpha_bits', '16'] if (spec and a.alpha) else \
               ['-c:v', 'libx264', '-preset', 'slow', '-crf', str(a.crf), '-pix_fmt', 'yuv420p', '-movflags', '+faststart'] + \
-              (['-g', str(a.fps), '-keyint_min', str(a.fps), '-sc_threshold', '0'] if spec else [])   # 片段要被管线的渲染器按秒 seek：每秒一个关键帧，否则冻帧
+              (['-g', str(a.fps), '-keyint_min', str(a.fps), '-sc_threshold', '0'] if spec else [])   # Pipeline renderer seeks clips by second: one keyframe per second, otherwise frames freeze
         if spec and a.alpha and not vid.endswith('.mov'): print('提示：ProRes 4444 一般用 .mov 容器')
         ff = subprocess.Popen(['ffmpeg', '-y', '-v', 'error', '-f', 'image2pipe', '-framerate', str(a.fps), '-c:v', 'png', '-i', '-'] + enc + [vid],
                               stdin=subprocess.PIPE)
@@ -120,5 +120,5 @@ with sync_playwright() as p:
     b.close()
 srv.shutdown()
 srv.server_close()
-if LONG_CLIP: print(LONG_CLIP, file=sys.stderr)   # 渲完再说一遍，免得被进度行冲掉
+if LONG_CLIP: print(LONG_CLIP, file=sys.stderr)   # Repeat after render so progress lines do not bury the warning
 if errors: raise SystemExit(f'❌ 页面报错 {len(errors)} 条（见上方 [page]/[pageerror]）')

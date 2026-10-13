@@ -1,4 +1,4 @@
-// 每个字体文件注册成独立 family（文件名去扩展名），用法：ctx.font = '96px "Cinzel-700"'
+// Register each font file as independent family (filename without extension), e.g. ctx.font = '96px "Cinzel-700"'
 window.FONT_FACES = [
   {family:'Cinzel-400', url:'lib/fonts/Cinzel-400.woff'},
   {family:'Cinzel-700', url:'lib/fonts/Cinzel-700.woff'},
@@ -34,23 +34,23 @@ window.FONT_FACES = [
   {family:'Rye-400', url:'lib/fonts/Rye-400.woff'},
   {family:'LibreBaskerville-400', url:'lib/fonts/LibreBaskerville-400.woff'},
   {family:'LibreBaskerville-700', url:'lib/fonts/LibreBaskerville-700.woff'},
-  // 中文：霞鹜文楷 Medium 子集（OFL 1.1）。GB2312 全部汉字＋预置字＋skill 里用到的字（font_subset.py --gb2312），生僻字用 scripts/font_subset.py --text 补；NotoSerifJP 是日文子集，简体字不全（「戏」「蓝」都没有）
+  // Chinese: LXGW WenKai Medium subset (OFL 1.1). All GB2312 Han plus presets/skill characters (font_subset.py --gb2312); add rare characters via scripts/font_subset.py --text; NotoSerifJP Japanese subset lacks simplified characters such as 戏 and 蓝.
   {family:'LXGWWenKai-500', url:'lib/fonts/LXGWWenKai-500.woff'},
-  // ---- YouTube 解说语法（references/09）----
-  // 中文黑体：family 名沿用 PuHui-*（代码里 97 处引用不用改），开源版文件是思源黑体 Noto Sans SC（OFL 1.1）500/700/800/900 四个字重的 GB2312 子集
-  // （scripts/font_subset.py --gb2312，单字重约 1.4MB）。作者原用阿里巴巴普惠体 3.0，其许可不允许转换、拆分后再分发，所以不随仓库附带；
-  // 你自己装了普惠体想换回去：按 font_subset.py 说明生成 PuHui-*.woff，把下面四行的 url 改回去即可。
+  // ---- YouTube explainer grammars (references/09) ----
+  // Chinese sans: retain PuHui-* family names (97 code references unchanged); bundled open-source files are Noto Sans SC (OFL 1.1), GB2312 subsets at 500/700/800/900
+  // (scripts/font_subset.py --gb2312, about 1.4MB per weight). Original Alibaba PuHuiTi 3.0 license forbids redistribution after conversion/splitting, so it is not bundled;
+  // To restore your own installed PuHuiTi: generate PuHui-*.woff per font_subset.py and change the four URLs below.
   {family:'PuHui-Medium', url:'lib/fonts/NotoSansSC-500.woff'},
   {family:'PuHui-Bold', url:'lib/fonts/NotoSansSC-700.woff'},
   {family:'PuHui-Heavy', url:'lib/fonts/NotoSansSC-800.woff'},
   {family:'PuHui-Black', url:'lib/fonts/NotoSansSC-900.woff'},
-  // 3b1b 公式：CMU（LaTeX Computer Modern）正体/斜体
+  // 3b1b formulas: CMU (LaTeX Computer Modern), upright/italic
   {family:'CMU-rm', url:'lib/fonts/cmunrm.woff'},
   {family:'CMU-it', url:'lib/fonts/cmunti.woff'},
-  // 发布会 Inter（SF Pro 最接近的开源字）、财经 Roboto Condensed：可变字重，用 '600 220px "Inter"' 选字重
+  // Keynote Inter (closest open-source SF Pro alternative), finance Roboto Condensed: variable weights, e.g. '600 220px "Inter"'
   {family:'Inter', url:'lib/fonts/Inter-var.woff', desc:{weight:'100 900'}},
   {family:'RobotoCondensed', url:'lib/fonts/RobotoCondensed-var.woff', desc:{weight:'100 900'}},
-  // 思源黑/宋（可变字重）：只含 3b1b/发布会/财经三支示范片用到的字（源文件未随仓库附带，换题目缺字时改用 PuHui-*，或下 Google Fonts 的 NotoSansSC[wght].ttf 重做子集）
+  // Noto Sans/Serif Chinese variable subsets: only characters in three 3b1b/keynote/finance demos (sources not bundled; use PuHui-* for missing characters or rebuild from Google Fonts NotoSansSC[wght].ttf)
   {family:'NotoSansSC', url:'lib/fonts/NotoSansSC-sub.woff', desc:{weight:'100 900'}},
   {family:'NotoSerifSC', url:'lib/fonts/NotoSerifSC-sub.woff', desc:{weight:'200 900'}},
 ];

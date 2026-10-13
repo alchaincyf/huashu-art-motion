@@ -1,10 +1,10 @@
-"""film_gate.py 的蓝紫底门禁：蓝紫帧占比 ≥0.30 红灯，--allow-blue-purple "理由" 降为黄灯。
+"""film_gate.py blue-purple background gate: frame fraction ≥0.30 red; --allow-blue-purple "理由" downgrades yellow.
 
-只用 ffmpeg 的 lavfi 合成 6 秒小片（不需要引擎和 Playwright），每支都叠一层网格，免得被空画面门禁先拦：
-  purple —— 深紫底（#2A1A6E）整片                           → 红灯，报告给时间码
-  navy   —— 海军蓝平涂（#0D1B2A，色相约 210°）整片            → 不算蓝紫
-  paper  —— 纸色底（#F3EDE2）整片                           → 不算
-6 秒短于 20 秒，快动门禁只会黄灯；退出码 2 只可能来自蓝紫这一条（它不受短片降级）。
+Synthesize 6s shorts with ffmpeg lavfi (no engine/Playwright), each with grid so blank gate does not block first:
+  purple — deep purple (#2A1A6E) throughout → red with timestamps
+  navy   — flat navy (#0D1B2A, hue about 210°) → not blue-purple
+  paper  — paper background (#F3EDE2) throughout → ignored
+6s below 20s means fast-motion only yellow; exit 2 can come only from blue-purple gate (no short-film downgrade).
 """
 import json
 import os

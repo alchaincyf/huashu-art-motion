@@ -1,6 +1,6 @@
-// S04 · NASA 合同与龙飞船（大数字砸入段）：① 日历翻页「3个月后」→ 合同纸卡盖章「合同」→ 「16亿美元」计数落定＋钱袋 → 货箱沿虚线送到空间站
-// ② 页面上推：2012 年，龙飞船从左下飞来对接空间站，「第一艘」绶带＋「私人飞船」关键词框。
-// 转场：从上一页「第一枚」奖章的圆心扩张揭开（lin_iris）。
+// S04 · NASA contract and Dragon (large-number impact segment): ① Calendar flips to three months later → contract card receives a contract stamp → counter settles at $1.6 billion with a money bag → cargo box follows a dashed route to the space station
+// ② Page pushes upward: in 2012, Dragon flies from bottom left to dock with the station; first-ever ribbon and private spacecraft keyword box.
+// Transition: expand a reveal from the center of the previous page's first-ever medal (lin_iris).
 (() => {
 const ID = 's04', L = LIN, { C, TAU } = L, { clamp, lerp } = U;
 let Q = null;
@@ -21,7 +21,7 @@ function cargo(g, s = 1) {
 }
 function pageA(g, lt) {
   const Qv = q();
-  // 日历：9月 → 12月（撕页）＋「3个月后」
+  // Calendar: September → December (tear page) and three months later
   const kc = L.popK(lt, 0.02, 0.4, 2), fl = clamp((lt - 0.35) / 0.55);
   L.at(g, 760, 300, kc, h => {
     if (fl > 0) L.calPage(h, '2008年', '12月', C.blue, '', { w: 220, h: 220 });
@@ -30,26 +30,26 @@ function pageA(g, lt) {
   }, -0.04);
   const k3 = L.popK(lt, Qv.sgy + 0.1, 0.4, 2.4);
   if (k3 > 0) L.at(g, 760, 470, k3, h => L.kw(h, '3个月后', 0, 0, { size: 44, fill: C.purple }));
-  // 合同
+  // Contract
   const kd = L.popK(lt, Qv.nasa - 0.1, 0.45, 1.8);
   L.at(g, 1070, 520, kd, h => {
     L.card(h, -150, -200, 300, 400, { fill: C.white, r: 18 });
     L.kw(h, 'NASA', 0, -138, { size: 40, fill: C.blue, h: 62 });
     h.lineCap = 'round'; h.lineWidth = 7; h.strokeStyle = '#D8D1C4'; for (let i = 0; i < 5; i++) { h.beginPath(); h.moveTo(-104, -50 + i * 44); h.lineTo(i === 4 ? 10 : 104, -50 + i * 44); h.stroke(); }
-    // 签名：念到「合同」时一笔写出
+    // Signature: draw in one stroke when contract is spoken
     const sp = clamp((lt - Qv.ht) / 0.45), pts = []; for (let i = 0; i <= 30; i++) { const u = i / 30; pts.push([-20 + u * 120, 150 + Math.sin(u * 14) * 14 - u * 20]); }
     h.strokeStyle = C.blue; h.lineWidth = 5; L.strokePart(h, pts, sp);
     L.at(h, 92, 120, L.popK(lt, Qv.ht + 0.05, 0.3, 2.6), s => { s.lineWidth = 6; s.strokeStyle = C.red; s.beginPath(); s.arc(0, 0, 52, 0, TAU); s.stroke(); L.txt(s, '合同', 0, 4, 36, { col: C.red, align: 'center', base: 'middle' }); }, -0.25);
   }, 0.03 * Math.sin(lt * 1.6));
-  // 16 亿美元
-  const c0 = Qv.n16 - 0.05, cp = lt >= c0 ? 1 : 0;   // 16 直接砸下来，不计数（计数会闪过 15）
+  // $1.6 billion
+  const c0 = Qv.n16 - 0.05, cp = lt >= c0 ? 1 : 0;   // Slam 16 straight down without counting (a counter would flash 15)
   const kn = L.popK(lt, c0, 0.35, 2.2);
   if (kn > 0) L.at(g, 1530, 400, kn * (1 + MO.settle(lt - c0 - 0.3, 0.1, 3, 6)), h => { L.txt(h, '16', 20, 0, 190, { w: 'Black', col: C.red, align: 'right' }); L.txt(h, '亿美元', 34, 0, 70); });
   const kbg = L.popK(lt, c0 + 0.15, 0.4, 2.2);
   if (kbg > 0) L.at(g, 1690, 600, kbg * 0.78, h => moneyBag(h, lt), 0.06 * Math.sin(lt * 3));
   if (cp >= 1) L.twinkles(g, lt, [[1300, 250], [1800, 270], [1560, 470]], { r: 20 });
   L.ring(g, lt, 1440, 335, 150, 100, clamp((lt - c0 - 0.35) / 0.4), { seed: 61, col: C.red, lw: 7 });
-  // 送货：货箱沿虚线飞向空间站
+  // Delivery: cargo box flies along the dashed line toward the station
   const ks = L.popK(lt, Qv.kj, 0.45, 1.8);
   if (ks > 0) {
     L.at(g, 1610, 790, ks * 0.62, h => L.iss(h, 0, 0, 1));
@@ -62,20 +62,20 @@ function pageA(g, lt) {
 }
 function pageB(g, lt) {
   const Qv = q(); if (lt < Qv.y12 - 0.4) return;
-  // 空间站居中偏右，龙飞船从左下飞来对接
+  // Station slightly right of center; Dragon flies from bottom left to dock
   const ki = L.popK(lt, Qv.y12 - 0.1, 0.5, 1.6), sx = 1300, sy = 330, IS = 1.9, CS = 1.55;
   L.at(g, sx, sy + 6 * Math.sin(lt * 1.3), ki * IS, h => L.iss(h, 0, 0, 1), 0.03);
   if (lt > Qv.gj - 0.05) L.at(g, sx + 380, sy - 150, L.popK(lt, Qv.gj - 0.05, 0.36, 2.4), h => L.kw(h, '国际空间站', 0, 0, { size: 38, fill: C.white, col: C.ink }));
   const t0 = Qv.lfc - 0.3, t1 = Qv.cl + 0.1, u = MO.cubicInOut(clamp((lt - t0) / (t1 - t0)));
-  const dockX = sx, baseY = sy + 70 * IS + 128 * CS;              // 鼻锥顶住空间站下方舱段
+  const dockX = sx, baseY = sy + 70 * IS + 128 * CS;              // Nose cone touches the module below the station
   if (lt > t0 - 0.2) {
-    const x = lerp(1880, dockX, u), y = lerp(560, baseY, u) - Math.sin(Math.PI * u) * 60,   // 从右边飞进来，全程不进字幕区
+    const x = lerp(1880, dockX, u), y = lerp(560, baseY, u) - Math.sin(Math.PI * u) * 60,   // Fly in from the right, avoiding the subtitle area throughout
      rot = lerp(-0.55, 0, MO.smooth(u));
-    L.capsule(g, x, y, CS, { rot, flame: u < 0.95 ? 0.7 : 0, lt, cargo: true });   // 2012 年是货运龙（带太阳翼尾段）
+    L.capsule(g, x, y, CS, { rot, flame: u < 0.95 ? 0.7 : 0, lt, cargo: true });   // 2012 uses Cargo Dragon (with solar-panel trunk)
   }
   L.burstLines(g, dockX, sy + 70 * IS, 100, 180, clamp((lt - t1) / 0.5), { n: 10, col: C.ink, lw: 6 });
   const kb = L.popK(lt, Qv.dys, 0.4, 2.6);
-  if (kb > 0) L.at(g, 800, 330, kb, h => {      // 「第一艘」绶带
+  if (kb > 0) L.at(g, 800, 330, kb, h => {      // First-ever ribbon
     h.lineWidth = 5; h.strokeStyle = C.ink; h.lineJoin = 'round';
     h.beginPath(); h.moveTo(-170, -44); h.lineTo(170, -44); h.lineTo(140, 0); h.lineTo(170, 44); h.lineTo(-170, 44); h.lineTo(-140, 0); h.closePath(); h.fillStyle = C.red; h.fill(); h.stroke();
     L.txt(h, '第一艘', 0, 4, 56, { w: 'Black', col: C.white, align: 'center', base: 'middle' });
@@ -91,7 +91,7 @@ SCENES[ID] = {
     L.CUR_T = L.T0(ID) + lt;
     const Qv = q();
     L.bg(c, lt, { seed: 2614 });
-    // 页内上推：念到「2012年」整页往上滑走，下一屏从下面上来
+    // In-page upward push: at 2012, slide the whole page upward and bring the next screen up from below
     const up = MO.cubicInOut(clamp((lt - (Qv.y12 - 0.35)) / 0.55));
     if (up < 1) { c.save(); c.globalAlpha = Math.max(0, 1 - 2 * up); c.translate(0, -1080 * up); pageA(c, lt); c.restore(); }
     if (up > 0) { c.save(); if (up < 1) { c.beginPath(); c.rect(0, 0, 1920, 905); c.clip(); } c.translate(0, 1080 * (1 - up)); pageB(c, lt); c.restore(); }
@@ -101,8 +101,8 @@ SCENES[ID] = {
 ERAS.find(e => e.id === ID).transition = { type: 'lin_iris', dur: 0.65, x: 1300, y: 760, col: C.yel };
 L.cast(ID, [
   { t: 0.05, pose: 'stick', fr: 'talk' },
-  { t: TM.cue(ID, '2012年') - 0.2, pose: 'present', fr: 'talk', x: 450, walk: 0.7 },   // 走近一点，看空间站
+  { t: TM.cue(ID, '2012年') - 0.2, pose: 'present', fr: 'talk', x: 450, walk: 0.7 },   // Move closer to look at the station
   { t: TM.cue(ID, '第一艘') - 0.05, pose: 'thumb', fr: 'talk' },
 ]);
-L.year(ID, [[0.3, 2008], [TM.cue(ID, '2012年') - 0.45, 2012]]);   // 龙飞船那句开口前，年份已经走到 2012
+L.year(ID, [[0.3, 2008], [TM.cue(ID, '2012年') - 0.45, 2012]]);   // Year has already reached 2012 before the Dragon sentence begins
 })();

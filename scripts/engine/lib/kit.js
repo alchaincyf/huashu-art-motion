@@ -1,11 +1,11 @@
-// 跨场景共用的小工具：点列加密/等弧长重采样、可变线宽路径 ribbon、整幅行/列扭曲、手绘不规则圆、全片连续编舞、近侧手臂补盖、角标。
-// 渲染器在 lib/brush.js（笔与水）、lib/render.js（网点/点彩/赛璐珞/光影/皮影）、lib/post.js（VHS/胶片/泛光/纹理叠角色）。
+// Cross-scene helpers: densification/equal-arc resampling, variable-width ribbon, whole-image row/column warping, irregular hand-drawn circles, film-wide choreography, near-arm overpainting, badges.
+// Renderers in lib/brush.js (brush/water), lib/render.js (halftone/pointillism/cel/light/shadow puppets), lib/post.js (VHS/film/bloom/character texture).
 (() => {
-let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // Canvas dimensions follow U.setStage (default 1920×1080)
 const { clamp, lerp, rng } = U;
 const K = window.KIT = {};
 
-// Catmull-Rom 加密点列（开放）
+// Catmull-Rom point densification (open)
 K.densify = (pts, per = 6) => {
   const out = [], n = pts.length, P_ = i => pts[Math.max(0, Math.min(n - 1, i))];
   for (let i = 0; i < n - 1; i++) {
@@ -18,14 +18,14 @@ K.densify = (pts, per = 6) => {
   }
   out.push(pts[n - 1]); return out;
 };
-// 按弧长等距重采样（让噪声、飞白、行波的频率与笔画长短无关）
+// Equal-arc resampling (noise, dry-brush, traveling-wave frequencies independent of stroke length)
 K.resample = (pts, step = 4) => {
   const out = [pts[0]]; let acc = 0;
   for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], L = Math.hypot(b[0] - a[0], b[1] - a[1]); let d = step - acc;
     while (d <= L) { const q = d / L; out.push([a[0] + (b[0] - a[0]) * q, a[1] + (b[1] - a[1]) * q]); d += step; } acc = L - (d - step); }
   out.push(pts[pts.length - 1]); return out;
 };
-// 可变线宽路径：点列两侧按 w(q) 偏移成闭合多边形（书法线、飘带、表现主义长笔）
+// Variable-width path: offset both sides by w(q) into closed polygon (calligraphic lines, ribbons, expressionist strokes)
 K.ribbon = (pts, w) => {
   const n = pts.length, L = [], R = [];
   for (let i = 0; i < n; i++) {
@@ -37,11 +37,11 @@ K.ribbon = (pts, w) => {
   const p = new Path2D(); L.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1]));
   for (let i = n - 1; i >= 0; i--) p.lineTo(R[i][0], R[i][1]); p.closePath(); return p;
 };
-// 少女部件按画序列出（远→近），给「不调 drawGirl、自己逐部件上色」的风格用
-K.girlOrder = ['farSleeve', 'farHand', 'farCuff', 'hairDown', 'skirt', 'shoe', 'torso', 'neck', 'hairBack', 'bun', 'face', 'bangs', 'upperArm', 'foreArm', 'cuff', 'hand'];   // 完整画序（含五官、杯、钩子插槽名）见 RIG.GIRL_ORDER
+// Girl parts in draw order (far→near), for styles coloring each part without drawGirl
+K.girlOrder = ['farSleeve', 'farHand', 'farCuff', 'hairDown', 'skirt', 'shoe', 'torso', 'neck', 'hairBack', 'bun', 'face', 'bangs', 'upperArm', 'foreArm', 'cuff', 'hand'];   // Full order (features, cup, hook slots) in RIG.GIRL_ORDER
 
-// 把 src 按「水平条带位移」画到 dst：fx(y) 返回该行的 x 位移（蒙克式整个世界在流动）
-// margin：每行横向多拉伸 2·margin 像素，位移后左右不露缝（margin ≥ 最大位移）
+// Draw src to dst with horizontal-strip displacement: fx(y) returns row offset (Munch-like flowing world)
+// margin: stretch each row horizontally by 2·margin so displacement reveals no gaps (margin ≥ maximum displacement)
 K.warpRows = (dst, src, fx, band = 6, margin = 0) => {
   for (let y = 0; y < H; y += band) { const dx = fx(y + band / 2); dst.drawImage(src, 0, y, W, band, dx - margin, y, W + 2 * margin, band); }
 };
@@ -49,9 +49,9 @@ K.warpCols = (dst, src, fy, band = 6, margin = 0) => {
   for (let x = 0; x < W; x += band) { const dy = fy(x + band / 2); dst.drawImage(src, x, 0, band, H, x, dy - margin, band, H + 2 * margin); }
 };
 
-// n 角星（剪纸星、爆炸框、闪光）：外半径 r0、内半径 r1
+// n-point star (cutout stars, explosion frames, sparkles): outer r0, inner r1
 K.star = (cx, cy, r0, r1, n, rot = 0) => { const pts = []; for (let i = 0; i < n * 2; i++) { const a = rot + i / (n * 2) * Math.PI * 2 - Math.PI / 2, r = i % 2 ? r1 : r0; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } return U.poly(pts); };
-// 手绘不规则圆（草间的点不是完美圆）：n 个顶点、半径按种子起伏
+// Irregular hand-drawn circle (Kusama dots are imperfect): n vertices, seeded radius variation
 K.blob = (c, x, y, r, seed, wob = 0.08, n = 14) => {
   const rr = rng(seed); const off = []; for (let i = 0; i < n; i++) off.push(1 + (rr() - .5) * 2 * wob);
   const pts = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; pts.push([x + Math.cos(a) * r * off[i], y + Math.sin(a) * r * off[i]]); }
@@ -60,14 +60,14 @@ K.blob = (c, x, y, r, seed, wob = 0.08, n = 14) => {
   c.closePath();
 };
 
-// 全片连续的编舞：端杯按全局时间走（周期 = 两段 = 2.34s，在嘴边和桌上各停一会儿），
-// 换风格时姿势不重置——速通看的是「同一瞬间换了画风」，而不是每段重喝一次。转场正好落在杯子停住的时刻。
+// Film-wide choreography: cup lift uses global time (period = two segments = 2.34s, pauses at mouth and table),
+// Style changes never reset pose: speedrun shows same instant in new style rather than drinking anew each segment. Transitions occur while cup pauses.
 K.choreo = (lt, t) => {
   const ch = PAINT.choreo(lt, t), k = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / 2.34375);
   let q = clamp((k - 0.15) / 0.7); q = q * q * (3 - 2 * q);
   ch.cup = q; ch.sip = Math.max(0, Math.sin(t * 6)) * 0.15 * q; return ch;
 };
-// drawGirl(mode:'line') 会把被近侧手臂挡住的躯干线画穿：线稿画完后，把近侧手臂、袖口、手、杯重新盖一遍
+// drawGirl(mode:'line') draws torso lines through near arm: after linework, repaint near arm, cuff, hand, cup
 K.nearArm = (c, G, { fill, line = '#111', lw = 3, skin, cuff, cupBody, cupRim, pattern } = {}) => {
   const arm = new Path2D(); arm.addPath(G.upperArm); arm.addPath(G.foreArm);
   c.save(); c.lineJoin = 'round'; c.fillStyle = fill; c.fill(arm); if (pattern) { c.save(); c.clip(arm); pattern(c); c.restore(); }
@@ -78,7 +78,7 @@ K.nearArm = (c, G, { fill, line = '#111', lw = 3, skin, cuff, cupBody, cupRim, p
   c.fillStyle = skin; c.beginPath(); c.arc(G.thumb[0], G.thumb[1], 7, 0, Math.PI * 2); c.fill(); c.lineWidth = lw * 0.7; c.stroke();
   c.restore();
 };
-// 右上角角标：标题（中文）＋副标题；入场 0.18s 由各风格的 reveal(c,p) 决定怎么出现
+// Upper-right badge: Chinese title and subtitle; each style reveal(c,p) controls 0.18s entrance
 K.label = (c, { title, sub, tFont, sFont, tCol, sCol, x = 1866, y = 128, sy = 182, shadow, before, after, spacing = 0 }) => {
   c.save(); c.textAlign = 'right'; c.textBaseline = 'alphabetic';
   if (before) before(c);

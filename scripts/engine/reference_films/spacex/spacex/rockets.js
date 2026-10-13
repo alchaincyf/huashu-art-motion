@@ -1,20 +1,20 @@
-// SpaceX 短片共用：火箭/飞船/发射塔的通用几何（不含任何官方 logo、字样）。
-// 坐标：单位＝米，原点＝箭体底部（发动机喷口平面）中心，向上为 −y。调用方自己 translate/rotate/scale(px/m)。
-// 每个函数返回 { parts:[{k, p:Path2D}], h（总高 m）, w（最大宽 m）, a:{锚点} }。
-//   k：'body' 主体（白漆/不锈钢）、'dark' 深色部件（级间段、栅格舵、着陆腿、发动机）、'nose' 头锥/整流罩、
-//      'window' 舷窗、'trunk' 龙飞船尾段、'flap' 星舰襟翼、'engine' 发动机喷管。
-// 风格怎么画由各 scene 决定：RK.fill(c, shape, palette) 是最朴素的平涂，各风格可以只拿 parts 自己处理。
-// 比例按真实外形（约数）：猎鹰1 21×1.7m；猎鹰9 70×3.7m；重型猎鹰三芯并联；星舰全箭 ~123×9m（超重 71m＋飞船 52m）。
+// Shared SpaceX geometry: rockets, spacecraft and launch towers (no official logos or lettering).
+// Coordinates: meters, origin at engine-plane center, upward is -y. Callers translate/rotate/scale(px/m).
+// Each function returns { parts:[{k, p:Path2D}], h (total height m), w (maximum width m), a:{anchors} }.
+//   k: 'body' main body (white paint/stainless steel), 'dark' dark parts (interstage, grid fins, landing legs, engines), 'nose' nose cone/fairing,
+//      'window' windows, 'trunk' Dragon trunk, 'flap' Starship flaps, 'engine' engine nozzles.
+// Scenes choose rendering style: RK.fill(c, shape, palette) is basic flat fill; each style can render parts itself.
+// Approximate real proportions: Falcon 1 21×1.7m; Falcon 9 70×3.7m; Falcon Heavy three cores; full Starship ~123×9m (booster 71m + ship 52m).
 window.RK = (() => {
   const rect = (p, x, y, w, h) => p.rect(x, y, w, h);
   const P2 = () => new Path2D();
   const poly = (pts) => { const p = P2(); pts.forEach(([x, y], i) => i ? p.lineTo(x, y) : p.moveTo(x, y)); p.closePath(); return p; };
-  // 尖拱头锥（ogive）：底宽 w、高 h，底边 y0
+  // Ogive nose cone: base width w, height h, base y0.
   const ogive = (w, h, y0, n = 18) => { const pts = []; for (let i = 0; i <= n; i++) { const u = i / n; pts.push([-w / 2 * Math.sqrt(1 - u * u) * (1 - 0.15 * u), y0 - h * u]); }
     for (let i = n; i >= 0; i--) { const u = i / n; pts.push([w / 2 * Math.sqrt(1 - u * u) * (1 - 0.15 * u), y0 - h * u]); } return poly(pts); };
   const bell = (x, y, w, h) => poly([[x - w * 0.28, y - h], [x + w * 0.28, y - h], [x + w / 2, y], [x - w / 2, y]]);
 
-  // 猎鹰1：单级细长箭体＋二级＋小整流罩（2006–2008）
+  // Falcon 1: slender first stage + second stage + small fairing (2006–2008).
   function falcon1() {
     const D = 1.7, parts = [];
     const body = P2(); rect(body, -D / 2, -15.5, D, 15.5); rect(body, -D / 2 * 0.95, -19.5, D * 0.95, 3.6); parts.push({ k: 'body', p: body });
@@ -24,21 +24,21 @@ window.RK = (() => {
     return { parts, h: 22.7, w: D, a: { top: [0, -22.7], base: [0, 0.9] } };
   }
 
-  // 猎鹰9：opts.payload = 'fairing' | 'dragon' | 'none'；opts.legs 0..1 着陆腿展开；opts.fins 0..1 栅格舵展开；opts.stage = 'full' | 'booster'
+  // Falcon 9: opts.payload = 'fairing' | 'dragon' | 'none'; opts.legs 0..1 landing-leg deployment; opts.fins 0..1 grid-fin deployment; opts.stage = 'full' | 'booster'.
   function falcon9(o = {}) {
     const D = 3.7, parts = [], legs = o.legs ?? 0, fins = o.fins ?? 0, booster = o.stage === 'booster';
-    const H1 = 41;                          // 一级（含级间段）
+    const H1 = 41;                          // First stage (including interstage).
     const body = P2(); rect(body, -D / 2, -H1, D, H1);
     if (!booster) rect(body, -D / 2, -H1 - 13, D, 13);
     parts.push({ k: 'body', p: body });
     const dark = P2();
-    rect(dark, -D / 2, -H1, D, 4.2);         // 黑色级间段
-    rect(dark, -D / 2, -1.4, D, 1.4);        // 底部发动机罩
+    rect(dark, -D / 2, -H1, D, 4.2);         // Black interstage.
+    rect(dark, -D / 2, -1.4, D, 1.4);        // Bottom engine housing.
     parts.push({ k: 'dark', p: dark });
-    // 栅格舵（顶部四片，侧视两片）：展开时向外翻出
+    // Grid fins (four at the top, two in side view): swing outward when deployed.
     const gf = P2(), fy = -H1 + 0.6, fl = 1.0 + fins * 0.9;
     rect(gf, -D / 2 - fl, fy, fl, 1.4); rect(gf, D / 2, fy, fl, 1.4); parts.push({ k: 'dark', p: gf });
-    // 着陆腿：铰接在箭体底部，收起时贴着箭体朝上，展开时向下外翻，脚落在发动机喷口平面略下方（legs=1 时脚底 y≈+1.3）
+    // Landing legs: hinged at the base, stowed upward against the body, deployed outward/downward; feet sit just below the engine plane (y≈+1.3 at legs=1).
     const lg = P2(), L = 9.5, ang = legs * 1.82;
     for (const s of [-1, 1]) { const x0 = s * D / 2, y0 = -1.2, x1 = x0 + s * Math.sin(ang) * L, y1 = y0 - Math.cos(ang) * L;
       lg.moveTo(x0, y0); lg.lineTo(x0, y0 - 0.6); lg.lineTo(x1 + s * 0.15, y1 - 0.2); lg.lineTo(x1 + s * 0.45, y1 + 0.3); lg.lineTo(x1 - s * 0.35, y1 + 0.3); lg.closePath(); }
@@ -53,7 +53,7 @@ window.RK = (() => {
     return { parts, h, w: D, a: { top: [0, -h], base: [0, 1.0], interstage: [0, -H1], legs: [0, -9.5] } };
   }
 
-  // 龙飞船（载人龙外形：截锥舱体＋尾段 trunk），底部在 y=0
+  // Dragon (Crew Dragon shape: truncated-cone capsule + trunk), base at y=0.
   function dragon(o = {}) {
     const parts = [], tr = o.trunk !== false, y0 = tr ? -2.8 : 0;
     if (tr) { const t = P2(); rect(t, -1.85, -2.8, 3.7, 2.8); parts.push({ k: 'trunk', p: t }); }
@@ -64,7 +64,7 @@ window.RK = (() => {
     return { parts, h, w: 3.9, a: { top: [0, -h], port: [0, -h] } };
   }
 
-  // 重型猎鹰：三个一级并排＋中芯二级＋整流罩；opts 同 falcon9
+  // Falcon Heavy: three first stages side by side + center-core second stage + fairing; same opts as falcon9.
   function heavy(o = {}) {
     const parts = [], D = 3.7, gap = 0.35;
     const c = falcon9({ ...o, payload: o.payload || 'fairing' });
@@ -78,27 +78,27 @@ window.RK = (() => {
     return { parts, h: c.h, w: 3 * D + 2 * gap, a: { top: [0, -c.h], base: [0, 1.0] } };
   }
 
-  // 超重助推器（Super Heavy）：9m 直径不锈钢，顶部热分离环＋四片栅格舵（侧视两片）
+  // Super Heavy booster: 9m stainless-steel body, hot-staging ring and four grid fins (two in side view).
   function superHeavy(o = {}) {
     const D = 9, H = 71, parts = [];
     const b = P2(); rect(b, -D / 2, -H, D, H); parts.push({ k: 'body', p: b });
-    const d = P2(); rect(d, -D / 2, -H, D, 1.8); for (let i = 0; i < 6; i++) rect(d, -D / 2 + 0.6 + i * 1.35, -H + 0.3, 0.7, 1.2);   // 热分离环（镂空格）
-    rect(d, -D / 2 - 2.6 * (o.fins ?? 1), -H + 3.5, 2.6 * (o.fins ?? 1), 2.2); rect(d, D / 2, -H + 3.5, 2.6 * (o.fins ?? 1), 2.2);   // 栅格舵
+    const d = P2(); rect(d, -D / 2, -H, D, 1.8); for (let i = 0; i < 6; i++) rect(d, -D / 2 + 0.6 + i * 1.35, -H + 0.3, 0.7, 1.2);   // Hot-staging ring (open lattice).
+    rect(d, -D / 2 - 2.6 * (o.fins ?? 1), -H + 3.5, 2.6 * (o.fins ?? 1), 2.2); rect(d, D / 2, -H + 3.5, 2.6 * (o.fins ?? 1), 2.2);   // Grid fins.
     parts.push({ k: 'dark', p: d });
-    // 接驳销（被「筷子」接住的位置），在栅格舵下方两侧
+    // Catch pins (where the chopsticks catch it), below the grid fins on both sides.
     const pin = P2(); rect(pin, -D / 2 - 0.9, -H + 7.2, 0.9, 0.8); rect(pin, D / 2, -H + 7.2, 0.9, 0.8); parts.push({ k: 'dark', p: pin });
     const eng = P2(); for (let i = -3; i <= 3; i++) { eng.addPath(bell(i * 1.2, 1.2, 1.1, 1.2)); } parts.push({ k: 'engine', p: eng });
     return { parts, h: H, w: D, a: { top: [0, -H], base: [0, 1.2], pins: [0, -H + 7.6] } };
   }
 
-  // 星舰飞船（Ship）：不锈钢圆柱＋尖拱头锥＋前后两对襟翼（侧视各两片）
+  // Starship Ship: stainless-steel cylinder + ogive nose + forward/aft flap pairs (two of each in side view).
   function ship(o = {}) {
-    const D = 9, H = 52, Hc = 36, parts = [], fl = o.flap ?? 0;   // flap：襟翼摆角（弧度，±0.6）
+    const D = 9, H = 52, Hc = 36, parts = [], fl = o.flap ?? 0;   // flap: flap angle (radians, ±0.6).
     const b = P2(); rect(b, -D / 2, -Hc, D, Hc); parts.push({ k: 'body', p: b });
     parts.push({ k: 'nose', p: ogive(D, H - Hc, -Hc) });
     const f = P2();
     for (const s of [-1, 1]) {
-      const fx = s * D / 2;   // 后襟翼（大）
+      const fx = s * D / 2;   // Aft flaps (large).
       const aft = [[fx, -2], [fx + s * 3.2, -1 + Math.sin(fl) * 2], [fx + s * 3.2, -9 + Math.sin(fl) * 2], [fx, -11]];
       f.addPath(poly(aft));
       const fw = [[s * D * 0.42, -Hc - 6], [s * (D * 0.42 + 2.2), -Hc - 5 + Math.sin(-fl) * 1.5], [s * (D * 0.38 + 2.0), -Hc - 11 + Math.sin(-fl) * 1.5], [s * D * 0.36, -Hc - 12]];
@@ -106,11 +106,11 @@ window.RK = (() => {
     }
     parts.push({ k: 'flap', p: f });
     const eng = P2(); for (let i = -1; i <= 1; i++) eng.addPath(bell(i * 2.4, 1.6, 2.0, 1.6)); parts.push({ k: 'engine', p: eng });
-    const tiles = P2(); rect(tiles, -D / 2, -Hc, D * 0.32, Hc); parts.push({ k: 'tiles', p: tiles });   // 迎风面黑色隔热瓦（左半）
+    const tiles = P2(); rect(tiles, -D / 2, -Hc, D * 0.32, Hc); parts.push({ k: 'tiles', p: tiles });   // Black heat-shield tiles on windward side (left half).
     return { parts, h: H, w: D, a: { top: [0, -H], base: [0, 1.6] } };
   }
 
-  // 全箭：超重＋飞船叠放
+  // Full stack: Super Heavy + Ship.
   function starship(o = {}) {
     const sh = superHeavy(o), sp = ship(o), parts = [...sh.parts];
     const m = new DOMMatrix().translate(0, -sh.h);
@@ -118,14 +118,14 @@ window.RK = (() => {
     return { parts, h: sh.h + sp.h, w: 9, a: { top: [0, -(sh.h + sp.h)], base: [0, 1.2], stage: [0, -sh.h] } };
   }
 
-  // 发射塔（「机甲哥斯拉」）：桁架塔＋两只「筷子」机械臂。opts.armY 臂所在高度（m，向上为正），opts.open 0..1 张开角
+  // Launch tower (Mechazilla): truss tower + two chopstick arms. opts.armY = arm height (m, positive upward), opts.open 0..1 opening angle.
   function tower(o = {}) {
     const H = 146, Wt = 12, parts = [], armY = o.armY ?? 70, open = o.open ?? 0;
     const t = P2(); rect(t, 0, -H, Wt, H); parts.push({ k: 'body', p: t });
-    const lat = P2();                                   // 桁架斜撑（细线，作为 dark 填充的细条）
+    const lat = P2();                                   // Truss diagonals (thin strips filled as dark parts).
     for (let y = 0; y < H; y += 8) { lat.moveTo(0, -y); lat.lineTo(Wt, -y - 8); lat.lineTo(Wt, -y - 7.4); lat.lineTo(0.6, -y); lat.closePath(); }
     parts.push({ k: 'truss', p: lat });
-    const arm = P2(), L = o.len ?? 30;                  // 两只臂从塔左侧伸出（略俯视的 V 字）：open=0 合拢夹住，1 张开
+    const arm = P2(), L = o.len ?? 30;                  // Two arms extend from the tower's left side (V in slight overhead view): open=0 closed, 1 open.
     for (const s of [-1, 1]) {
       const y0 = -armY, dy = s * (1.3 + open * 5.5);
       arm.moveTo(0, y0 + s * 1.3 - 1.1); arm.lineTo(-L, y0 + dy - 0.9); arm.lineTo(-L, y0 + dy + 0.9); arm.lineTo(0, y0 + s * 1.3 + 1.1); arm.closePath();
@@ -134,7 +134,7 @@ window.RK = (() => {
     return { parts, h: H, w: Wt, a: { top: [Wt / 2, -H], armRoot: [0, -armY], armTip: [-L, -armY] } };
   }
 
-  // 尾焰：在 (x, y) 向下（局部 +y）喷 len 长，w 宽；t 驱动闪烁（确定性）；pal = [外, 中, 芯]
+  // Exhaust: at (x, y), downward (local +y), length len, width w; t drives deterministic flicker; pal = [outer, middle, core].
   function flame(c, x, y, len, w, t, pal = ['rgba(255,120,30,0.85)', 'rgba(255,200,80,0.95)', '#fff6d8'], seed = 0) {
     const fl = (k) => 1 + 0.08 * Math.sin(t * 37 + k + seed) + 0.05 * Math.sin(t * 61 + 2 * k + seed);
     const layer = (sc, col, k) => { const L = len * sc * fl(k), ww = w * (0.55 + 0.45 * sc);
@@ -142,12 +142,12 @@ window.RK = (() => {
     layer(1, pal[0], 1); layer(0.66, pal[1], 2); layer(0.36, pal[2], 3);
   }
 
-  // 朴素平涂：pal = {body, dark, nose, window, trunk, flap, engine, tiles, truss, line?, lw?}
+  // Basic flat fill: pal = {body, dark, nose, window, trunk, flap, engine, tiles, truss, line?, lw?}.
   function fill(c, shape, pal) {
     for (const q of shape.parts) { const col = pal[q.k] ?? pal.body; if (!col) continue; c.fillStyle = col; c.fill(q.p); }
     if (pal.line) { c.lineWidth = pal.lw || 0.25; c.strokeStyle = pal.line; c.lineJoin = 'round'; for (const q of shape.parts) if (q.k !== 'truss') c.stroke(q.p); }
   }
-  // 放置：在屏幕 (x, y) 处、以 px/m 缩放、旋转 rot（弧度，0＝竖直向上）画 fn(c)
+  // Placement: draw fn(c) at screen (x, y), scale px/m, rotation rot (radians, 0 = upright).
   function at(c, x, y, s, rot, fn) { c.save(); c.translate(x, y); c.rotate(rot || 0); c.scale(s, s); fn(c); c.restore(); }
 
   return { falcon1, falcon9, dragon, heavy, superHeavy, ship, starship, tower, flame, fill, at, ogive, poly };

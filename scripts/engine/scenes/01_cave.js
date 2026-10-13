@@ -1,8 +1,8 @@
-// 40,000 BC 洞穴岩画——纯代码。
-// 管线：①岩壁（半分辨率 fbm 高度场 → 法线 × 左上光 → 浮雕明暗；底色噪声；颗粒；裂缝；手印/爪印喷绘；暗角）全部缓存
-//      ②「颜料层」：所有图形先描炭黑粗边（带孔洞的炭笔图案描边）再平涂赭石，painter 顺序保证遮挡；
-//        整层再 source-atop 叠一张「岩面明暗+颗粒」贴图 → 颜料吃进凹凸岩石
-//      ③会动的：野牛/马两张姿态每 7 帧交替、举杯、热气、猫尾/眨眼、火光摇曳、金色余烬、标题淡出（全片 t 0.933–1.133）
+// 40,000 BC cave paintings — pure code.
+// Pipeline: ① cached rock wall (half-resolution fbm height field → normals × upper-left light → relief shading; base-color noise; grain; cracks; sprayed hand/paw prints; vignette)
+//      ② Pigment layer: thick charcoal outlines (porous charcoal-pattern strokes), then flat ochre fills; painter order preserves occlusion;
+//        overlay a rock-shading + grain texture across the layer using source-atop → pigment follows the rock relief
+//      ③ Animation: bison/horse alternate two poses every 7 frames, cup lift, steam, cat tail/blinks, flickering fire, golden embers, title fade (film t 0.933–1.133)
 SCENES['01_cave'] = (() => {
   const W = 1920, H = 1080, { clamp, lerp, rng } = U, P = PAINT;
   const C = {
@@ -11,7 +11,7 @@ SCENES['01_cave'] = (() => {
     chalk: '#f0dfbf', bison: '#8c3d22', horse: '#cf8236', stone: '#c98c50', stoneD: '#c08048', spot: '#4e2610',
   };
 
-  // ---------- 炭笔图案（描边用）：炭黑 + 随机孔洞 → 颗粒边 ----------
+  // ---------- Charcoal stroke pattern: black + random holes → grainy edges ----------
   const inkTile = () => P.cached('cave_inkpat', 256, 256, (g) => {
     const img = g.createImageData(256, 256), d = img.data, r = rng(91);
     for (let i = 0; i < 256 * 256; i++) {
@@ -30,10 +30,10 @@ SCENES['01_cave'] = (() => {
   const PATS = new WeakMap();
   const inkPat = (g, t) => {
     let p = PATS.get(g); if (!p) { p = g.createPattern(inkTile(), 'repeat'); PATS.set(g, p); }
-    const b = P.boilSeed(t, 9), r = rng(b * 7 + 3);                 // 9fps：图案整体错位 → 炭笔颗粒「沸腾」
+    const b = P.boilSeed(t, 9), r = rng(b * 7 + 3);                 // 9fps: shift the entire pattern → boiling charcoal grain
     p.setTransform(new DOMMatrix().translate((r() * 256) | 0, (r() * 256) | 0)); return p;
   };
-  // 先描粗边（2×lw，外半圈露出）再填色 —— 颜料图形的统一画法
+  // Outline first (2×lw, outer half visible), then fill — shared pigment rendering
   function shape(g, path, fill, lw, t, alpha = 1) {
     if (lw) { g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = fuzzPat(g, t); g.lineWidth = lw * 2 + 7; g.stroke(path); g.strokeStyle = inkPat(g, t); g.lineWidth = lw * 2; g.stroke(path); }
     if (fill) { g.globalAlpha = alpha; g.fillStyle = fill; g.fill(path); g.globalAlpha = 1; }
@@ -42,10 +42,10 @@ SCENES['01_cave'] = (() => {
   const poly = (pts, closed = true) => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); if (closed) p.closePath(); return p; };
   const sm = (pts, closed = true) => RIG.smooth(pts, closed);
 
-  // ---------- 岩壁（缓存） ----------
+  // ---------- Rock wall (cached) ----------
   const HW = 960, HH = 540;
   const relief = () => P.cached('cave_relief', HW, HH, (g) => {
-    // 高度场（全分辨率坐标）：大起伏 + 中频鼓包
+    // Height field (full-resolution coordinates): large undulations + mid-frequency bulges
     const hgt = new Float32Array((HW + 1) * (HH + 1));
     for (let y = 0; y <= HH; y++) for (let x = 0; x <= HW; x++) { const X = x * 2, Y = y * 2;
       hgt[y * (HW + 1) + x] = P.fbm(X * 0.0022 + 3, Y * 0.0022, 4) * 1.0 + P.fbm(X * 0.011, Y * 0.011 + 7, 3) * 0.16 + P.noise(X * 0.05, Y * 0.05) * 0.03; }
@@ -62,7 +62,7 @@ SCENES['01_cave'] = (() => {
     }
     g.putImageData(img, 0, 0); g.__shade = shade;
   });
-  // 给颜料层用的「岩面贴图」：阴影处压暗、亮处提亮 + 颗粒（source-atop 用）
+  // Rock texture for pigment: darken shadows, lift highlights + grain (for source-atop)
   const figTex = () => P.cached('cave_figtex', W, H, (g) => {
     const rl = relief(), sh = rl.getContext('2d').__shade || relief().getContext('2d').__shade;
     const s = P.canvas(HW, HH), sg = s.getContext('2d'), img = sg.createImageData(HW, HH), d = img.data;
@@ -70,14 +70,14 @@ SCENES['01_cave'] = (() => {
     sg.putImageData(img, 0, 0); g.drawImage(s, 0, 0, W, H);
     g.drawImage(P.grain('cave_fdk', 0.14, [30, 18, 8], 0.32), 0, 0);
     g.drawImage(P.grain('cave_flt', 0.05, [255, 236, 200], 0.22), 0, 0);
-    // 颜料干湿不均的大斑（低频）
+    // Large patches of uneven pigment moisture (low frequency)
     const m = P.canvas(240, 135), mg = m.getContext('2d'), mi = mg.createImageData(240, 135);
     for (let i = 0; i < 240 * 135; i++) { const x = i % 240, y = (i / 240) | 0, n = P.fbm(x * 0.08 + 21, y * 0.08, 3); mi.data[i * 4] = mi.data[i * 4 + 1] = mi.data[i * 4 + 2] = n > 0 ? 255 : 0; mi.data[i * 4 + 3] = Math.abs(n) * 70; }
     mg.putImageData(mi, 0, 0); g.drawImage(m, 0, 0, W, H);
   });
 
-  // 手形（负形手印用），中心在原点、指尖朝上
-  function handPath(s = 1) {                                       // 返回若干块（逐块填）
+  // Hand shape for negative prints: centered at origin, fingers upward
+  function handPath(s = 1) {                                       // Return separate pieces (fill individually)
     const out = [], pal = new Path2D(); pal.ellipse(0, 8 * s, 26 * s, 31 * s, 0, 0, Math.PI * 2); out.push(pal);
     const cap = (A, B, w) => { const p = new Path2D(); const a = Math.atan2(B[1] - A[1], B[0] - A[0]); p.moveTo(A[0], A[1]); p.lineTo(B[0], B[1]); return { p, w }; };
     [[-0.5, 54, -17], [-0.17, 64, -6], [0.14, 62, 6], [0.46, 50, 17], [-1.25, 46, -20]].forEach(([a, l, ox], k) => {
@@ -96,7 +96,7 @@ SCENES['01_cave'] = (() => {
     const tmp = P.canvas(320, 320), tg = tmp.getContext('2d');
     spray(tg, 160, 160, 46 * s, 3200, col, seed, 0.8, 3.2, 0.15, 0.6);
     spray(tg, 160, 160, 28 * s, 1400, col, seed + 1, 1, 3.5, 0.3, 0.75);
-    // 手形先画成实心蒙版（逐块 fill，避免 Path2D 子路径绕向相反造成的「缺口」）
+    // Draw a solid hand mask first (fill each piece to avoid gaps from opposite Path2D subpath winding)
     const mk = P.canvas(320, 320), mg = mk.getContext('2d'); mg.translate(160, 160); mg.rotate(rot); mg.fillStyle = '#f6e2bc'; shapeFn(s).forEach(p => mg.fill(p));
     tg.globalCompositeOperation = 'destination-out'; tg.globalAlpha = 0.95; tg.drawImage(mk, 0, 0);
     tg.globalCompositeOperation = 'source-over'; tg.globalAlpha = 0.3; tg.drawImage(mk, 0, 0);
@@ -119,33 +119,33 @@ SCENES['01_cave'] = (() => {
   }
 
   const HANDS = [[150, 232, -0.35, 0.95], [238, 442, 0.25, 0.9], [1098, 138, 0.05, 0.95], [1742, 440, -0.2, 1.0], [1800, 662, 0.3, 0.92]];
-  // 静态画面（岩壁 + 所有不动的颜料图形）
+  // Static scene (rock wall + all stationary pigment shapes)
   const bg = () => P.cached('cave_bg', W, H, (g) => {
     g.imageSmoothingQuality = 'high'; g.drawImage(relief(), 0, 0, W, H);
     g.drawImage(P.grain('cave_wdk', 0.22, [60, 36, 18], 0.32), 0, 0);
     g.drawImage(P.grain('cave_wlt', 0.10, [255, 238, 205], 0.28), 0, 0);
     cracks(g);
-    // 手印（红赭石喷绘负形）＋ 爪印（炭黑）＋ 红点虚线
+    // Hand prints (sprayed red-ochre negatives) + paw prints (charcoal) + dotted red lines
     HANDS.forEach(([x, y, a, s], k) => { if (s) stencil(g, x, y, a, s, '#8e2a1a', 31 + k * 17, handPath); });
     stencil(g, 262, 762, 0, 0.5, '#1a0f08', 77, pawPath);
     g.fillStyle = '#9a2e1c'; for (let k = 0; k < 9; k++) { const x = 100 + k * 28, y = 972 - k * 4.5; spray(g, x, y, 3.5, 40, '#9a2e1c', 200 + k, 0.8, 2, 0.4, 0.8); g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 5.5, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1; }
-    // 静态颜料图形画到一张临时层，再叠岩面贴图
+    // Draw static pigment shapes on a temporary layer, then overlay the rock texture
     const L = P.canvas(), lg = L.getContext('2d');
-    // 壁画框
+    // Mural frame
     const fr = new Path2D(); P.roughPath({ moveTo: (...a) => fr.moveTo(...a), lineTo: (...a) => fr.lineTo(...a), closePath: () => fr.closePath(), beginPath() {} }, [[367, 126], [793, 124], [796, 552], [366, 550]], { amp: 3, seed: 5, closed: true, step: 18 });
     inkLine(lg, fr, 8, 0);
     const dot = (x, y) => { spray(lg, x, y, 5, 26, '#a8331f', (x * 7 + y) | 0, 0.8, 2.2, 0.3, 0.8); lg.fillStyle = '#a8331f'; lg.globalAlpha = 0.85; lg.beginPath(); lg.ellipse(x, y, 8.5, 8, (x + y) * 0.1, 0, Math.PI * 2); lg.fill(); lg.globalAlpha = 1; };
     for (let x = 398; x <= 768; x += 37) { dot(x, 152); dot(x, 524); }
     for (let y = 190; y <= 490; y += 37) { dot(392, y); dot(770, y); }
-    // 太阳＋射线
+    // Sun + rays
     spray(lg, 470, 228, 14, 200, '#a8301c', 9, 1, 3, 0.3, 0.8); lg.fillStyle = '#a8301c'; lg.globalAlpha = 0.9; lg.beginPath(); lg.arc(470, 228, 28, 0, Math.PI * 2); lg.fill(); lg.globalAlpha = 1;
     lg.strokeStyle = '#a8301c'; lg.lineWidth = 4.5; lg.lineCap = 'round';
     for (let k = 0; k < 9; k++) { const a = Math.PI * (0.95 + k * 0.13); lg.beginPath(); lg.moveTo(470 + Math.cos(a) * 38, 228 + Math.sin(a) * 38); lg.lineTo(470 + Math.cos(a) * 56, 228 + Math.sin(a) * 56); lg.stroke(); }
-    // 桌子上方的淡炭笔涂鸦（之前画过的人形）
+    // Faint charcoal doodles above the table (previously painted figures)
     lg.strokeStyle = 'rgba(40,26,16,.5)'; lg.lineWidth = 3;
     [[[858, 342], [872, 300], [905, 262], [945, 250], [972, 268], [1000, 258], [1040, 250], [1080, 272], [1098, 318], [1100, 365]], [[880, 330], [885, 380], [890, 395]], [[928, 300], [924, 360], [926, 412]], [[955, 352], [990, 342], [1008, 352], [1012, 384]], [[1040, 360], [1048, 400]], [[1060, 330], [1078, 352], [1088, 392]]]
       .forEach((pts, k) => { P.roughPath(lg, pts, { amp: 1.6, seed: 50 + k, step: 10 }); lg.stroke(); });
-    // 石凳（少女坐）、石板桌、长矛
+    // Stone stool (girl seated), slab table, spear
     shape(lg, sm([[1288, 768], [1325, 738], [1420, 730], [1492, 748], [1518, 806], [1514, 882], [1484, 908], [1300, 910], [1276, 872], [1272, 806]]), C.stone, 7, 0, 0.92);
     inkLine(lg, sm([[1460, 790], [1478, 840], [1470, 880]], false), 3, 0); inkLine(lg, sm([[1320, 860], [1340, 890]], false), 3, 0);
     shape(lg, sm([[958, 668], [1078, 668], [1086, 760], [1100, 870], [1094, 906], [936, 906], [926, 872], [944, 760]]), C.stoneD, 7, 0, 0.92);
@@ -155,20 +155,20 @@ SCENES['01_cave'] = (() => {
     shape(lg, sm([[1508, 296], [1522, 322], [1520, 350], [1510, 362], [1500, 350], [1497, 322]]), C.red, 4, 0);
     lg.globalCompositeOperation = 'source-atop'; lg.drawImage(figTex(), 0, 0); lg.globalCompositeOperation = 'source-over';
     g.drawImage(L, 0, 0);
-    // 洞穴暗角（四角压暗）＋ 中心暖光（静态部分）
+    // Cave vignette (dark corners) + central warm light (static component)
     const v = g.createRadialGradient(990, 560, 260, 990, 560, 1180); v.addColorStop(0, 'rgba(30,14,4,0)'); v.addColorStop(0.5, 'rgba(30,14,4,.16)'); v.addColorStop(1, 'rgba(18,8,2,.8)');
     g.fillStyle = v; g.fillRect(0, 0, W, H);
     const fl = g.createRadialGradient(1000, 520, 20, 1000, 520, 620); fl.addColorStop(0, 'rgba(255,190,110,.36)'); fl.addColorStop(0.5, 'rgba(255,150,70,.14)'); fl.addColorStop(1, 'rgba(255,150,70,0)');
     g.globalCompositeOperation = 'lighter'; g.fillStyle = fl; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
   });
 
-  // ---------- 壁画动物：两张姿态（每 7 帧换一张） ----------
+  // ---------- Mural animals: two poses (switch every 7 frames) ----------
   const BISON = sm([[470, 300], [495, 280], [545, 268], [595, 250], [632, 240], [660, 246], [682, 268], [692, 300], [686, 330], [668, 350], [640, 356], [590, 352], [530, 348], [488, 342], [468, 324]]);
   const BHEAD = sm([[672, 270], [698, 280], [716, 302], [724, 326], [714, 340], [696, 338], [682, 326], [668, 300]]);
   const HORSE = sm([[452, 474], [470, 458], [510, 456], [548, 452], [566, 432], [582, 414], [598, 410], [614, 432], [612, 444], [598, 444], [586, 438], [578, 458], [574, 478], [540, 488], [486, 488], [458, 486]]);
   function animals(g, t) {
     const ph = Math.floor(t * 60 / 7) % 2, rb = P.boilSeed(t, 9);
-    // 野牛
+    // Bison
     g.save(); g.translate(ph ? 3 : -3, ph ? -7 : 2);
     const bl = ph ? [[652, 340, 698, 384], [632, 346, 672, 394], [500, 340, 458, 378], [520, 344, 482, 390]]
                   : [[652, 340, 648, 392], [632, 346, 618, 396], [500, 340, 504, 394], [520, 344, 530, 394]];
@@ -184,7 +184,7 @@ SCENES['01_cave'] = (() => {
     g.fillStyle = C.ink; for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(538 + k * 13, 301, 3.2, 0, Math.PI * 2); g.fill(); }
     inkLine(g, sm([[468, 296], [452, 314], [446, 336]], false), 4, t);
     g.restore();
-    // 马（与野牛反相）
+    // Horse (opposite phase to bison)
     g.save(); g.translate(ph ? -3 : 3, ph ? 2 : -7);
     const hl = ph ? [[566, 486, 562, 528], [552, 488, 544, 530], [484, 488, 488, 528], [470, 486, 466, 526]]
                   : [[566, 486, 596, 520], [552, 488, 580, 528], [484, 488, 456, 520], [470, 486, 442, 516]];
@@ -200,31 +200,31 @@ SCENES['01_cave'] = (() => {
     void rb;
   }
 
-  // ---------- 猫（岩画画法，橘白） ----------
+  // ---------- Cat (orange-white cave-painting style) ----------
   function cat(g, ch, t, lt) {
     const K = RIG.cat({ tail: ch.tail, blink: ch.blink, breathe: ch.breathe, look: hq(lt) * 1.5 });
     const ha = -0.16 * hq(lt), ear = hq(lt) > 0.2 ? Math.sin(lt * 60) * 0.06 : 0;
     const br = (x, y) => [x, y - (y < 800 ? ch.breathe * 300 : 0)];
-    // 尾巴（在身后）
+    // Tail (behind body)
     g.lineCap = 'round'; g.lineJoin = 'round';
     g.strokeStyle = fuzzPat(g, t); g.lineWidth = K.tailW + 18; g.stroke(K.tail); g.strokeStyle = inkPat(g, t); g.lineWidth = K.tailW + 12; g.stroke(K.tail);
     g.strokeStyle = C.ochre; g.lineWidth = K.tailW; g.stroke(K.tail);
     const tp = K.tailPts; g.strokeStyle = '#55210b'; g.lineWidth = 6;
     for (let k = 5; k < tp.length - 1; k += 4) { const a = Math.atan2(tp[k + 1][1] - tp[k][1], tp[k + 1][0] - tp[k][0]) + Math.PI / 2; g.beginPath(); g.moveTo(tp[k][0] + Math.cos(a) * 10, tp[k][1] + Math.sin(a) * 10); g.lineTo(tp[k][0] - Math.cos(a) * 10, tp[k][1] - Math.sin(a) * 10); g.stroke(); }
-    // 身体
+    // Body
     const body = sm([[560, 684], [505, 702], [464, 756], [446, 826], [450, 884], [488, 906], [600, 906], [654, 902], [662, 858], [654, 790], [642, 734], [616, 698]].map(p => br(...p)));
     shape(g, body, C.ochre, 7, t);
     g.save(); g.clip(body); g.strokeStyle = '#55210b'; g.lineCap = 'round';
     [[716, 12], [748, 11], [780, 11], [812, 10], [846, 9]].forEach(([y, w], k) => { const yy = br(0, y)[1]; g.lineWidth = w; g.beginPath(); g.moveTo(430, yy - 6); g.quadraticCurveTo(470 + k * 2, yy + 2, 512 - k * 3, yy + 16); g.stroke(); });
     g.lineWidth = 9; g.beginPath(); g.moveTo(520, 690); g.lineTo(540, 716); g.stroke(); g.beginPath(); g.moveTo(548, 686); g.lineTo(562, 708); g.stroke();
     g.restore();
-    // 白胸肚
+    // White chest and belly
     g.fillStyle = C.chalk; g.fill(sm([[612, 700], [640, 736], [652, 792], [656, 860], [644, 898], [592, 902], [584, 830], [592, 748]].map(p => br(...p))));
-    // 大腿弧线
+    // Thigh arc
     inkLine(g, sm([[478, 842], [508, 826], [546, 838], [566, 872], [566, 904]], false), 4, t);
-    // 前腿＋爪（白）
+    // Front legs + paws (white)
     [[592, 600], [634, 640]].forEach(([x0, x1]) => { const leg = sm([[x0 - 4, 790], [x0 + 22, 792], [x0 + 24, 880], [x0 + 32, 892], [x0 + 26, 906], [x0 - 12, 906], [x0 - 10, 884]]); shape(g, leg, C.chalk, 6, t); });
-    // 头（原片 65–81 帧猫头有小动作：绕颈点抬头转向，耳朵抖）
+    // Head (source frames 65–81: lift and turn around neck anchor, ears twitch)
     g.save(); g.translate(596, 680); g.rotate(ha + ear); g.translate(-596, -680);
     shape(g, K.head, C.ochre, 7, t);
     g.save(); g.clip(K.head);
@@ -232,7 +232,7 @@ SCENES['01_cave'] = (() => {
     g.strokeStyle = '#55210b'; g.lineWidth = 7; g.lineCap = 'round'; K.stripes.slice(0, 3).forEach(s => { g.beginPath(); g.moveTo(...s[0]); g.lineTo(...s[1]); g.stroke(); });
     g.restore();
     g.fillStyle = '#c0644a'; K.earInner.forEach(e => g.fill(poly(e)));
-    // 眼、鼻、嘴、须
+    // Eyes, nose, mouth, whiskers
     K.eyes.forEach(e => { if (K.blink) { const p = new Path2D(); p.arc(e.x, e.y, 8, 0.2, Math.PI - 0.2); inkLine(g, p, 3.5, t); }
       else { const p = new Path2D(); p.ellipse(e.x, e.y, 9, 7.5, 0, 0, Math.PI * 2); g.fillStyle = '#e8b54a'; g.fill(p); inkLine(g, p, 3, t); g.fillStyle = C.ink; g.beginPath(); g.ellipse(e.x + 2, e.y, 2.6, 6, 0, 0, Math.PI * 2); g.fill(); } });
     g.fillStyle = '#8a2a1a'; g.fill(poly([[K.nose[0] - 6, K.nose[1] - 4], [K.nose[0] + 6, K.nose[1] - 4], [K.nose[0], K.nose[1] + 4]]));
@@ -242,41 +242,41 @@ SCENES['01_cave'] = (() => {
   }
   const hq = (lt) => { const q = clamp((lt - 1.08) / 0.27); return Math.sin(q * Math.PI); };
 
-  // ---------- 少女（岩画人形，金发长卷发，及膝豹纹兽皮外衣） ----------
+  // ---------- Girl (cave figure, long golden curls, knee-length leopard-skin tunic) ----------
   function girl(g, lt, t, ch) {
-    const k = P.choreo(Math.max(0, lt - 0.95), t).cup;                      // 0.95s 起举杯（choreo 曲线平移）
+    const k = P.choreo(Math.max(0, lt - 0.95), t).cup;                      // Lift cup from 0.95s (shifted choreo curve)
     const G = RIG.girl({ cup: k, sip: ch.sip * k, breathe: ch.breathe, hair: 'long' });
     const nk = [1300, 425], ct = Math.cos(G.tilt), st = Math.sin(G.tilt);
     const HP = (x, y) => { const X = x - nk[0], Y = y - nk[1]; return [nk[0] + X * ct - Y * st, nk[1] + X * st + Y * ct]; };
-    const HB = (x, y) => (y < 440 ? HP(x, y) : [x + (y < 520 ? (HP(x, y)[0] - x) * (520 - y) / 80 : 0), y]);   // 头发：越往下越不跟头转
-    // 远侧小腿（在后）
+    const HB = (x, y) => (y < 440 ? HP(x, y) : [x + (y < 520 ? (HP(x, y)[0] - x) * (520 - y) / 80 : 0), y]);   // Hair follows head rotation less toward the bottom
+    // Far lower leg (behind)
     const leg = (ox, oy) => sm([[1140, 770], [1128, 830], [1120, 878], [1094, 896], [1084, 910], [1172, 912], [1178, 890], [1192, 830], [1198, 778]].map(([x, y]) => [x + ox, y + oy]));
     shape(g, leg(40, -6), C.redD, 6, t);
-    // 背后长发（黄赭石，波浪边）
+    // Long rear hair (yellow ochre, wavy edge)
     const back = [], front = [];
     for (let i = 0; i <= 10; i++) { const q = i / 10, y = 330 + q * 300; back.push(HB(1398 + q * 52 + Math.sin(q * 13) * 13 * q, y)); front.push(HB(1332 + q * 68 + Math.sin(q * 12 + 1) * 11 * q, 345 + q * 270)); }
     const tips = [[1440, 640], [1428, 622], [1418, 646], [1406, 626]];
     const hairPts = [HP(1262, 312), HP(1300, 288), HP(1352, 290), HP(1392, 314), ...back, ...tips, ...front.reverse(), HP(1320, 330), HP(1290, 318)];
     const hairP = sm(hairPts);
-    // 兽皮外衣（躯干 + 及膝下摆，毛边）
+    // Hide tunic (torso + knee-length hem, ragged edges)
     const fr = [], rr = rng(17);
     for (let x = 1448, i = 0; x >= 1126; x -= 15, i++) fr.push([x, 782 + (i % 2 ? 16 : 0) + (rr() - .5) * 6]);
     const coatLow = sm([[1300, 600], [1420, 608], [1446, 650], [1452, 722], [1450, 770], ...fr, [1124, 764], [1148, 722], [1190, 656], [1242, 628]]);
-    // 近侧小腿
-    // 外衣描边 → 填色（两块一起，接缝被盖住）
+    // Near lower leg
+    // Outline → fill tunic (both pieces together to cover seams)
     g.lineJoin = 'round'; g.strokeStyle = fuzzPat(g, t); g.lineWidth = 19; g.stroke(G.torso); g.stroke(coatLow); g.strokeStyle = inkPat(g, t); g.lineWidth = 13; g.stroke(G.torso); g.stroke(coatLow);
     shape(g, leg(0, 0), C.red, 6, t);
     g.fillStyle = C.coat; g.fill(G.torso); g.fill(coatLow);
-    // 豹纹斑点
+    // Leopard spots
     g.save(); const clipP = new Path2D(); clipP.addPath(G.torso); clipP.addPath(coatLow); g.clip(clipP);
     const r = rng(23);
     for (let i = 0; i < 26; i++) { const x = 1150 + r() * 300, y = 450 + r() * 330, s = 7 + r() * 6; g.fillStyle = C.spot; g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill();
       for (let j = 0; j < 7; j++) { const a = j / 7 * Math.PI * 2 + r(); g.beginPath(); g.arc(x + Math.cos(a) * s * 1.6, y + Math.sin(a) * s * 1.6, 2.4, 0, Math.PI * 2); g.fill(); } }
     g.strokeStyle = 'rgba(78,38,16,.55)'; g.lineWidth = 2.5; for (let i = 0; i < 18; i++) { const x = 1170 + r() * 270, y = 470 + r() * 300; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6, y + 12); g.stroke(); }
     g.restore();
-    // 腰带（皮绳）
+    // Belt (leather cord)
     inkLine(g, sm([[1292, 606], [1360, 612], [1424, 614]], false), 6, t);
-    // 头发、脖子、脸
+    // Hair, neck, face
     shape(g, G.neck, C.red, 6, t);
     shape(g, hairP, C.hair, 7, t);
     g.save(); g.clip(hairP); g.strokeStyle = C.hairD; g.lineWidth = 3; g.lineCap = 'round';
@@ -285,36 +285,36 @@ SCENES['01_cave'] = (() => {
     shape(g, G.face, C.red, 7, t);
     shape(g, G.bangs, C.hair, 6, t);
     g.save(); g.clip(G.bangs); g.strokeStyle = C.hairD; g.lineWidth = 2.5; G.hairLines.forEach(h => g.stroke(h)); g.restore();
-    // 眼（侧脸一笔：杏仁＋睫毛；眨眼时只剩一条线）
+    // Eye (single profile stroke: almond + lashes; a line when blinking)
     if (ch.blink) { const p = new Path2D(); p.moveTo(G.eye.x - 8, G.eye.y + 1); p.quadraticCurveTo(G.eye.x, G.eye.y + 5, G.eye.x + 8, G.eye.y + 1); inkLine(g, p, 3, t); }
     else { const p = new Path2D(); p.ellipse(G.eye.x, G.eye.y, 7.5, 4.2, -0.1, 0, Math.PI * 2); g.fillStyle = '#f0dcb8'; g.fill(p); inkLine(g, p, 2.6, t); g.fillStyle = C.ink; g.beginPath(); g.arc(G.eye.x - 2, G.eye.y, 2.8, 0, Math.PI * 2); g.fill();
       const l = new Path2D(); l.moveTo(G.eye.x - 7, G.eye.y - 2); l.lineTo(G.eye.x - 12, G.eye.y - 6); inkLine(g, l, 2.4, t); }
     inkLine(g, G.brow, 2.4, t);
-    // 端杯手臂：自定 IK（伸臂端在半空 → 举到嘴边）
+    // Cup arm: custom IK (extended in midair → raised to mouth)
     const hold = [1084, 506], mouth = HP(1224, 380), cp = [lerp(hold[0], mouth[0], k), lerp(hold[1], mouth[1], k)];
     const S = G.A.shoulder, hand = [cp[0] + 34, cp[1] + 10];
     const { E, H: Hd } = RIG.ik2(S, hand, 170, 128, -1);
     const ua = RIG.taper(S, E, 50, 36, 6), fa = RIG.taper(E, Hd, 36, 26, 2);
     g.strokeStyle = fuzzPat(g, t); g.lineWidth = 18; g.stroke(ua); g.stroke(fa); g.strokeStyle = inkPat(g, t); g.lineWidth = 12; g.stroke(ua); g.stroke(fa);
     g.fillStyle = C.red; g.fill(ua); g.fill(fa);
-    // 杯（红赭小碗）
+    // Cup (small red-ochre bowl)
     g.save(); g.translate(cp[0], cp[1]); g.rotate(-0.45 * k);
     const cup = sm([[-34, -2], [-28, 22], [-12, 40], [12, 40], [28, 22], [34, -2]]);
     shape(g, cup, C.red, 6, t);
     const rim = new Path2D(); rim.ellipse(0, -2, 34, 7, 0, 0, Math.PI * 2); g.fillStyle = C.redD; g.fill(rim); inkLine(g, rim, 3.5, t);
     g.restore();
-    // 手＋手指（岩画式几道短线）
+    // Hand + fingers (a few short cave-painting strokes)
     const hp = new Path2D(); hp.ellipse(Hd[0], Hd[1], 15, 12, Math.atan2(Hd[1] - E[1], Hd[0] - E[0]), 0, Math.PI * 2); shape(g, hp, C.red, 5, t);
     const fa_ = Math.atan2(Hd[1] - E[1], Hd[0] - E[0]);
     for (let j = -1; j <= 1; j++) { const p = new Path2D(), ox = Math.cos(fa_ + Math.PI / 2) * j * 7, oy = Math.sin(fa_ + Math.PI / 2) * j * 7; p.moveTo(Hd[0] + ox + Math.cos(fa_) * 12, Hd[1] + oy + Math.sin(fa_) * 12); p.lineTo(Hd[0] + ox + Math.cos(fa_) * 30, Hd[1] + oy + Math.sin(fa_) * 30); inkLine(g, p, 3, t); }
-    // 热气：三道波浪炭线，向上蠕动
+    // Steam: three wavy charcoal lines creeping upward
     for (let j = -1; j <= 1; j++) { const p = new Path2D(), x0 = cp[0] + j * 16, y0 = cp[1] - 22;
       for (let s = 0; s <= 18; s++) { const q = s / 18, y = y0 - q * 58, x = x0 + Math.sin(q * 13 - t * 11 + j * 1.3) * 6; s ? p.lineTo(x, y) : p.moveTo(x, y); }
       inkLine(g, p, 3.4, t); }
     return G;
   }
 
-  // ---------- 标题（全片 0.933–1.133s 淡出） ----------
+  // ---------- Title (fades at film 0.933–1.133s) ----------
   function title(g, t) {
     const a = t < 0.933 ? 1 : 1 - clamp((t - 0.933) / 0.2); if (a <= 0) return;
     g.save(); g.globalAlpha = a; g.font = '78px "Kalam-700"'; g.letterSpacing = '7px'; g.textBaseline = 'alphabetic';
@@ -327,29 +327,29 @@ SCENES['01_cave'] = (() => {
     draw(c, lt, t) {
       const ch = P.choreo(lt, t);
       c.drawImage(bg(), 0, 0);
-      // 颜料层：动物 → 猫 → 少女 → 标题，整层叠岩面贴图
+      // Pigment layer: animals → cat → girl → title, then overlay rock texture
       const L = P.scratch('cave_fig'), g = L.getContext('2d'); g.clearRect(0, 0, W, H);
       animals(g, t);
-      // 猫整体以脚底 (540,905) 为锚缩 0.86：耳尖从 y≈535 降到 ≈587，和壁画框底边(550)留出 ≥35px
+      // Scale cat 0.86 about feet (540,905): ear tips drop y≈535 → ≈587, leaving ≥35px below mural frame (550)
       g.save(); g.translate(540, 905); g.scale(0.86, 0.86); g.translate(-540, -905); cat(g, ch, t, lt); g.restore();
       girl(g, lt, t, ch); title(g, t);
       g.globalCompositeOperation = 'source-atop'; g.drawImage(figTex(), 0, 0); g.globalCompositeOperation = 'source-over';
       c.drawImage(L, 0, 0);
-      // 火光摇曳：中心与强度随噪声抖动
+      // Fire flicker: noise jitters the center and intensity
       const n1 = P.noise(t * 3.1, 1.7), n2 = P.noise(t * 2.3, 8.1), fl = 0.14 + 0.11 * P.noise(t * 9.5, 3.3) + 0.04 * Math.sin(t * 23) + 0.03 * Math.sin(t * 37);
       const fx = 1000 + n1 * 60, fy = 540 + n2 * 36;
-      // overlay 合成：提亮暖化但不洗白颜料的饱和度（lighter 会把人物洗成粉黄）
+      // overlay brightens and warms without bleaching pigment saturation (lighter washes figures to pale yellow)
       const gr = c.createRadialGradient(fx, fy, 10, fx, fy, 700 + n2 * 60); gr.addColorStop(0, `rgba(255,196,110,${fl * 2.6})`); gr.addColorStop(0.5, `rgba(255,160,80,${fl * 1.3})`); gr.addColorStop(1, 'rgba(255,140,60,0)');
       c.save(); c.globalCompositeOperation = 'overlay'; c.fillStyle = gr; c.fillRect(0, 0, W, H);
-      // 暗处随火光一起「呼吸」
+      // Dark areas breathe with the firelight
       c.globalCompositeOperation = 'source-over';
       const dk = c.createRadialGradient(fx, fy, 380, fx, fy, 1150); dk.addColorStop(0, 'rgba(20,8,2,0)'); dk.addColorStop(1, `rgba(20,8,2,${0.12 - fl * 0.4 + 0.08})`);
       c.fillStyle = dk; c.fillRect(0, 0, W, H);
-      // 手印忽明忽暗：每个手印上叠一块独立噪声驱动的暖光
+      // Hand prints flicker: separate noise-driven warm light over each print
       c.globalCompositeOperation = 'lighter';
       HANDS.forEach(([x, y], k) => { const v = clamp(0.5 + 0.9 * P.noise(t * 7 + k * 3.7, k)); if (v < 0.05) return;
         const hg = c.createRadialGradient(x, y, 5, x, y, 105); hg.addColorStop(0, `rgba(255,150,80,${0.2 * v})`); hg.addColorStop(1, 'rgba(255,120,60,0)'); c.fillStyle = hg; c.fillRect(x - 105, y - 105, 210, 210); });
-      // 金色余烬：左右两侧缓慢上漂、闪烁
+      // Golden embers: slowly rise and flicker on both sides
       c.globalCompositeOperation = 'lighter';
       [[0, 380, 20], [1520, 1920, 20], [380, 1520, 9]].forEach(([x0, x1, n], s) => {
         P.particles(n, 300 + s * 31, t, { x0, x1, y0: H + 30, y1: 120, drift: 22, life: 5.5 }).forEach(p => {

@@ -1,12 +1,12 @@
-// 纯代码版：每个时代的画面由 scenes/<id>.js 的 draw(c, lt, t) 程序化绘制。
-// 15 个时代 + 2026 结尾。eighths = 本段占几个八分音符（128 BPM，见 references/风格配方/_音轨_艺术史速通.md）。
-const R = 1866;                                   // 右对齐基准
+// Code-only version: each era drawn procedurally by scenes/<id>.js draw(c, lt, t).
+// 15 eras +2026 ending. eighths = eighth notes per segment (128 BPM, see references/风格配方/_音轨_艺术史速通.md).
+const R = 1866;                                   // Right-aligned baseline
 const box = (x0, y0, x1, y1, fill, stroke, lw = 4, inset = 0) => c => {
   c.save(); c.fillStyle = fill; c.fillRect(x0, y0, x1 - x0, y1 - y0);
   if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.strokeRect(x0 + inset, y0 + inset, x1 - x0 - 2 * inset, y1 - y0 - 2 * inset); }
   c.restore();
 };
-// 原片复刻：年份牌位置固定、数字连续滚动，转场时角标留在新旧两层里一起变（engine 默认是转场中点硬切，见 drawCounter）
+// Original-film recreation: fixed year plate, continuously rolling digits; old/new counters transition with both layers (engine default hard-cuts at midpoint, see drawCounter)
 window.COUNTER_IN_TRANSITION = 'layers';
 window.ERAS = [
  { id: '01_cave', eighths: 6, 

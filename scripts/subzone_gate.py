@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""字幕带门禁：扫「无字幕版」成片，字幕带里出现画面内容（字、描边、火箭、火焰）就报时间码。
+"""Subtitle-zone gate: scan film without subtitles, report timestamps when content (text/outlines/rockets/flames) enters band.
 
     python3 subzone_gate.py <无字幕版.mp4> [--band 920] [--fps 10] [--thresh 150]
 
-qa.py检查文字框；本脚本补充检查图形是否进入字幕带。
-数的是灰度 <95 的深色像素，只适合浅底干净的风格（白板、米白纸面、发布会浅色版）。
-纹理底（Vox 牛皮纸桌面）按字幕带主色差判断容易产生大量误报：这类风格靠 qa.py 的框景，
-或者像 Vox 版那样让文字 API 登记所属物件再查遮挡。
-阈值是那支片子的实测值（字幕带缩半成 960×80 后 >150 个像素），换风格先拿已知好／坏的两帧校一下。
+qa.py checks text bounds; this supplements graphics entering subtitle band.
+Counts dark pixels grayscale <95, suitable only for clean light backgrounds (whiteboard/cream paper/light keynote).
+Textured backgrounds (Vox kraft table) give many false positives with dominant-color band differences; use qa.py boundaries
+or Vox-style text APIs registering object ownership for occlusion checks.
+Threshold measured for that film (>150 pixels after half-sizing band to 960×80); calibrate known good/bad frames for new styles.
 """
 import argparse, subprocess, numpy as np
 ap = argparse.ArgumentParser(); ap.add_argument('video'); ap.add_argument('--band', type=int, default=920, help='字幕带上沿 y（1080 高）')

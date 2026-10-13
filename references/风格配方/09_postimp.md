@@ -1,5 +1,7 @@
 # 09_postimp · 1889 梵高（标杆实现）
 
+**中文** · [English](../en/style-recipes/09_postimp.md)
+
 文件：`scripts/engine/scenes/09_postimp.js`，每帧约 110ms（全幅三遍笔触）。其他时代照它的结构写。
 
 ## 管线

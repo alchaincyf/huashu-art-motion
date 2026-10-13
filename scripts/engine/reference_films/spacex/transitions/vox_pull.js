@@ -1,4 +1,4 @@
-// Vox 拼贴桌面（vox 片）的「抽纸」：上一镜像一张纸被抽走，带倾斜滑出画外，露出压在下面的下一镜（12fps 步进）。
+// Vox collage desk (vox film) paper pull: preceding shot tilts and slides away like paper, revealing next shot underneath (12fps steps).
 TRANSITIONS.vox_pull = (c, A, B, p, o) => {
   const n = Math.max(1, Math.round(o.dur * 12)), q = Math.floor(p * n + 1e-6) / n, e = MO.cubicIn(q), W = o.W, H = o.H;
   c.drawImage(B, 0, 0);

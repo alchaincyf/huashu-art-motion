@@ -1,6 +1,6 @@
-// S4 大全景（同一个房间拉远到 0.5 倍）：小小的花叔坐在大房间里。口播「我问它：这些……」
-// 全景让人显得渺小无助 —— 远景本身就是笑点的铺垫。返修：两段停顿里加「眼睛瞟一下电脑再看镜头」、说「这些」时指电脑。
-// 动：口型、眼神（6.2 瞟电脑 → 6.6 回到镜头）、换姿势回弹（talk → point）、吊灯摆、云飘、屏幕光闪、镜头极慢拉远。
+// S4 wide shot (same room pulled back to 0.5x): Huashu tiny in the large room. Voiceover: "I asked it: all these..."
+// Wide shot makes the character look small and helpless — the wide itself is setup for the punchline. Revision: added "glance at laptop then back to camera" in two pauses, pointing at laptop on "all these".
+// Animation: lip sync, eye direction (6.2 glance laptop → 6.6 back to camera), pose rebound (talk → point), chandelier swing, cloud drift, screen flicker, very slow pullback.
 (() => {
 const S = STORY;
 SCENES['s4_wide'] = {

@@ -1,9 +1,9 @@
-# 握笔手三姿势：hand_raw_N.png（gpt-image 生成，绿幕；2、3 以 1 为参考图）→ hand_N.png（去绿、保留 1024 原坐标，缩到 640）
-# 并量出：笔尖 tip、袖子出画的上沿点 U / 下沿点 L、袖子方向 d（都是 1024 坐标）→ 打印成 JS 常量，贴进 common.js 的 HANDS。
-# 用法：python3 make_hand.py
+# Three pen-holding poses: hand_raw_N.png (gpt-image, green screen; 2/3 reference 1) → hand_N.png (remove green, keep 1024 coordinates, resize to 640)
+# Measure tip, upper/lower sleeve exit U/L, sleeve direction d (1024 coordinates) → print JS constants for HANDS in common.js.
+# Usage: python3 make_hand.py
 import json, numpy as np
 from PIL import Image
-TIPDIR = {1: (1, 1), 2: (1, 0.3), 3: (0.5, 1)}   # 笔尖朝哪个方向最远：取 x*a+y*b 最小的不透明像素
+TIPDIR = {1: (1, 1), 2: (1, 0.3), 3: (0.5, 1)}   # Farthest along pen-tip direction: opaque pixel minimizing x*a+y*b
 out = {}
 for n in (1, 2, 3):
     im = np.asarray(Image.open(f'hand_raw_{n}.png').convert('RGB').resize((1024, 1024))).astype(np.float32); r, g, b = im[..., 0], im[..., 1], im[..., 2]

@@ -1,22 +1,22 @@
-// y4 本片共用：配色、姿势时间线（pose-to-pose＋换姿势回弹）、眨眼、字幕。
-// 用到的库：TOON（豆子花叔 bean、poseAt、blinkAt、alive、口型读 VO_ENV）、TY.text（字幕）、CAM（镜头）、MO（步进、弹簧）。
+// y4 shared config: palette, pose timeline (pose-to-pose + rebound), blink schedule, subtitles.
+// Libraries used: TOON (bean character, poseAt, blinkAt, alive, lip sync reads VO_ENV), TY.text (subtitles), CAM (camera), MO (step, spring).
 (() => {
 const S = window.STORY = {};
-// 背景压低饱和与对比、线更细更灰；角色线最黑最粗 —— 视线永远先落到角色上
+// Background: reduced saturation and contrast, thinner/grayer lines; character lines darkest and thickest — eye always lands on the character first
 S.C = { wall: '#DCE9EC', wall2: '#CFE0E4', floor: '#E8DCC8', desk: '#E2C29B', deskSide: '#CDA97F', bgLine: '#5B6470', line: '#1B1B1F',
   sky: '#BFE3F5', cloud: '#FFFFFF', laptop: '#C9CDD6', screen: '#20222D', glow: 'rgba(120,200,255,0.35)', void: '#3D405B' };
 S.bgLW = 3;
-// 口播时间（秒，全片时间）：与 共享/音频/build_y4.py 的摆放一致
-S.LINES = [[0.12, 2.0, '我第一次让AI帮我写代码，'], [2.13, 4.40, '它一口气，给了我三千行。'], [5.75, 8.75, '我问它：这些……贴哪儿？']];   // 字幕和镜头切点同一帧换
+// Voiceover timing (seconds, film time): matches placement in 共享/音频/build_y4.py
+S.LINES = [[0.12, 2.0, '我第一次让AI帮我写代码，'], [2.13, 4.40, '它一口气，给了我三千行。'], [5.75, 8.75, '我问它：这些……贴哪儿？']];   // Subtitles and shot cuts change on same frame
 
-// 姿势时间线：keys = [[t, poseName, expr], ...]（全片时间）。换姿势 = TOON.poseAt：手臂 0.1s 快切、身体挤压 7% 后弹簧回弹
+// Pose timeline: keys = [[t, poseName, expr], ...] (film time). Pose change = TOON.poseAt: arms cut in 0.1s, body squashes 7% then spring-rebounds
 S.poseAt = TOON.poseAt;
-// 眨眼：固定时刻表（「随机」间隔 2.4–3.6s 写死），闭眼 2 帧@24fps ≈ 0.083s
+// Blink: fixed schedule ("random" 2.4–3.6s intervals hardcoded), eyes closed 2 frames @24fps ≈ 0.083s
 S.blinkAt = (t, extra = []) => TOON.blinkAt(t, [0.9, 3.4, 6.1, ...extra]);
-// 说话时头随音节轻点＋呼吸（1.6s 一周期，±1.2%）
+// Talking: head nods with syllables + breathing (1.6s cycle, ±1.2%)
 S.alive = TOON.alive;
 
-// 字幕（中文平台需要烧录；YouTube 原生 storytime 不烧，靠 CC）：白字黑描边，整句切入切出，不做花样
+// Subtitles (Chinese platforms need burn-in; YouTube native storytime uses CC instead): white text with black stroke, full sentence cut in/out, no effects
 window.GLOBAL_OVERLAY = (c, t) => {
   for (const [a, b, s] of S.LINES) if (t >= a && t < b) {
     TY.text(c, s, 960, 1022, { size: 50, fam: 'PuHui-Bold', color: '#fff', stroke: '#1B1B1F', strokeW: 10, track: 1 });

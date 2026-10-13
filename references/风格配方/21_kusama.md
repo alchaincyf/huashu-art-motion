@@ -1,5 +1,7 @@
 # 21_kusama · 草间弥生无限波点
 
+**中文** · [English](../en/style-recipes/21_kusama.md)
+
 > 来源：迁移测试 A（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/21_kusama.js`。
 
 实验时的文件名 `scenes/05_kusama.js`（124 行）。0.45↔0.9s 为 17.3%，相邻帧中位 2.98%，JS 侧 4–28ms。

@@ -1,6 +1,6 @@
-// S09 · 星链（大数字段）：① 环形图「大多」（2025 年 165 次里 123 次是星链，核对表 21a）＋整流罩打开、一摞扁平卫星弹出
-// ② 2019：60 颗卫星图标 10×6 依次点亮，「60颗」③ 60 颗缩成一个小方块飞向地球，地球外面一圈圈卫星群越来越密，「1.1万+ 颗在轨」→「1200万+ 用户」小人一排排冒出来。
-// 转场：粉青两色色带从右往左扫（lin_wipe）。
+// S09 · Starlink large-number segment: ① most-launches donut (123 of 165 in 2025, fact row 21a) + opening fairing, stacked flat satellites pop out.
+// ② 2019: 60 satellite icons light in 10×6 array; ③ shrink into square, fly to Earth; denser satellite rings, 11,000+ in orbit → 12 million+ user figures appear in rows.
+// Transition: pink/cyan bands wipe right→left (lin_wipe).
 (() => {
 const ID = 's09', L = LIN, { C, TAU } = L, { clamp, lerp } = U;
 let Q = null;
@@ -19,15 +19,15 @@ function pageA(g, lt) {
   });
   const kc = L.popK(lt, Qv.sz, 0.4, 2);
   if (kc > 0) L.at(g, 860, 770, kc, h => L.txt(h, '2025年：165次发射里，123次送星链', 0, 0, 46, { align: 'center', col: C.ink, w: 'Heavy' }));
-  // 整流罩打开，卫星一摞弹出
+  // Fairing opens, satellite stack pops out.
   const fx = 1480, fy = 490, op = MO.backOut(clamp((lt - Qv.sz) / 0.5), 1.5);
   g.save(); g.beginPath(); g.rect(0, 0, 1920, 830); g.clip(); L.rocket(g, RK.falcon9({ payload: 'none' }), fx, fy + 330, 6.2, { sx: 2.3 }); g.restore();
-  // 云层：先描所有圆、再填一遍盖住内线，只留外轮廓（一团云，而不是一排球）
+  // Clouds: outline all circles, fill to cover internal lines, leaving one cloud silhouette rather than row of balls.
   const CL = [[-150, 18, 44], [-95, -6, 58], [-30, -20, 66], [40, -8, 60], [105, 6, 52], [160, 22, 40], [0, 30, 60], [-80, 34, 50], [90, 34, 50]];
   g.save(); g.translate(fx, 812 + 3 * Math.sin(lt * 1.5)); g.lineWidth = 9; g.strokeStyle = C.ink; for (const [x, y, r] of CL) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke(); }
   g.fillStyle = C.white; for (const [x, y, r] of CL) { g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); } g.restore();
-  const top = fy + 330 - 54 * 6.2;                    // 二级顶端
-  // 不画整流罩（几次都被读成刀片）：二级顶端敞口，星链卫星一片片叠着往上推出来
+  const top = fy + 330 - 54 * 6.2;                    // Second-stage top.
+  // No fairing (repeatedly looked like blade); open stage top pushes stacked Starlinks upward.
   for (let i = 0; i < 6; i++) { const ki = L.popK(lt, Qv.sz + 0.25 + i * 0.07, 0.35, 2.2); if (ki <= 0) continue;
     const yy = top - 30 - i * 40, xx = fx + (i % 2 ? 24 : -24) * ki;
     g.save(); g.translate(xx, yy); g.rotate((i % 2 ? 1 : -1) * 0.12 * ki); g.scale(ki, ki); g.lineWidth = 4; g.strokeStyle = C.ink; g.fillStyle = C.blue; g.fill(L.rrp(-70, -14, 140, 28, 6)); g.stroke(L.rrp(-70, -14, 140, 28, 6));
@@ -35,8 +35,8 @@ function pageA(g, lt) {
   const kx = L.popK(lt, Qv.xl - 0.05, 0.4, 2.4);
   if (kx > 0) L.at(g, 1500, 165, kx, h => L.kw(h, '自家的星链卫星', 0, 0, { size: 46, fill: C.blue }));
 }
-// ② 60 颗
-const gx = i => 880 + (i % 12) * 78, gy = i => 270 + Math.floor(i / 12) * 84;   // 12×5，大一号，手机上读得出是卫星
+// ② 60 satellites.
+const gx = i => 880 + (i % 12) * 78, gy = i => 270 + Math.floor(i / 12) * 84;   // 12×5, enlarged so satellites read on phones.
 function pageB(g, lt) {
   const Qv = q(), t0 = Qv.dyp - 0.1, t1 = Qv.n60E - 0.05, shrink = MO.cubicInOut(clamp((lt - (Qv.xz - 0.1)) / 0.55));
   if (shrink >= 1) return;
@@ -48,7 +48,7 @@ function pageB(g, lt) {
   const kn = L.popK(lt, t0, 0.35, 2) * (1 - shrink);
   if (kn > 0) L.at(g, 1324, 780, kn, h => { L.txt(h, String(n), 10, 0, 150, { w: 'Black', col: C.blue, align: 'right' }); L.txt(h, '颗', 24, 0, 70); L.kw(h, '第一批', -300, -40, { size: 48, fill: C.yel, col: C.ink }); });
 }
-// ③ 地球＋卫星群＋两个大数
+// ③ Earth, satellite swarm, and two large numbers
 const EX = 960, EY = 520, ER = 160;
 const SW = (() => { const r = U.rng(909), a = []; for (let i = 0; i < 520; i++) a.push({ sh: Math.floor(r() * 5), ph: r() * TAU, sp: 0.35 + r() * 0.25, t: r() }); return a; })();
 const SHELLS = [[230, 70, -0.35], [250, 95, 0.25], [210, 120, 0.9], [270, 60, -1.1], [240, 150, 1.5]];
@@ -62,14 +62,14 @@ function pageC(g, lt) {
   for (const p of pts) if (!p[2]) dot(p);
   L.earth(g, EX, EY, ER, lt, { k: ke });
   for (const p of pts) if (p[2]) dot(p);
-  // 1.1万+
+  // 11,000+
   const c0 = Qv.zg, c1 = Qv.n11E, cp = MO.cubicInOut(clamp((lt - c0) / (c1 - c0))), k1 = L.popK(lt, c0, 0.4, 2), land1 = lt >= c1;
-  if (k1 > 0) L.at(g, 1340, 400, k1, h => { // 从第一批的 60 颗数起，数的过程只显示整数颗，落定才换成「1.1万+」
+  if (k1 > 0) L.at(g, 1340, 400, k1, h => { // Count up from the first batch of 60; show whole satellite counts while counting, then switch to 11,000+ when settled
     if (!land1) { const v = Math.round(lerp(60, 11000, cp)).toLocaleString('en-US'); L.txt(h, v, 0, 0, 108, { w: 'Black', col: C.blue }); }
     else { L.at(h, 0, 0, 1 + MO.settle(lt - c1, 0.12, 3, 6), z => { L.txt(z, '1.1', 0, 0, 190, { w: 'Black', col: C.blue }); L.txt(z, '万+', L.tw('1.1', 190, 'Black', z) + 8, 0, 96, { w: 'Black', col: C.blue }); }); }
     L.kw(h, '颗在轨', 46, 70, { size: 38, fill: C.white, col: C.ink, align: 'left' }); });
   L.underline(g, lt, 1340, 422, 300, MO.cubicOut(clamp((lt - c1 - 0.05) / 0.35)), { col: C.red, seed: 81 });
-  // 1200万+ 用户
+  // 12 million+ users
   const d0 = Qv.yh - 0.05, d1 = Qv.n12E, dp = MO.cubicInOut(clamp((lt - d0) / (d1 - d0))), k2 = L.popK(lt, d0, 0.4, 2), land2 = lt >= d1;
   if (k2 > 0) { L.at(g, 1340, 680, k2, h => { const v = String(Math.round(1200 * dp)); L.txt(h, v, 0, 0, 150, { w: 'Black', col: C.red }); L.txt(h, land2 ? '万+' : '万', L.tw(v, 150, 'Black', h) + 8, 0, 76, { w: 'Black', col: C.red });
       L.kw(h, '用户', 46, 66, { size: 38, fill: C.white, col: C.ink, align: 'left' }); });
@@ -90,13 +90,13 @@ SCENES[ID] = {
     else if (lt < Qv.xz - 0.1) L.pageTitle(c, lt, '2019年', Qv.y19 - 0.1, { col: C.red, size: 46 }); else L.pageTitle(c, lt, '现在', Qv.xz - 0.05, { col: C.red, size: 46 });
   },
 };
-ERAS.find(e => e.id === ID).transition = { type: 'lin_zoom', dur: 0.6, x: 840, y: 720 };   // 推镜穿过 37 次那张图
+ERAS.find(e => e.id === ID).transition = { type: 'lin_zoom', dur: 0.6, x: 840, y: 720 };   // Push through the 37-times chart
 L.cast(ID, [
-  { t: 0.0, pose: 'walk', fr: 'walk', x: 2150, walk: 0.3 },   // 快步从右边出画、左边回来
+  { t: 0.0, pose: 'walk', fr: 'walk', x: 2150, walk: 0.3 },   // Exit briskly right and return from the left
   { t: 0.31, pose: 'walk', fr: 'walk', x: -260 },
   { t: 0.32, pose: 'point', fr: 'talk', x: 330, walk: 0.55 },
   { t: TM.cue(ID, '2019年') - 0.1, pose: 'present', fr: 'talk' },
-  { t: TM.cue(ID, '在轨的') - 0.1, pose: 'wow', fr: 'bounce', x: 165, s: 0.4, glide: 0.45 },   // 两个大数字满屏，讲解员退到角落
+  { t: TM.cue(ID, '在轨的') - 0.1, pose: 'wow', fr: 'bounce', x: 165, s: 0.4, glide: 0.45 },   // Two large numbers fill the screen; presenter retreats to the corner
   { t: TM.cue(ID, '用户') - 0.05, pose: 'thumb', fr: 'talk' },
   { t: TM.end(ID, '1200万') + 0.1, pose: 'thumb', fr: 2, x: 330, s: 0.66, glide: 0.4 },
 ]);

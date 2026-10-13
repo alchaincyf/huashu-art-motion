@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""原片 vs 复刻 逐帧并排：给一组时刻，各抽一帧，左原片右复刻，拼成一张图。
+"""Reference vs recreation, frame-by-frame side by side: extract at given times, reference left/recreation right, combine into one image.
 python3 compare.py --a 原片.mp4 --b 复刻.mp4 --times 1.5,1.6 --out 对比.jpg [--w 640]"""
 import argparse, subprocess, io
 from PIL import Image, ImageDraw

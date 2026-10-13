@@ -1,5 +1,7 @@
 # 08_impressionism · 1874 印象派（莫奈）
 
+**中文** · [English](../en/style-recipes/08_impressionism.md)
+
 每帧 65–76ms（中位 69ms）。主要开销是两遍全屏 P.strokes 加一遍角色笔触。
 
 ## 管线（照 09_postimp 标杆）

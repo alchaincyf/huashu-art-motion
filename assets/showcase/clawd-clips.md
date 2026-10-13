@@ -1,5 +1,7 @@
 # Clawd 博物馆奇妙夜 · GIF片段
 
+**中文** · [English](clawd-clips.en.md)
+
 从98秒成片《Clawd 博物馆奇妙夜》v2直接截取。完整成片（MP4，带配乐）在 Releases。这里不包含该片的工程。
 
 - `clawd-vangogh.gif`：00:28.40–00:33.40，5秒，720×405，15fps。跳进梵高《麦田与柏树》→厚涂Clawd在麦浪里跑。

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""口播 —— 用复刻音色生成、修补视频里的口播片段。
+"""Voiceover: generate/repair video narration using cloned voices.
 
-底层是火山引擎豆包声音复刻 2.0（seed-icl-2.0）。
+Underlying service: Volcengine Doubao voice cloning 2.0 (seed-icl-2.0).
 
-  say     用已有音色念一段文本，可对齐到目标时长、匹配目标响度
-  train   投喂一段真人录音，训练出新音色
-  voices  列出本地登记的音色 / 查线上训练状态
+  say     Speak text using existing voice, optionally align duration/match loudness
+  train   Train a new voice from a real person's recording
+  voices  List locally registered voices / query online training status
 
-凭证与默认声音由capabilities.py加载安装目录外的个人配置；
-此文件保留say/train/voices兼容入口，基础配置与系统声音不依赖requests。
+capabilities.py loads credentials/default voice from personal config outside install directory;
+this file keeps compatible say/train/voices entries; base config/system voices do not depend on requests.
 """
 import argparse
 import base64
@@ -23,13 +23,13 @@ import uuid
 
 
 HOST = "https://openspeech.bytedance.com"
-RES_CLONE = "volc.megatts.voiceclone"             # 训练 / 查询
-RES_TTS = "seed-icl-2.0"                          # 合成
+RES_CLONE = "volc.megatts.voiceclone"             # Train / query
+RES_TTS = "seed-icl-2.0"                          # Synthesize
 REGISTRY = pathlib.Path.home() / ".koubo" / "voices.json"
-MAX_UPLOAD = 10 * 1024 * 1024                     # 参考音频上限（原始文件，非 base64）
+MAX_UPLOAD = 10 * 1024 * 1024                     # Reference audio limit (original file, not base64)
 
 
-# ---------- 基础设施 ----------
+# ---------- Infrastructure ----------
 
 ACTIVE_CONFIG = None
 
@@ -59,7 +59,7 @@ def _session():
 
 
 def api(path, resource_id, payload, stream=False, retries=1):
-    # POST超时可能已经被接受/计费；不重新生成request_id盲目重试。
+    # Timed-out POST may already be accepted/billed; do not blindly retry with a new request_id.
     import requests
     appid, token = load_env()
     headers = {
@@ -86,7 +86,7 @@ def registry_save(data):
 
 
 def resolve_speaker(name_or_id):
-    """支持传音色名（登记表里的）或直接传 speaker_id。不传则用默认音色。"""
+    """Accept registered voice name or direct speaker_id. Omitted uses default voice."""
     reg = registry_load()
     if not name_or_id:
         name_or_id = reg.get("default") or os.getenv("VOLC_KOUBO_DEFAULT_SPEAKER")
@@ -129,7 +129,7 @@ def synthesize(text, speaker, out, fmt="wav", sample_rate=48000,
     if fidelity:
         req["tone_fidelity"] = True
     if speech_rate:
-        # 实测：只有放在 audio_params 里才生效，放 req_params 顶层会被静默忽略
+        # Measured: effective only in audio_params, silently ignored at req_params top level
         req["audio_params"]["speech_rate"] = int(speech_rate)
 
     r = api("/api/v3/tts/unidirectional", RES_TTS,
@@ -161,13 +161,13 @@ def synthesize(text, speaker, out, fmt="wav", sample_rate=48000,
 
 
 def fit_duration(path, target, tol=0.05):
-    """用 atempo 把音频精调到目标时长。超过 ±10% 不做，避免音质劣化。"""
+    """Fine-align audio duration with atempo. Do not adjust beyond ±10%, avoiding quality loss."""
     cur = ffprobe_duration(path)
     if not cur or abs(cur - target) <= tol:
         return cur, 1.0
     ratio = cur / target
     if not 0.9 <= ratio <= 1.1:
-        return cur, ratio        # 差太多，交给调用方决定（通常该改 speech_rate）
+        return cur, ratio        # Too different: leave decision to caller (usually adjust speech_rate)
     tmp = pathlib.Path(tempfile.mkstemp(suffix=path.suffix)[1])
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(path),
                     "-filter:a", f"atempo={ratio:.6f}", str(tmp)], check=True)
@@ -176,7 +176,7 @@ def fit_duration(path, target, tol=0.05):
 
 
 def match_loudness(path, target_db):
-    """把合成音量拉到跟原音轨同一水平，避免拼接处音量跳变。"""
+    """Match synthesized loudness to original track to avoid jumps at joins."""
     cur = mean_volume(path)
     if cur is None or target_db is None:
         return None
@@ -195,7 +195,7 @@ def cmd_say(args):
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    # 目标响度：可以直接给 dB，也可以指给一段参考音频（通常是原音轨那几秒）
+    # Target loudness: direct dB or reference audio segment (usually original track's corresponding seconds)
     target_db = args.loudness
     if args.match:
         target_db = mean_volume(args.match, args.match_ss, args.match_t)
@@ -208,10 +208,10 @@ def cmd_say(args):
         if not args.fit:
             break
         ratio = dur / args.fit
-        if 0.93 <= ratio <= 1.07:      # 进入 atempo 无损区间，够了
+        if 0.93 <= ratio <= 1.07:      # Within atempo's lossless range, sufficient
             break
-        # speech_rate 是绝对值不是增量：rate r 对应 (1 + r/100) 倍速。
-        # 先还原成 rate=0 时的时长，再算要多少倍速才能落到目标上。
+        # speech_rate is absolute, not incremental: rate r means (1 + r/100) speed.
+        # Recover duration at rate=0 first, then calculate required target speed.
         base = dur * (1 + speech_rate / 100)
         want = max(-50, min(100, int(round((base / args.fit - 1) * 100))))
         if want == speech_rate:
@@ -240,7 +240,7 @@ def cmd_say(args):
 # ---------- train ----------
 
 def prepare_audio(src, seconds=None, start=0):
-    """转成 24k 单声道；优先 wav，超 10MB 自动降级到 mp3。返回临时文件路径。"""
+    """Convert to 24k mono; prefer wav, automatically fall back to mp3 above 10MB. Return temporary path."""
     src = pathlib.Path(src)
     for fmt, codec, extra in (("wav", ["-c:a", "pcm_s16le"], []),
                               ("mp3", [], ["-b:a", "192k"]),
@@ -262,7 +262,7 @@ def cmd_train(args):
     if not src.is_file():
         sys.exit(f"✗ 找不到 {src}")
 
-    # 先挡住最常见的失败：喂进去的其实是底噪，服务端会回 45001122 no speaker detected
+    # Block common failure: input actually contains only noise; server returns 45001122 no speaker detected
     vol = mean_volume(src, args.start, args.seconds)
     if vol is not None and vol < -36:
         print(f"⚠️ 这段平均电平只有 {vol:.1f} dB，很可能没有人声或人声太弱。")
@@ -280,7 +280,7 @@ def cmd_train(args):
         "audio": {"data": base64.b64encode(audio.read_bytes()).decode(), "format": fmt},
         "source": 2,
         "language": args.language,
-        "model_type": 5,                       # 5 = 声音复刻 2.0
+        "model_type": 5,                       # 5 = voice cloning 2.0
     }
     if args.reference_text:
         payload["text"] = args.reference_text

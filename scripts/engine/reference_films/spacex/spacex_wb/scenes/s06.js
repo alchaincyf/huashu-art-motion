@@ -1,15 +1,15 @@
-// S06 · 重型猎鹰（C 行左段，x 0–2300）。换行用「拉远再扎进去」：相机先退到能看见 A、B 两行的远处（全片第一次看到这块板有多大），再扎进 C 行。
-// 快节奏三拍：「2018年」＋三芯并联的重型猎鹰 → 相机快推到一颗橙色太阳，一辆小跑车（车里一个戴头盔的小人）沿虚线绕太阳转 →
-// 两个着陆圈，两枚助推器同步竖着落下，「并排」弹出，落地扬起两团小尘。
+// S06 · Falcon Heavy (row C left, x 0–2300). Row change via pullback then dive: retreat enough to see rows A and B (first reveal of board size), then dive into row C.
+// Three fast beats: 2018 and three-core Falcon Heavy → fast push to orange Sun, small Roadster (helmeted figure inside) follows dashed solar orbit →
+// Two landing circles, two boosters land upright in sync, side-by-side pops up, two small dust puffs.
 WB.chapter('s06', id => {
   const q = k => WB.q(id, k), { OR, INK } = WB, D = WB.D, Y = v => WB.ROW.C + v;
   const t0 = WB.T0(id);
-  // ---- 换行：拉远 → 扎进 C 行 ----
-  // ---- 2018年，重型猎鹰首飞 ----
+  // ---- Row change: pull back → dive into row C ----
+  // ---- 2018: Falcon Heavy maiden flight ----
   WB.go(t0 + 0.9); WB.text('2018年', 130, Y(250), 130, { rate: 11 });
-  WB.go(q('重型猎鹰') - 0.1); WB.text('重型猎鹰首飞', 130, Y(370), 66, { rate: 15 });   // 标签先写完，镜头走之前不留半截字
+  WB.go(q('重型猎鹰') - 0.1); WB.text('重型猎鹰首飞', 130, Y(370), 66, { rate: 15 });   // Finish label before camera moves; no half-written characters
   WB.go(WB.cur + 0.02); WB.sk(D.heavy(520), 720, Y(820), { speed: 6200, w: 5.5 });
-  // ---- 把一辆跑车送上了绕太阳的轨道 ----
+  // ---- Send a Roadster into solar orbit ----
   const SX = 1470, SY = Y(430), SR = 105;
   WB.go(q('跑车') - 0.3);
   WB.line(WB.circ(SX, SY, SR, 1.04), { col: OR, w: 7, speed: 4200 });
@@ -27,7 +27,7 @@ WB.chapter('s06', id => {
     const flip = Math.cos(a) < 0 ? -1 : 1;
     g.translate(x, y); g.rotate((flip < 0 ? a + Math.PI : a) * 0.3); g.scale(flip, 1); WB.drawPrep(g, CAR, 0, 0, MO.backOut(qq, 2), 0); return null; } });
   WB.text('跑车', SX - ORX - 30, SY + ORY + 70, 60, { rate: 14, t0: Math.max(q('跑车') + 0.45, tRays + 0.02) });
-  // ---- 两枚助推器并排落回地面 ----
+  // ---- Two boosters land side by side ----
   const G = Y(800), BX = [2060, 2290], BH = 330;
   WB.go(q('两枚') - 0.2);
   WB.line([[1900, G], [2460, G]], { speed: 8000, w: 6 });
@@ -45,7 +45,7 @@ WB.chapter('s06', id => {
     return null; } });
   WB.pop('并排', 2175, Y(250), 110, { at: q('并排') + 0.2 });
   WB.line([[2070, Y(285)], [2280, Y(292)]], { col: OR, w: 6, t0: q('并排') + 0.35, dur: 0.18 });
-  // ---- 相机 ----
+  // ---- Camera ----
   const T = t0 + TIMING.seg[id].dur;
   WB.shot(t0 - 1.0, 0.7, -10, t0, { zmax: 0.3, pad: 80, sy: 520, ease: MO.cubicInOut, creep: 0 });
   WB.shot(t0 + 0.45, 0.7, t0, q('跑车') - 0.32, { zmax: 1.15, ease: MO.cubicInOut, creep: 0 });

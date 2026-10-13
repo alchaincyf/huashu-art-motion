@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""绿幕抠图且保留原画面坐标：输出裁到主体的 RGBA png ＋ sprites.json 里记下它在 1920x1080 画面中的左上角。
-gpt-image 用原片帧当参考图、只画角色铺 #00FF00 时，角色已经站在原片坐标上——裁剪时丢掉坐标就白对齐了。
-用法：python3 key_green.py raw/*.png --out ../工程/sprites [--soft 40 --hard 110]"""
+"""Green-screen keying preserves image coordinates: cropped RGBA png + sprites.json top-left position in 1920x1080 image.
+With reference-frame gpt-image characters on #00FF00, they already occupy reference coordinates; discarding coordinates loses alignment.
+Usage: python3 key_green.py raw/*.png --out ../工程/sprites [--soft 40 --hard 110]"""
 import argparse, json
 from pathlib import Path
 import numpy as np
@@ -14,9 +14,9 @@ meta_p = out / 'sprites.json'; meta = json.loads(meta_p.read_text()) if meta_p.e
 for f in a.files:
     im = np.asarray(Image.open(f).convert('RGB')).astype(np.float32)
     r, g, b = im[..., 0], im[..., 1], im[..., 2]
-    spill = g - np.maximum(r, b)                      # 绿色占优程度
+    spill = g - np.maximum(r, b)                      # Green dominance
     alpha = 1 - np.clip((spill - a.soft) / (a.hard - a.soft), 0, 1)
-    # 去绿溢：半透明及边缘像素的绿通道压到 max(r,b)
+    # Despill: clamp green in translucent/edge pixels to max(r,b)
     g2 = np.where(spill > 0, np.minimum(g, np.maximum(r, b) + 0.25 * np.clip(spill, 0, 30)), g)
     rgba = np.dstack([r, g2, b, alpha * 255]).clip(0, 255).astype(np.uint8)
     ys, xs = np.where(alpha > 0.05)
