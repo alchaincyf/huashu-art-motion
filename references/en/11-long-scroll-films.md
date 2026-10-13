@@ -42,4 +42,4 @@ Browser preview: start a static server inside `scripts/engine/`, open `index.htm
 - **Music**: picture first, music after. Each segment holds an integer number of beats; tempo is fine-tuned per segment within 86–104 BPM so every boundary falls on a bar's first beat (measured: 24 boundaries, maximum error 11.7 ms). The human ear cannot detect ±8% tempo variation between segments.
 - **Do not add gags for the protagonist that weren't asked for.** The skeleton has a "stack souvenirs on the hat" feature (`FILM_HAT_ITEMS`) that easily competes for visual attention with the scene — disabled by default.
 
-More evidence and numbers: `07-正面经验.md` items 36–38.
+More evidence and numbers: [proven practices](07-proven-practices.md), items 36–38.

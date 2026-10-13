@@ -2,7 +2,7 @@
 
 [中文](../08-风格作者规范.md) · **English**
 
-> Replaces the earlier `时代作者规范.md` (era-author-spec) that was tied to a specific remake project. When dispatching an agent to build a style, pass it the path to this page plus the "this project" section with project-specific details.
+> Replaces the earlier [era-author spec](../../scripts/engine/era-author-spec.en.md) that was tied to a specific remake project. When dispatching an agent to build a style, pass it the path to this page plus the "this project" section with project-specific details.
 
 ## Interface
 
@@ -19,7 +19,7 @@ SCENES['<id>'] = { draw(c, lt, t) { /* fill 1920×1080 */ }, init(IMG) { /* opti
 
 ## Read first (in order)
 
-1. `references/en/02-mechanism.md` (five-layer mechanism — only needed for speedrun/scroll films), `04-纯代码绘制.md` (pipeline, renderer quick-ref, pitfalls), `07-正面经验.md` (proven practices).
+1. [Mechanism](02-mechanism.md) (five-layer mechanism — only needed for speedrun/scroll films), [pure code drawing](04-pure-code-drawing.md) (pipeline, renderer quick-ref, pitfalls), [proven practices](07-proven-practices.md).
 2. `references/en/style-recipes/INDEX.md` (style-recipes index): find the closest style as a starting point and read that card.
 3. Reference implementation `scripts/engine/scenes/09_postimp.js`; source code of the scene closest to your style.
 4. `lib/`: `paint.js` (noise/texture/renderer/palette/choreography), `rig.js` (character skeleton, visibleLines), `kit.js` and other utility libraries. **Check the library first before writing your own.**
