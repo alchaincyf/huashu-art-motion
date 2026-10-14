@@ -1,5 +1,7 @@
 <div align="center">
 
+**简体中文** | [English](README.en.md)
+
 <img src="assets/showcase/hero.png" alt="huashu-art-motion电影画廊：35种艺术风格，9种解说语法" width="100%" />
 
 # huashu-art-motion · 艺术动画
@@ -13,8 +15,6 @@ npx skills add alchaincyf/huashu-art-motion
 ```
 
 [看动画](#动画样片) · [看风格](#看效果) · [开始使用](#里面有什么) · [下载完整样片](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
-
-**中文** · [English](README.en.md)
 
 </div>
 

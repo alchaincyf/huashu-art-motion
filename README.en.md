@@ -1,5 +1,7 @@
 <div align="center">
 
+[简体中文](README.md) | **English**
+
 <img src="assets/showcase/hero.png" alt="huashu-art-motion gallery: 35 art styles, 9 explainer grammars" width="100%" />
 
 # huashu-art-motion · Art Motion
@@ -13,8 +15,6 @@ npx skills add alchaincyf/huashu-art-motion
 ```
 
 [Animations](#animation-samples) · [Styles](#see-it) · [Get started](#whats-inside) · [Download full samples](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
-
-[中文](README.md) · **English**
 
 </div>
 

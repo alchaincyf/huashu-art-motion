@@ -29,3 +29,4 @@ _private/
 /voices.json
 .huashu/
 media.local.json
+.last-update-check
