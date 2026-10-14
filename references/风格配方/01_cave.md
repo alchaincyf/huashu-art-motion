@@ -1,5 +1,7 @@
 # 01_cave · 40,000 BC 洞穴岩画（纯代码）
 
+**中文** · [English](../en/style-recipes/01_cave.md)
+
 文件：`scenes/01_cave.js`（约 330 行）。最终性能：warm max 22ms / mean 21.1ms，cold（建缓存）在引擎 boot 时完成；确定性通过；0.2↔0.7s 运动差分 3.9% 像素。
 
 ## 管线

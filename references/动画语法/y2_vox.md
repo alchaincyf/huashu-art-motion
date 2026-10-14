@@ -1,5 +1,7 @@
 # Y2 · Vox 式拼贴解说：视频动画语法卡
 
+**中文** · [English](../en/animation-grammars/y2_vox.md)
+
 一句话：把论证摆在一张有真实材料的桌面上——剪报、照片、文件，相机像调查记者的眼睛在桌上移动；线和笔一顿一顿地画上去，证据感来自「这些东西是真的被放在这里的」。
 
 示范片：`scripts/engine/demos/y2_vox/`（渲染 `render.py --film demos/y2_vox`）（8s，3 镜 2 转场），总览：`assets/动画语法/y2_vox_总览.jpg`

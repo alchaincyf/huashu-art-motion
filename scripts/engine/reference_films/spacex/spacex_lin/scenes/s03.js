@@ -1,6 +1,6 @@
-// S03 · 猎鹰1号「闯关记」（慢推＋高光段）：① 大号猎鹰1号亮相、名字牌 ② 四个发射台一字排开：2006、2007、2008年8月
-// 每次火箭刚升空就「噗」地炸成一团烟，红叉盖在台上，讲解员一次比一次沮丧 ③ 第四次：镜头推近第四个台，点火、冲出画面——绿勾、彩纸、背景放射光，留一拍
-// ④ 「第一枚」奖章＋三个限定词贴纸依次贴上：私人研制 / 进入轨道 / 液体燃料。
+// S03 · Falcon 1 retries (slow push + highlight): ① large rocket/nameplate; ② four pads in row: 2006, 2007, August 2008,
+// Each launch quickly bursts into smoke, red cross stamps pad, presenter increasingly upset; ③ fourth pad close-up, rocket exits, green check/confetti/rays, hold a beat.
+// ④ First medal + qualifier stickers: privately developed / entered orbit / liquid fuel.
 (() => {
 const ID = 's03', L = LIN, { C, W, H, TAU } = L, { clamp, lerp } = U;
 let Q = null;
@@ -22,22 +22,22 @@ function attempt(g, lt, i, tL, tF) {
   pad(g, P.x, kp, false);
   if (kp > 0) L.at(g, P.x, BASE + 120, kp, h => L.txt(h, P.lab, 0, 0, 36, { align: 'center', col: lt > tF ? C.red : C.ink }));
   if (lt < tL - 0.25) return;
-  // 火箭：念到年份时上台，随后升空，念到「失败」时在半空炸开
-  // 三次各不一样：第一次刚离台就炸，第二次飞得歪歪扭扭，第三次飞得最高
+  // Rocket appears on year cue, rises, explodes midair on failure cue.
+  // Three distinct failures: near-pad blast, wobbling second flight, highest third flight.
   const HH = [190, 260, 300][i], u = clamp((lt - tL - 0.15) / (tF - tL - 0.15)), rise = lt < tL + 0.15 ? 0 : Math.pow(u, 1.7) * HH;
   const rot = i === 1 ? 0.3 * Math.sin(lt * 13) * u : i === 2 ? 0.12 * u : 0, dx = i === 1 ? 40 * Math.sin(lt * 6) * u : i === 2 ? 60 * u * u : 0;
   if (lt < tF && !(i === 0 && lt < q().L1 + 0.25)) L.rocket(g, L.F1(), P.x + dx, BASE - 4 - rise, 9.5, { fins: true, sx: 3.6, flame: lt > tL + 0.05 ? 0.9 : 0, lt, seed: i, rot });
-  if (lt < q().d4 + 0.1) L.puff(g, P.x + (i === 2 ? 60 : 0), BASE - 110 - HH, lt - tF, { s: 0.9 + i * 0.06, seed: 4 + i });   // 第四次之前把烟清掉
-  // 碎片落下
+  if (lt < q().d4 + 0.1) L.puff(g, P.x + (i === 2 ? 60 : 0), BASE - 110 - HH, lt - tF, { s: 0.9 + i * 0.06, seed: 4 + i });   // Clear smoke before fourth attempt.
+  // Falling debris.
   if (lt > tF && lt < tF + 0.75) { const r = U.rng(40 + i); for (let j = 0; j < 6; j++) { const k = lt - tF, vx = (r() - 0.5) * 340, vy = -120 - r() * 160;
       g.save(); g.translate(P.x + vx * k, BASE - 110 - HH + vy * k + 900 * k * k); g.rotate(k * (r() * 12 - 6)); g.fillStyle = j % 2 ? C.white : C.red; g.strokeStyle = C.ink; g.lineWidth = 3;
       g.beginPath(); g.rect(-9, -5, 18, 10); g.fill(); g.stroke(); g.restore(); } }
   L.stamp(g, 'x', P.x, BASE - 70, lt - tF - 0.12, { s: 1.15, rot: -0.12 + i * 0.1 });
 }
-function hero(g, lt) {                             // ① 大号猎鹰1号＋名牌，2.1 秒时缩到第四个台位
+function hero(g, lt) {                             // ① Large Falcon 1 + nameplate shrinks to fourth pad at 2.1s.
   const Qv = q(), sh = MO.cubicInOut(clamp((lt - (Qv.L1 - 0.25)) / 0.5));
   if (sh >= 1) return;
-  const x = lerp(1200, PADS[0].x, sh), y = lerp(800, BASE - 4, sh), s = lerp(21, 9.5, sh), k = L.popK(lt, 0.05, 0.5, 1.6);   // 大火箭直接变成 2006 年那一枚
+  const x = lerp(1200, PADS[0].x, sh), y = lerp(800, BASE - 4, sh), s = lerp(21, 9.5, sh), k = L.popK(lt, 0.05, 0.5, 1.6);   // Large rocket becomes 2006 rocket directly.
   g.save();
   L.at(g, x, y, k, h => L.rocket(h, L.F1(), 0, 0, s, { fins: true, sx: lerp(2.4, 3.6, sh), lw: 5 }), 0.02 * Math.sin(lt * 2));
   const kn = L.popK(lt, Qv.lyh, 0.4, 2.4) * (1 - clamp(sh * 4));
@@ -47,7 +47,7 @@ function hero(g, lt) {                             // ① 大号猎鹰1号＋名
   if (kn > 0) L.arrow(g, lt, 1340, 470, 1260, 540, MO.cubicOut(clamp((lt - Qv.lyh - 0.1) / 0.3)) * (1 - sh), { seed: 9, bend: -20, lw: 6, head: 22 });
   g.restore();
 }
-// 资金条：每失败一次掉一截，第四次前只剩一点点红（回扣「钱只够再打最后一发」）
+// Funding bar drops per failure, tiny red remainder before fourth (last-launch funding callback).
 function fund(g, lt) {
   const Qv = q(), k = L.popK(lt, Qv.L1 - 0.1, 0.4, 2) * (1 - L.outK(lt, Qv.cl + 0.4, 0.3)); if (k <= 0) return;
   const lv = [[Qv.F1, 0.62], [Qv.F2, 0.3], [Qv.F3, 0.09]]; let v = 1, tl = -9;
@@ -66,21 +66,21 @@ function fund(g, lt) {
 function board(g, lt) {
   const Qv = q(); if (lt < Qv.L1 - 0.3) return;
   const out = L.outK(lt, Qv.cw - 0.12, 0.3); if (out >= 1) return;
-  // 第四次：镜头推近第四个台
+  // Fourth attempt: close-up on fourth pad.
   const push = MO.cubicInOut(clamp((lt - (Qv.d4 - 0.1)) / 0.6)) * (1 - MO.cubicInOut(clamp((lt - (Qv.cl + 0.6)) / 0.5)));
   g.save(); g.globalAlpha = 1 - out; L.cam(g, 1 + 0.16 * push, PADS[3].x, 560);
-  // 放射光留给结尾的星舰入轨，这里只用彩纸＋绿勾（降一级）
+  // Reserve rays for final Starship orbit; use confetti/check here for lower emphasis.
   const sb = 0;
   if (sb > 0) { g.save(); g.translate(PADS[3].x, 420); g.rotate(lt * 0.25); g.globalAlpha *= 0.55 * MO.cubicOut(sb); g.fillStyle = C.yel;
     for (let i = 0; i < 14; i++) { const a = i * TAU / 14; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 1100 * MO.cubicOut(sb), a, a + TAU / 28); g.closePath(); g.fill(); } g.restore(); }
   attempt(g, lt, 0, Qv.L1, Qv.F1); attempt(g, lt, 1, Qv.L2, Qv.F2); attempt(g, lt, 2, Qv.L3, Qv.F3);
-  // 第四台
+  // Fourth pad.
   const P = PADS[3], k4 = L.popK(lt, Qv.L1 + 0.45, 0.4, 2); pad(g, P.x, k4, lt > Qv.d4);
   L.at(g, P.x, BASE + 120, L.popK(lt, Qv.d4 - 0.1, 0.4, 2.4), h => L.kw(h, '第四次', 0, -6, { size: 38, fill: C.yel, col: C.ink }));
   if (lt < Qv.d4 - 0.1) L.at(g, P.x, BASE + 116, k4, h => L.txt(h, '？', 0, 0, 40, { align: 'center', col: C.sub }));
-  const tIg = Qv.d4 + 0.35, rise = lt < Qv.cl - 0.15 ? 0 : Math.pow(lt - (Qv.cl - 0.15), 2) * 4200;   // 一下冲出画面，绿勾等它走了再落
+  const tIg = Qv.d4 + 0.35, rise = lt < Qv.cl - 0.15 ? 0 : Math.pow(lt - (Qv.cl - 0.15), 2) * 4200;   // Rocket shoots out; green check waits until it leaves.
   const shake = lt > tIg && lt < Qv.cl ? 3 * Math.sin(lt * 70) : 0;
-  g.save(); g.globalAlpha *= clamp((BASE - rise - 260) / 200);   // 冲出去时在年份胶囊下方淡出
+  g.save(); g.globalAlpha *= clamp((BASE - rise - 260) / 200);   // Fade below year pill on exit.
   if (k4 > 0) L.at(g, P.x + shake, BASE, k4, h => L.rocket(h, L.F1(), 0, -4 - rise, 9.5, { fins: true, sx: 3.6, flame: lt > tIg ? lerp(0.7, 1.6, clamp((lt - tIg) / 0.5)) : 0, lt, seed: 7 }));
   g.restore();
   if (lt > tIg && lt < Qv.cl + 0.6) for (let j = 0; j < 5; j++) { const ph = (lt * 2 + j / 5) % 1; g.save(); g.globalAlpha = 0.5 * (1 - ph); g.fillStyle = '#E6DFD2';
@@ -90,7 +90,7 @@ function board(g, lt) {
   if (kc > 0) L.at(g, P.x - 60, BASE - 400, kc, h => L.kw(h, '成了！', 0, 0, { size: 72, fill: C.green }), -0.06);
   g.restore();
 }
-// ④ 奖章＋限定词贴纸
+// ④ Medal + qualifier stickers.
 function medal(g, lt, k) {
   L.at(g, 820, 470, k, h => {
     h.lineWidth = 5; h.strokeStyle = C.ink; h.lineJoin = 'round';
@@ -120,7 +120,7 @@ function page2(g, lt) {
     L.at(g, x, y, 1, h => { L.card(h, -40, -62, 520, 124, { fill: C.white, r: 30 }); h.save(); h.translate(46, 0); chipIcon(h, i, lt); h.restore();
       L.kw(h, c.s, 300, 0, { size: 50, fill: c.col }); }, (i - 1) * 0.025 + 0.012 * Math.sin(lt * 2 + i));
   });
-  // 连接线：奖章 → 三张贴纸
+  // Connecting lines: medal → three stickers.
   ts.forEach((t, i) => L.arrow(g, lt, 1000, 470, 1290, 330 + i * 170, MO.cubicOut(clamp((lt - t) / 0.3)), { seed: 20 + i, bend: 0, lw: 5, head: 0, dash: [2, 12] }));
   L.underline(g, lt, 1420, 755, 280, MO.cubicOut(clamp((lt - Qv.yt - 0.3) / 0.35)), { col: C.red });
 }
@@ -146,7 +146,7 @@ L.cast(ID, [
   { t: q().cw - 0.05, pose: 'thumb', fr: 'talk' },
 ]);
 L.push(ID, q().cl - 0.1, q().cw + 0.25, 1.12, 1350, 900);
-L.bustCard(ID, q().F3 - 0.02, q().d4 - 0.04, [[q().F3 - 0.02, 3]]);   // 第三次失败：切到讲解员苦笑冒汗的大头特写
-L.hudHide(ID, q().F3 - 0.1, q().d4);   // 第三次失败：给讲解员一个反应特写
+L.bustCard(ID, q().F3 - 0.02, q().d4 - 0.04, [[q().F3 - 0.02, 3]]);   // Third failure: big-head close-up, presenter sweating with strained smile.
+L.hudHide(ID, q().F3 - 0.1, q().d4);   // Third failure: presenter reaction close-up.
 L.year(ID, [[q().L1, 2006], [q().L2, 2007], [q().L3, 2008]]);
 })();

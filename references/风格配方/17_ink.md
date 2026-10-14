@@ -1,5 +1,7 @@
 # 17_ink · 中国水墨写意（八大山人／齐白石）
 
+**中文** · [English](../en/style-recipes/17_ink.md)
+
 > 来源：迁移测试 A（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/17_ink.js`。
 
 实验时的文件名 `scenes/01_ink.js`（313 行）。帧差 0.45↔0.9s 为 3.3%（阈值 24），相邻帧中位 0.62%，没有静止帧对。

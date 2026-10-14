@@ -1,12 +1,12 @@
-// 长卷穿越片 · 共用库 XING（《花叔穿越名画》用的，随 demos/long_scroll 收进 skill）。
-// 角色＝AI 生的画风帧（gpt-image 按画风重画→绿幕抠图→切帧，见 references/10-角色.md），代码只管：在哪、多大、何时换帧、加什么材质。
-// 场景、运镜、石子、涟漪、睡莲、青蛙、转场全部代码画。
-//   XING.sprites(keys)               同步读 demos/long_scroll/frames/<key>/meta.json，返回资源列表（给 era.assets）
-//   XING.actor(c, key, i, o)         画第 i 帧：o={x,y(脚底),h(站立身高),mat:'monet'|'ukiyoe'|'vangogh'|'none',wx,t,flip,alpha}
-//   XING.hatTop(key,i,o)             帽顶在屏幕上的位置（青蛙落点）
-//   XING.strokes(g, src, opt)        任意尺寸画布的笔触重画，每格独立种子（位置永不重洗）
-//   XING.monetWorld / ukiyoeWorld / vgWorld   三个世界：静态部分一次画好缓存（世界坐标），动态部分每帧画
-//   XING.stone(t, plan)              打水漂：石子位置＋各次触水时刻
+// Long-scroll journey · shared XING library (used in Huashu Travels Through Masterpieces, included with demos/long_scroll in skill).
+// Character = AI style frames (gpt-image redraw per style → green-screen key → slice, see references/10-角色.md); code controls position, size, frame timing, texture.
+// Scenes, camera, stones, ripples, lilies, frog, and transitions are code-drawn.
+//   XING.sprites(keys)               Read demos/long_scroll/frames/<key>/meta.json synchronously, return assets (for era.assets)
+//   XING.actor(c, key, i, o)         Draw frame i: o={x,y(feet),h(standing height),mat:'monet'|'ukiyoe'|'vangogh'|'none',wx,t,flip,alpha}
+//   XING.hatTop(key,i,o)             Hat top on screen (frog landing point)
+//   XING.strokes(g, src, opt)        Repaint arbitrary canvas with strokes, independent seed per cell (positions never reshuffle)
+//   XING.monetWorld / ukiyoeWorld / vgWorld   Three worlds: static parts cached once (world coordinates), dynamic parts drawn each frame
+//   XING.stone(t, plan)              Stone skipping: position + water-contact times
 //   XING.frog(c, x, y, s, pose, style, o)
 (() => {
 const W = 1920, H = 1080, TAU = Math.PI * 2;
@@ -18,7 +18,7 @@ const cellRng = (i, j, seed) => rng((Math.floor(U.hash(i * 131 + seed * 7919, j 
 const lum = c => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
 const pick = (arr, r) => arr[(r() * arr.length) | 0];
 
-// ================= 笔触重画（任意尺寸，每格独立种子） =================
+// ================= Stroke repainting (any size, independent cell seeds) =================
 X.strokes = (g, src, { cell = 10, len = 24, width = 6, angle, palette, seed = 1, mask, alphaMask = false, alphaMin = 180, outline = 0, outlineCol = [20, 25, 60], outlineMix = 0.55, jitterCol = 14, skip, cap = 'round', alpha = 1 } = {}) => {
   const w = src.width, h = src.height;
   const sd = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
@@ -42,7 +42,7 @@ X.strokes = (g, src, { cell = 10, len = 24, width = 6, angle, palette, seed = 1,
   g.restore();
 };
 
-// ================= 角色帧 =================
+// ================= Character frames =================
 X.SPR = {};
 const syncJSON = url => { const x = new XMLHttpRequest(); x.open('GET', url, false); x.send(); if (x.status !== 200) throw new Error(url + ' ' + x.status); return JSON.parse(x.responseText); };
 X.sprites = keys => {
@@ -56,12 +56,12 @@ X.sprites = keys => {
 function ensure(key) {
   const S = X.SPR[key]; if (S.imgs) return S;
   S.imgs = S.meta.frames.map(f => window.IMG[`demos/long_scroll/frames/${key}/${f.file}`]);
-  // 帽顶：最上面一行不透明像素的中心
+  // Hat top: center of topmost opaque pixel row
   S.hat = S.imgs.map(im => { const c = P.canvas(im.width, im.height), g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data;
     for (let y = 0; y < im.height; y++) { let x0 = -1, x1 = -1; for (let x = 0; x < im.width; x++) if (d[(y * im.width + x) * 4 + 3] > 140) { if (x0 < 0) x0 = x; x1 = x; } if (x0 >= 0 && x1 - x0 > 6) return [(x0 + x1) / 2, y]; } return [im.width / 2, 0]; });
   return S;
 }
-// 材质：把 AI 帧再过一遍该画风的笔触，让他和场景用同一种「笔」（不碰深色＝眼镜、眼睛、头发不被糊掉）
+// Texture: repaint AI frames with this style's strokes so character and scene share a brush (skip dark areas to protect glasses, eyes, hair)
 const MAT = {
   monet: { pad: 8, cell: 6, len: 12, width: 4.2, seed: 11, outline: 0, angle: (x, y, r) => -0.55 + (r() - 0.5) * 0.9,
     skip: (col, x, y, r) => lum(col) < 95 || r() < 0.35,
@@ -85,13 +85,13 @@ function material(S, i, mat) {
   const out = P.canvas(im.width + 2 * pad, im.height + 2 * pad), g = out.getContext('2d');
   g.drawImage(im, pad, pad);
   if (M) { const base = P.canvas(out.width, out.height), bgx = base.getContext('2d', { willReadFrequently: true }); bgx.drawImage(im, pad, pad);
-    // 五官保护：附近 7px 内有深色像素（眼镜、眼睛、嘴、发际）就不下笔，免得把脸糊掉
+    // Protect features: no strokes within 7px of dark pixels (glasses, eyes, mouth, hairline), to avoid smearing face
     const bw = base.width, bh = base.height, bd = bgx.getImageData(0, 0, bw, bh).data, dk = new Uint8Array(bw * bh);
     for (let k = 0; k < bw * bh; k++) dk[k] = bd[k * 4 + 3] > 150 && (bd[k * 4] * 0.3 + bd[k * 4 + 1] * 0.59 + bd[k * 4 + 2] * 0.11) < 110 ? 1 : 0;
     const nearDark = (x, y) => { for (let dy = -7; dy <= 7; dy += 3.5) for (let dx = -7; dx <= 7; dx += 3.5) { const xx = (x + dx) | 0, yy = (y + dy) | 0; if (xx >= 0 && yy >= 0 && xx < bw && yy < bh && dk[yy * bw + xx]) return true; } return false; };
     X.strokes(g, base, { cell: M.cell, len: M.len, width: M.width, seed: M.seed + i, angle: M.angle, palette: M.palette, skip: (col, x, y, r) => M.skip(col, x, y, r) || nearDark(x, y), alphaMask: true, alphaMin: 170, outline: M.outline, outlineCol: M.outlineCol, jitterCol: 12 }); }
-  if (mat === 'ukiyoe') {             // 木纹＋纸纤维压进色块（multiply，只在人身上）
-    { const d = g.getImageData(0, 0, out.width, out.height), q = d.data;   // 生图把白帽白T画成米黄：低饱和的亮色拉回纸白（帽子定规是纯白）
+  if (mat === 'ukiyoe') {             // Woodgrain + paper fibers pressed into color blocks (multiply, character only)
+    { const d = g.getImageData(0, 0, out.width, out.height), q = d.data;   // Generated white hat/T-shirt came out beige: restore low-saturation highlights to paper white (hat must be pure white)
       for (let k = 0; k < q.length; k += 4) { const mx = Math.max(q[k], q[k + 1], q[k + 2]), mn = Math.min(q[k], q[k + 1], q[k + 2]); if (q[k + 3] > 0 && mx > 185 && mx - mn < 48) { const f = (mx - 185) / 70; q[k] = lerp(q[k], 251, f); q[k + 1] = lerp(q[k + 1], 249, f); q[k + 2] = lerp(q[k + 2], 242, f); } }
       g.putImageData(d, 0, 0); }
     const tex = P.canvas(out.width, out.height), tg = tex.getContext('2d'), r = rng(77 + i);
@@ -102,20 +102,20 @@ function material(S, i, mat) {
   }
   out.pad = pad; S.mats[key][i] = out; return out;
 }
-// 画一帧。x,y = 脚底锚点（屏幕），h = 站立身高（按 meta.ref_h 换算，整套帧同一缩放）
+// Draw frame. x,y = feet anchor (screen); h = standing height (scaled by meta.ref_h, same scale for entire frame set)
 X.actor = (c, key, i, o) => {
   const S = ensure(key), f = S.meta.frames[i], mat = o.mat || 'none';
   const im = material(S, i, mat), pad = im.pad || 0, s = o.h / S.meta.ref_h * (o.scale || 1);
   const fx = o.flip ? -1 : 1;
   const dw = im.width * s, dh = im.height * s, x0 = o.x - (f.ax + pad) * s * fx, y0 = o.y - (f.ay + pad) * s;
-  // 光影斑驳（莫奈）：暖黄光斑与淡紫阴影按世界坐标落在他身上，他走过时光从身上滑过
+  // Dappled Monet light: warm yellow spots and pale purple shadows in world coordinates slide across him as he walks
   const S2 = P.scratch('actorTmp'), g = S2.getContext('2d');
   const bw = Math.ceil(dw) + 4, bh = Math.ceil(dh) + 4;
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, Math.min(W, bw + 4), Math.min(H, bh + 4));
   g.save(); if (o.flip) { g.translate(bw - 2, 2); g.scale(-1, 1); } else g.translate(2, 2); g.drawImage(im, 0, 0, dw, dh); g.restore();
   if (mat === 'monet' && o.dapple !== false) {
     g.save(); g.globalCompositeOperation = 'source-atop';
-    const wx0 = (o.flip ? x0 - dw : x0) + ((o.wx ?? o.x) - o.x), t = o.t || 0;    // 精灵左上角的世界 x
+    const wx0 = (o.flip ? x0 - dw : x0) + ((o.wx ?? o.x) - o.x), t = o.t || 0;    // Sprite upper-left world x
     const cs = 70;
     for (let j = -1; j * cs < bh + cs; j++) for (let ii = Math.floor(wx0 / cs) - 1; ii * cs < wx0 + bw + cs; ii++) {
       const hh = U.hash(ii, j + 40), hv = U.hash(ii + 7, j); if (hh < 0.45) continue;
@@ -136,7 +136,7 @@ X.hatTop = (key, i, o) => { const S = ensure(key), f = S.meta.frames[i], s = o.h
   return [o.x + (hxp - f.ax) * s * fx, o.y + (hyp - f.ay) * s]; };
 X.nFrames = key => X.SPR[key].meta.frames.length;
 
-// ================= 莫奈：睡莲池＋日本桥 =================
+// ================= Monet: lily pond + Japanese bridge =================
 // o: { key, x0, w, waterTop, bridge:{x0,x1,yEnd,lift}, pond:[px0,px1]|null, groundY, willows:[x...] }
 const SW = {
   water: P.swatch(['#5b6fb5', '#7d8fd0', '#9db5e0', '#6aa0a8', '#b7a6d8', '#d9c8e8', '#8fb8a8', '#a6c4e8', '#c8b0d8'], 0.45),
@@ -153,18 +153,18 @@ X.monetWorld = (o) => {
   const pondEdge = (wx, y) => { if (!o.pond) return true; const sl = (y - o.groundY) * 0.25; return wx > o.pond[0] - sl && wx < o.pond[1] + sl; };
   const WT = o.waterTop, G = o.groundY;
   const isWater = (wx, y) => y > WT && (y < G - 10 ? inPond(wx) || true : pondEdge(wx, y)) && !(y < G + 30 && !inPond(wx) && y > G - 40);
-  // ---- 底稿 ----
+  // ---- Underpainting ----
   const base = P.canvas(w, H), g = base.getContext('2d');
   g.fillStyle = '#2f4a36'; g.fillRect(0, 0, w, H);
   const r = rng(301);
-  // 树荫：低频噪声分出深浅大块（深蓝绿的柳荫 / 中绿 / 黄绿受光），再撒垂柳条
+  // Tree shade: low-frequency noise creates large light/dark masses (dark blue-green willow shade / mid green / sunlit yellow-green), then willow strands
   for (let i = 0; i < w * 0.12; i++) { const x = r() * w, y = r() * (G + 20), n = P.fbm((x + x0) * 0.0035, y * 0.005);
     const pal = n < -0.12 ? ['#1f3a2e', '#2a4a4a', '#34507a', '#2e5a40'] : n < 0.12 ? ['#3f6a3a', '#5a8a3e', '#4a7a6a', '#6a8a9a', '#5f8a4a'] : ['#9cc060', '#b8cc68', '#d8d890', '#c0d070', '#e8e0a0'];
     g.fillStyle = pick(pal, r); g.globalAlpha = 0.85; g.beginPath(); g.ellipse(x, y, 30 + r() * 80, 24 + r() * 50, r() * 3, 0, TAU); g.fill(); }
   for (let i = 0; i < w * 0.01; i++) { const x = r() * w, y = r() * 200; g.fillStyle = pick(['#cfd8e8', '#e6e0f0', '#d8e8d0', '#f0e8d0'], r); g.globalAlpha = 0.75; g.beginPath(); g.ellipse(x, y, 16 + r() * 34, 12 + r() * 18, 0, 0, TAU); g.fill(); }
   g.globalAlpha = 1;
   for (let i = 0; i < w * 0.04; i++) { const x = r() * w, L = 180 + r() * 360, n = P.fbm((x + x0) * 0.0035, 0.5); g.strokeStyle = pick(n < 0 ? ['#3a6a4a', '#4a7a3a', '#2e5a48'] : ['#8ab050', '#a8c868', '#c8d878'], r); g.lineWidth = 5 + r() * 8; g.beginPath(); g.moveTo(x, -10); g.quadraticCurveTo(x + (r() - 0.5) * 30, L / 2, x + (r() - 0.5) * 40, L); g.stroke(); }
-  // 水面
+  // Water
   const wg = g.createLinearGradient(0, WT, 0, H); wg.addColorStop(0, '#34503f'); wg.addColorStop(0.18, '#456a7a'); wg.addColorStop(0.5, '#7590c0'); wg.addColorStop(1, '#a9b6dc');
   g.save(); g.beginPath();
   if (o.pond) { g.moveTo(o.pond[0] - x0, WT); g.lineTo(o.pond[1] - x0, WT); g.lineTo(o.pond[1] + (H - G) * 0.25 - x0, H); g.lineTo(o.pond[0] - (H - G) * 0.25 - x0, H); g.closePath(); }
@@ -173,7 +173,7 @@ X.monetWorld = (o) => {
   for (let i = 0; i < w * 0.03; i++) { const x = r() * w, y = WT + r() * 260, L = 60 + r() * 200; g.fillStyle = pick(['#2e5048', '#3f6a58', '#4a6a3a', '#5a7a4a'], r); g.globalAlpha = 0.6; g.fillRect(x, y, 10 + r() * 20, L); }
   for (let i = 0; i < w * 0.012; i++) { const x = r() * w, y = WT + 250 + r() * (H - WT - 250); g.fillStyle = pick(['#e8d6e8', '#f2e2c4', '#d0dcf0'], r); g.globalAlpha = 0.55; g.beginPath(); g.ellipse(x, y, 60 + r() * 120, 12 + r() * 16, 0, 0, TAU); g.fill(); }
   g.restore(); g.globalAlpha = 1;
-  // 岸（有池边界时）：小路＋草＋鸢尾
+  // Bank (when pond bounded): path + grass + irises
   if (o.pond) {
     g.save(); g.beginPath(); g.rect(0, G - 40, w, H); g.moveTo(o.pond[0] - x0, G - 40); g.lineTo(o.pond[1] - x0, G - 40); g.lineTo(o.pond[1] + (H - G + 40) * 0.25 - x0, H); g.lineTo(o.pond[0] - (H - G + 40) * 0.25 - x0, H); g.closePath(); g.clip('evenodd');
     g.fillStyle = '#5f8f4a'; g.fillRect(0, G - 40, w, H);
@@ -181,7 +181,7 @@ X.monetWorld = (o) => {
     for (let i = 0; i < w * 0.03; i++) { const x = r() * w, y = G + 60 + r() * (H - G - 60); g.strokeStyle = '#4f7f3a'; g.lineWidth = 5; for (let k = 0; k < 5; k++) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + (k - 2) * 9 + (r() - 0.5) * 8, y - 50 - r() * 40); g.stroke(); } g.fillStyle = pick(['#7a5ab8', '#9a7ad0', '#f0e080', '#e890b0'], r); g.beginPath(); g.ellipse(x + (r() - 0.5) * 20, y - 70 - r() * 20, 12, 15, 0, 0, TAU); g.fill(); }
     g.restore();
   }
-  // ---- 笔触 ----
+  // ---- Strokes ----
   const bg = P.canvas(w, H), bgc = bg.getContext('2d'); bgc.drawImage(base, 0, 0);
   const regionOf = (lx, y) => { const wx = lx + x0;
     if (y > WT) { if (!o.pond) return 'water'; const sl = (y - G + 40) * 0.25; if (y > G - 40 && (wx < o.pond[0] - Math.max(0, sl) || wx > o.pond[1] + Math.max(0, sl))) return (y < G + 38 && y > G - 8) ? 'path' : 'grass'; return 'water'; }
@@ -190,16 +190,16 @@ X.monetWorld = (o) => {
   X.strokes(bgc, base, { cell: 9, len: 30, width: 7, seed: 21, jitterCol: 12,
     angle: (lx, y, rr) => { const reg = regionOf(lx, y); if (reg === 'water') return 0.05 * Math.sin(y * 0.05 + lx * 0.004) + (rr() - 0.5) * 0.08; if (reg === 'path') return (rr() - 0.5) * 0.2; if (reg === 'grass') return -1.35 + (rr() - 0.5) * 0.6; return (y < WT - 120 ? -1.5 + 0.35 * P.noise((lx + x0) * 0.01, y * 0.01) : -0.9 + 0.8 * P.noise((lx + x0) * 0.01, y * 0.01)) + (rr() - 0.5) * 0.4; },
     palette: (lx, y, col, rr) => { const reg = regionOf(lx, y); if (reg === 'water') return y < WT + 120 + rr() * 200 ? SW.deep(col, rr) : SW.water(col, rr); return SW[reg](col, rr); } });
-  // ---- 桥（远侧栏杆＋桥面），近侧栏杆单独一层（画在人前面） ----
+  // ---- Bridge (far railing + deck); near railing on separate layer (in front of hero) ----
   const mkBridge = (near) => { const c = P.canvas(w, H), q = c.getContext('2d'); q.lineCap = 'round'; q.lineJoin = 'round';
     const line = (dy, lw, col) => { q.strokeStyle = col; q.lineWidth = lw; q.beginPath(); for (let x = B.x0; x <= B.x1; x += 6) { const y = deckY(x) + dy; x === B.x0 ? q.moveTo(x - x0, y) : q.lineTo(x - x0, y); } q.stroke(); };
     if (!near) {
-      // 桥身（拱下的厚度）＋桥面
+      // Bridge body (thickness below arch) + deck
       q.fillStyle = '#2f6a4a'; q.beginPath(); for (let x = B.x0; x <= B.x1; x += 6) q.lineTo(x - x0, deckY(x) - 4); for (let x = B.x1; x >= B.x0; x -= 6) q.lineTo(x - x0, deckY(x) + 30); q.closePath(); q.fill();
       line(-2, 10, '#8fdcae');
       line(-16 - 96, 8, '#4f9a72'); line(-16 - 52, 6, '#5fae82');
       q.strokeStyle = '#4f9a72'; q.lineWidth = 6; for (let x = B.x0 + 20; x < B.x1; x += 58) { q.beginPath(); q.moveTo(x - x0, deckY(x) - 10); q.lineTo(x - x0, deckY(x) - 16 - 96); q.stroke(); }
-      // 桥墩
+      // Piers
       [B.x0 + 30, B.x1 - 30].forEach(x => { q.fillStyle = '#2a5a3e'; q.fillRect(x - x0 - 10, deckY(x) + 20, 20, 120); });
     } else {
       line(-80, 9, '#7fcf9a'); line(-38, 6, '#6fbf8a');
@@ -211,7 +211,7 @@ X.monetWorld = (o) => {
       palette: (x, y, col, rr) => P.mix(hx(pick(['#8fdcae', '#a8e8c0', '#6fc49a', '#c0f0d0', '#4f9a8a', '#7fb8d8', '#3f7a5a'], rr)), col, 0.35) });
     return out; };
   const bridge = mkBridge(false), nearRail = mkBridge(true);
-  // ---- 睡莲（每片预画成小图，每帧按涟漪起伏） ----
+  // ---- Lilies (each prepainted to small image, ripple-driven bobbing each frame) ----
   const pads = [], rp = rng(505);
   const sc = y => 0.22 + 0.78 * clamp((y - WT) / (H - WT));
   for (let y = WT + 26; y < H + 20;) {
@@ -237,30 +237,30 @@ X.monetWorld = (o) => {
     X.strokes(og, cc, { cell: Math.max(3, 5 * p.s + 1), len: 10 * p.s + 5, width: 3 * p.s + 1.6, seed: 600 + i, alphaMask: true, alphaMin: 100, angle: (x, y, rr) => (rr() - 0.5) * 0.4,
       palette: (x, y, col, rr) => col[1] > col[0] + 10 ? P.mix(hx(pick(['#5f8f4a', '#7fae5a', '#9cc070', '#b4cc78', '#4a7a5a', '#c8d880'], rr)), col, 0.3) : (lum(col) > 170 ? P.mix(hx(pick(['#fff2f4', '#f7d0dc', '#fbf4e8', '#f0a0b8'], rr)), col, 0.4) : null) });
     p.img = out; p.ax = cx; p.ay = cy; });
-  // 水面光斑（世界坐标）
+  // Water light spots (world coordinates)
   const glints = []; const rg = rng(909);
   for (let i = 0; i < w * 0.16; i++) { const wx = x0 + rg() * w, y = WT + 20 + rg() * (H - WT - 20); if (!pondEdge(wx, y)) continue; glints.push({ x: wx, y, f: 5 + rg() * 6, ph: rg() * TAU, l: (14 + rg() * 26) * (0.4 + sc(y)), col: pick(['#fffbe8', '#fdf0d0', '#f8e0ec', '#e8f4ff'], rg), w: (3 + rg() * 3) * (0.5 + sc(y) * 0.7) }); }
   const M = X[key] = { o, base, bg, bridge, nearRail, pads, glints, deckY, sc, x0, w, WT, G, pondEdge, inPond };
   return M;
 };
-// 每帧：底 → 睡莲（按涟漪起伏）→ 光斑 → 涟漪 → 桥（远栏杆） ；人画完后再 X.monetFront（近栏杆＋前景柳条）
+// Each frame: base → lilies (ripple bobbing) → light → ripples → bridge (far railing); after hero, X.monetFront (near railing + foreground willow)
 X.monetBack = (c, M, camX, t, ev = {}) => {
   c.drawImage(M.bg, M.x0 - camX, 0);
   const hops = ev.hops || [];
-  // 睡莲
+  // Lilies
   for (const p of M.pads) { const sx = p.x - camX; if (sx < -200 || sx > W + 200) continue;
     let dy = Math.sin(t * 1.1 + p.ph) * 1.5 * p.s, rot = 0;
     for (const h of hops) { const a = t - h.t; if (a < 0 || a > 2.2) continue; const d = Math.hypot(p.x - h.x, (p.y - h.y) * 3.2), R = 40 + a * 260 * h.s; const near = Math.exp(-Math.pow((d - R) / (60 * h.s + 20), 2)) * Math.exp(-a * 1.6);
       dy += Math.sin(a * 16) * 7 * h.s * near; rot += Math.sin(a * 13 + 1) * 0.06 * near; }
     if (ev.padBump && ev.padBump.pad === p) { const a = t - ev.padBump.t; if (a > 0 && a < 1.2) dy += Math.sin(a * 18) * 16 * Math.exp(-a * 3) * p.s + (a < 0.12 ? 10 * p.s : 0); }
     c.save(); c.translate(sx, p.y + dy); c.rotate(rot); c.drawImage(p.img, -p.ax, -p.ay); c.restore(); }
-  // 光斑颤动（位置固定，亮度不规则明灭，10fps 横向小跳）
+  // Shimmering light spots (fixed positions, irregular brightness, small horizontal jumps at 10fps)
   const st = Math.floor(t * 10); c.save(); c.lineCap = 'round';
   for (let i = 0; i < M.glints.length; i++) { const gl = M.glints[i], sx = gl.x - camX; if (sx < -60 || sx > W + 60) continue;
     const a = clamp(Math.sin(t * gl.f + gl.ph) * Math.sin(t * 2.3 + i), 0, 1); if (a < 0.12) continue;
     const jx = (U.hash(i, st) - 0.5) * 8; c.strokeStyle = gl.col; c.globalAlpha = 0.85 * a; c.lineWidth = gl.w; c.beginPath(); c.moveTo(sx + jx, gl.y); c.lineTo(sx + jx + gl.l, gl.y + 1); c.stroke(); }
   c.restore();
-  // 涟漪：断续的亮色短笔围成透视椭圆，一圈圈外扩
+  // Ripples: broken bright short strokes forming perspective ellipses, expanding in rings
   for (const h of hops) X.ripple(c, h.x - camX, h.y, t - h.t, h.s, h.big);
   c.drawImage(M.bridge, M.x0 - camX, 0);
 };
@@ -271,7 +271,7 @@ X.ripple = (c, x, y, a, s, big) => {
     const n = Math.max(10, Math.round(R / 7)); for (let i = 0; i < n; i++) { if (U.hash(i, k * 17 + 3) < 0.3) continue; const th = i / n * TAU + k * 0.4, th2 = th + TAU / n * 0.55;
       c.strokeStyle = ['#ffffff', '#fffbe8', '#eef0ff'][(i + k) % 3]; c.globalAlpha = al; c.lineWidth = (9 - k * 1.4) * (0.5 + s * 0.6);
       c.beginPath(); c.ellipse(x, y, R, R * 0.27, 0, th, th2); c.stroke(); } }
-  // 溅起的水花（短竖笔向上甩）
+  // Splash (short vertical strokes flung upward)
   if (a < 0.1) { c.globalAlpha = 1 - a / 0.1; c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(x, y, 40 * s, 12 * s, 0, 0, TAU); c.fill(); }
   if (a < 0.4) { const r = rng(Math.round(x * 7 + y)); for (let i = 0; i < (big ? 22 : 14); i++) { const ang = -Math.PI / 2 + (r() - 0.5) * 1.6, sp = (90 + r() * 150) * s * (big ? 1.6 : 1), q = a / 0.4;
       const px = x + Math.cos(ang) * sp * a * 2.2, py = y + Math.sin(ang) * sp * a * 2.2 + 300 * a * a * s; c.globalAlpha = 1 - q; c.strokeStyle = i % 2 ? '#ffffff' : '#dfe8ff'; c.lineWidth = 6 * (0.5 + s * 0.6); c.beginPath(); c.moveTo(px, py); c.lineTo(px - Math.cos(ang) * 8 * s, py - Math.sin(ang) * 8 * s); c.stroke(); } }
@@ -279,7 +279,7 @@ X.ripple = (c, x, y, a, s, big) => {
 };
 X.monetFront = (c, M, camX, t, willows = []) => {
   c.drawImage(M.nearRail, M.x0 - camX, 0);
-  // 前景柳条：从画面顶部垂下，成片摆动
+  // Foreground willow: hangs from top, sways in masses
   c.save(); c.lineCap = 'round';
   willows.forEach((wx, k) => { const sx = wx - camX; if (sx < -200 || sx > W + 200) return; const r = rng(80 + k);
     for (let f = 0; f < 9; f++) { const fx = sx + (r() - 0.5) * 150, L = 260 + r() * 300, ph = r() * TAU;
@@ -288,7 +288,7 @@ X.monetFront = (c, M, camX, t, willows = []) => {
   c.restore();
 };
 
-// ================= 打水漂 =================
+// ================= Stone skipping =================
 // plan: { t0, from:[x,y], hops:[{x,y,t,s}], sinkT, sinkS }
 X.stone = (t, plan) => {
   if (t < plan.t0) return null;
@@ -304,10 +304,10 @@ X.drawStone = (c, st, trail) => { if (!st) return; const s = 1.2 + st.s * 1.4;
   c.fillStyle = 'rgba(40,40,80,.3)'; c.beginPath(); c.ellipse(2, 4, 13 * s, 6 * s, 0, 0, TAU); c.fill();
   c.fillStyle = '#4a4a6a'; c.beginPath(); c.ellipse(0, 0, 11 * s, 11 * s * Math.abs(Math.cos(st.spin)) * 0.5 + 3 * s, 0, 0, TAU); c.fill();
   c.fillStyle = '#d8d8f0'; c.beginPath(); c.ellipse(-2 * s, -1.5 * s, 4.5 * s, 2 * s, 0, 0, TAU); c.fill(); c.restore(); };
-// 带拖尾地画石子：x 方向可传相机偏移
+// Draw stone with trail: x can include camera offset
 X.stoneAt = (c, lt, plan, camX = 0) => { const sh = p => p ? { ...p, x: p.x - camX } : null; X.drawStone(c, sh(X.stone(lt, plan)), dt => sh(X.stone(lt - dt, plan))); };
 
-// ================= 青蛙（几何小动物，代码画；按画风上材质） =================
+// ================= Frog (geometric animal, code-drawn; textured per style) =================
 const FROG = {};
 function frogImg(pose, style) {
   const k = pose + style; if (FROG[k]) return FROG[k];
@@ -334,14 +334,14 @@ function frogImg(pose, style) {
     palette: (x, y, col, r) => col[1] > col[0] + 20 ? P.mix(hx(pick(style === 'vangogh' ? ['#3f8a3a', '#6aaa40', '#2a6a4a', '#c8d040'] : ['#6aa84a', '#8ac060', '#4f8a4a', '#a8d070', '#5a9a8a'], r)), col, 0.35) : null });
   out.ax = 100; out.ay = 128; FROG[k] = out; return out;
 }
-// x,y = 脚底；s = 缩放（1 ≈ 100px 宽）；o.rot 旋转，o.croak 0..1 鸣囊鼓起
+// x,y = feet; s = scale (1 ≈ 100px wide); o.rot rotation, o.croak 0..1 vocal-sac inflation
 X.frog = (c, x, y, s, pose, style, o = {}) => {
   const im = frogImg(pose, style); c.save(); c.translate(x, y); c.rotate(o.rot || 0); c.scale(s * (o.flip ? -1 : 1), s * (o.sy || 1)); c.drawImage(im, -im.ax, -im.ay);
   if (o.croak > 0) { c.fillStyle = 'rgba(240,236,190,0.92)'; c.beginPath(); c.ellipse(0, -14 + 26, 14 + 22 * o.croak, 8 + 15 * o.croak, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(120,130,80,.6)'; c.lineWidth = 2; c.stroke(); }
   c.restore();
 };
 
-// ================= 浮世绘：海岸、富士、巨浪 =================
+// ================= Ukiyo-e: coast, Fuji, great wave =================
 const INK = '#1c1a1e';
 const uF = (g, path, fill, lw = 2.6) => { if (fill) { g.save(); g.translate(3, 2); g.fillStyle = fill; g.fill(path); g.restore(); } if (lw) { g.strokeStyle = INK; g.lineWidth = lw; g.stroke(path); } };
 const poly = pts => { const p = new Path2D(); pts.forEach((q, i) => i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); p.closePath(); return p; };
@@ -352,47 +352,47 @@ X.ukiyoeWorld = (o) => {
   const sg = g.createLinearGradient(0, 0, 0, SEA); sg.addColorStop(0, '#2c4a80'); sg.addColorStop(0.1, '#4a6a98'); sg.addColorStop(0.3, '#e8d8a0'); sg.addColorStop(0.75, '#f2dc96'); sg.addColorStop(1, '#f3c98a');
   g.fillStyle = sg; g.fillRect(0, 0, w, SEA);
   const r = rng(41); for (let i = 0; i < w * 0.3; i++) { const y = r() * SEA; g.strokeStyle = y < 90 ? `rgba(30,50,110,${0.06 + r() * 0.1})` : `rgba(140,90,40,${0.03 + r() * 0.05})`; g.lineWidth = 1 + r() * 2; g.beginPath(); g.moveTo(r() * w, y); g.lineTo(r() * w, y + (r() - 0.5) * 3); g.stroke(); }
-  // 富士
+  // Fuji
   (o.fuji || []).forEach(fx => { const lx = fx - x0; uF(g, poly([[lx - 230, SEA], [lx - 30, SEA - 230], [lx + 30, SEA - 232], [lx + 240, SEA]]), '#26467e', 2.4);
     uF(g, poly([[lx - 70, SEA - 190], [lx - 30, SEA - 230], [lx + 30, SEA - 232], [lx + 72, SEA - 192], [lx + 50, SEA - 196], [lx + 34, SEA - 176], [lx + 16, SEA - 196], [lx - 4, SEA - 172], [lx - 24, SEA - 196], [lx - 46, SEA - 180]]), '#fbf8ee', 1.8); });
-  // 远海
+  // Distant sea
   g.save(); g.translate(3, 2); g.fillStyle = '#18305e'; g.fillRect(0, SEA, w, G - 40 - SEA); g.restore();
   g.strokeStyle = INK; g.lineWidth = 2.4; g.beginPath(); g.moveTo(0, SEA); g.lineTo(w, SEA); g.stroke();
-  // 岸
+  // Shore
   const shore = new Path2D(); shore.moveTo(0, G - 30); for (let x = 0; x <= w; x += 40) shore.lineTo(x, G - 30 + Math.sin(x * 0.013) * 8); shore.lineTo(w, H); shore.lineTo(0, H); shore.closePath();
   uF(g, shore, '#e8c890', 3);
   g.save(); g.clip(shore); for (let i = 0; i < w * 0.05; i++) { const x = r() * w, y = G + r() * (H - G); g.fillStyle = 'rgba(150,100,50,.25)'; g.beginPath(); g.ellipse(x, y, 3 + r() * 6, 1.5 + r() * 2, 0, 0, TAU); g.fill(); }
   const pg = g.createLinearGradient(0, G + 120, 0, H); pg.addColorStop(0, 'rgba(160,120,70,0)'); pg.addColorStop(1, 'rgba(160,120,70,.35)'); g.fillStyle = pg; g.fillRect(0, G, w, H - G); g.restore();
   g.strokeStyle = INK; g.lineWidth = 2; for (let x = 20; x < w; x += 140) { g.beginPath(); g.moveTo(x, G + 70 + (x % 3) * 30); g.quadraticCurveTo(x + 40, G + 64 + (x % 3) * 30, x + 80, G + 72 + (x % 3) * 30); g.stroke(); }
-  // 松
+  // Pine
   (o.pines || []).forEach(px => { const lx = px - x0; const trunk = poly([[lx - 14, G - 20], [lx - 30, G - 200], [lx + 10, G - 330], [lx + 60, G - 400], [lx + 40, G - 330], [lx + 12, G - 200], [lx + 14, G - 20]]); uF(g, trunk, '#8a4a2a', 2.6);
     [[lx - 60, G - 260, 90], [lx + 80, G - 400, 110], [lx - 10, G - 360, 80], [lx + 120, G - 300, 70]].forEach(([x, y, rr]) => { const p = new Path2D(); p.ellipse(x, y, rr, rr * 0.32, -0.08, 0, TAU); uF(g, p, '#2f5a3a', 2.4); g.strokeStyle = 'rgba(20,40,30,.6)'; g.lineWidth = 1.4; for (let k = -rr + 10; k < rr - 10; k += 12) { g.beginPath(); g.moveTo(x + k, y - 6); g.lineTo(x + k + 6, y + 8); g.stroke(); } }); });
-  // 纸纹罩层
+  // Paper texture overlay
   const ov = P.canvas(w, H), og = ov.getContext('2d'); const ro = rng(5);
   for (let i = 0; i < w * 0.7; i++) { const y = ro() * H, x = ro() * w, L = 200 + ro() * 700; og.strokeStyle = `rgba(120,80,40,${0.025 + ro() * 0.04})`; og.lineWidth = 1 + ro(); og.beginPath(); og.moveTo(x, y); og.lineTo(x + L, y + (ro() - 0.5) * 6); og.stroke(); }
   for (let i = 0; i < w * 1.2; i++) { const x = ro() * w, y = ro() * H; og.strokeStyle = ro() < 0.5 ? 'rgba(255,250,235,.12)' : 'rgba(90,60,30,.07)'; og.lineWidth = 1; og.beginPath(); og.arc(x, y, 3 + ro() * 6, ro() * 6, ro() * 6 + 1); og.stroke(); }
   return X[key] = { o, bg: c, over: ov, x0, w, G, SEA };
 };
-// 巨浪（每帧）：浪身＋内侧流线（虚线前移）＋白沫带＋浪爪屈伸＋飞沫
+// Great wave (each frame): body + inner flow lines (advancing dashes) + foam band + curling claws + spray
 X.greatWave = (c, bx, by, S, t) => {
   c.save(); c.translate(bx, by); c.scale(S, S); c.lineCap = 'round'; c.lineJoin = 'round';
-  const k = Math.sin(t * 2.4) * 0.5 + 0.5;                       // 浪唇前卷程度
+  const k = Math.sin(t * 2.4) * 0.5 + 0.5;                       // Forward curl of wave lip
   const back = K => KIT.densify(K, 6);
   const O = back([[-420, 0], [-300, -90], [-190, -220], [-80, -350], [40, -430], [150, -432 + k * 8], [240, -380 + k * 14], [282 + k * 30, -300 + k * 34]]);
   const tip = O[O.length - 1];
   const I = back([tip, [220 + k * 12, -290 + k * 20], [150, -300], [100, -250], [96, -160], [130, -70], [220, 0]]);
   const body = new Path2D(); O.forEach((p, i) => i ? body.lineTo(p[0], p[1]) : body.moveTo(p[0], p[1])); I.forEach(p => body.lineTo(p[0], p[1])); body.closePath();
   uF(c, body, '#26467e', 3.2);
-  // 浪身流线：沿背面轮廓向内偏移，虚线往浪顶涌
+  // Wave flow lines: offset inward from back contour, dashes surge toward crest
   c.save(); c.clip(body); c.setLineDash([30, 16]); c.lineDashOffset = -t * 140;
   for (let m = 1; m < 9; m++) { c.strokeStyle = m % 2 ? 'rgba(150,182,226,.9)' : 'rgba(236,242,250,.8)'; c.lineWidth = 7; c.beginPath();
     O.forEach((p, i) => { const q = i / (O.length - 1); const x = p[0] + m * 26 * (0.4 + q) , y = p[1] + m * 30 * (1 - q * 0.6); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); }
   c.restore(); c.setLineDash([]);
-  // 白沫带（沿浪背上段）
+  // Foam band (upper wave back)
   const top = O.slice(Math.floor(O.length * 0.35));
   c.strokeStyle = INK; c.lineWidth = 40; c.beginPath(); top.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
   c.strokeStyle = '#fbf7ec'; c.lineWidth = 35; c.stroke();
-  // 浪爪：沿浪唇外缘一簇簇胖手指，指向前下方并向内卷
+  // Wave claws: clusters of plump fingers along lip, pointing forward/down and curling inward
   const claw = (x, y, ang, L, kk) => { const lens = [1, 0.66, 0.56, 0.42], offs = [0, -0.6, 0.45, -0.25];
     for (let f = 0; f < 4; f++) { let a = ang + offs[f], px = x, py = y; const LL = L * lens[f], pts = [[px, py]], cv = 1.1 + Math.sin(t * 5 + kk * 0.9) * 0.6;
       for (let s2 = 0; s2 < 7; s2++) { a += cv * 0.34 * (0.5 + s2 / 7) / 2.4; px += Math.cos(a) * LL / 7; py += Math.sin(a) * LL / 7; pts.push([px, py]); }
@@ -400,16 +400,16 @@ X.greatWave = (c, bx, by, S, t) => {
   const lipStart = Math.floor(O.length * 0.55);
   for (let j = lipStart, kk = 0; j < O.length; j += 3, kk++) { const p = O[j], q = O[Math.max(0, j - 1)]; const nx = p[1] - q[1], ny = -(p[0] - q[0]); const a = Math.atan2(ny, nx) * -1; claw(p[0], p[1], Math.atan2(-(p[0] - q[0]), (p[1] - q[1])) + 0.6, 60 + (kk % 3) * 16, kk); }
   for (let j = 0, kk = 20; j < 4; j++, kk++) { const p = I[1 + j]; claw(p[0], p[1], 1.3, 46, kk); }
-  // 飞沫（北斋的「雪」）
+  // Spray (Hokusai's snow)
   const r = rng(13); c.fillStyle = '#fbf7ec'; c.strokeStyle = INK; c.lineWidth = 1.6;
   for (let i = 0; i < 40; i++) { const ph = (t * 0.7 + r()) % 1, x = tip[0] - 20 + r() * 150 + ph * 90, y = tip[1] - 30 - r() * 90 + ph * ph * 260, rr = 2.5 + r() * 4; c.globalAlpha = 1 - ph * 0.7; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill(); c.stroke(); }
   c.restore();
 };
-// 近海浪纹（每帧平移）
+// Near-sea wave lines (translate each frame)
 X.seaLines = (c, x0, y0, w, h, t) => { c.save(); c.beginPath(); c.rect(x0, y0, w, h); c.clip(); c.strokeStyle = 'rgba(230,236,245,.85)'; c.lineWidth = 3; const r = rng(3);
   for (let k = 0; k < 9; k++) { const y = y0 + 12 + k * (h / 9), off = (t * 40 * (k % 2 ? 1 : -0.6)) % 120; for (let x = x0 - 120 + off + r() * 60; x < x0 + w; x += 120) { c.beginPath(); c.arc(x, y + 10, 22, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); } } c.restore(); };
 
-// ================= 梵高：星月夜 =================
+// ================= Van Gogh: Starry Night =================
 X.vgWorld = (o) => {
   const key = 'vg_' + o.key; if (X[key]) return X[key];
   const w = o.w, x0 = o.x0, G = o.groundY, HOR = o.horizon || 600;
@@ -425,7 +425,7 @@ X.vgWorld = (o) => {
   swirls.forEach(s => { g.strokeStyle = '#9ab8e0'; g.lineWidth = 46; g.beginPath(); for (let a = 0; a < TAU * 1.4; a += 0.1) { const rr = s.R * (0.3 + a / (TAU * 1.4) * 0.7); g.lineTo(s.x - x0 + Math.cos(a) * rr, s.y + Math.sin(a) * rr / 1.6); } g.stroke(); });
   stars.forEach(s => { const rg = g.createRadialGradient(s.x - x0, s.y, 0, s.x - x0, s.y, s.r * 2.6); rg.addColorStop(0, '#fff8c0'); rg.addColorStop(0.35, '#f0e070'); rg.addColorStop(0.6, '#c8d8a0'); rg.addColorStop(1, 'rgba(90,126,192,0)'); g.fillStyle = rg; g.beginPath(); g.arc(s.x - x0, s.y, s.r * 2.6, 0, TAU); g.fill(); });
   if (moon) { const rg = g.createRadialGradient(moon[0] - x0, moon[1], 0, moon[0] - x0, moon[1], 150); rg.addColorStop(0, '#fff0a0'); rg.addColorStop(0.4, '#f0c840'); rg.addColorStop(0.7, '#e8d080'); rg.addColorStop(1, 'rgba(90,126,192,0)'); g.fillStyle = rg; g.beginPath(); g.arc(moon[0] - x0, moon[1], 150, 0, TAU); g.fill(); }
-  // 远山、村庄
+  // Distant hills, village
   g.fillStyle = '#2a3a78'; g.beginPath(); g.moveTo(0, HOR); for (let x = 0; x <= w; x += 30) g.lineTo(x, HOR - 70 - Math.sin(x * 0.004 + 1) * 50 - Math.sin(x * 0.011) * 20); g.lineTo(w, HOR + 60); g.lineTo(0, HOR + 60); g.fill();
   const rv = rng(23); for (let x = 30; x < w; x += 46 + rv() * 30) { const hh = 26 + rv() * 30, y = HOR + 10 + rv() * 30; g.fillStyle = pick(['#3a4a6a', '#4a5a8a', '#5a6a5a'], rv); g.fillRect(x, y - hh, 40, hh); g.fillStyle = '#2a3058'; g.beginPath(); g.moveTo(x - 4, y - hh); g.lineTo(x + 20, y - hh - 18); g.lineTo(x + 44, y - hh); g.fill(); if (rv() < 0.6) { g.fillStyle = '#f8d850'; g.fillRect(x + 12, y - hh + 8, 10, 10); } }
   g.fillStyle = '#3a5a3a'; g.fillRect(0, HOR + 50, w, G - HOR - 50);
@@ -442,7 +442,7 @@ X.vgWorld = (o) => {
       return null; } });
   return X[key] = { o, bg: out, x0, w, G, stars, moon, swirls, angleSky };
 };
-// 星空的动：星晕环旋转、漩涡带上的短笔沿螺线流动
+// Moving starry sky: rotating star halos, short strokes flowing along spiral bands
 X.vgSky = (c, V, camX, t) => {
   c.save(); c.lineCap = 'round';
   V.stars.forEach((s, k) => { const sx = s.x - camX; if (sx < -150 || sx > W + 150) return; const pul = 1 + 0.12 * Math.sin(t * 3 + k);
@@ -456,7 +456,7 @@ X.vgSky = (c, V, camX, t) => {
   c.restore();
 };
 
-// ================= 画风颜料迸散（跳进/跳出画框、跨边界时用） =================
+// ================= Style-colored paint bursts (jumping into/out of frames, crossing boundaries) =================
 X.burst = (c, x, y, a, R, style, seed = 1) => { if (a < 0 || a > 1) return; const r = rng(seed), cols = style === 'monet' ? ['#f2a6bf', '#9db5e0', '#9cc070', '#fff2d4', '#b7a6d8', '#8fdcae'] : ['#f8d850', '#2a52a8', '#fff8c0', '#5a86d0'];
   c.save(); c.lineCap = 'round'; for (let i = 0; i < 70; i++) { const ang = r() * TAU, sp = R * (0.4 + r() * 0.8), d = sp * U.ease.out(a), x1 = x + Math.cos(ang) * d, y1 = y + Math.sin(ang) * d * 0.8 + 120 * a * a;
     c.strokeStyle = cols[i % cols.length]; c.globalAlpha = 1 - a; c.lineWidth = 7 + r() * 6; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 + Math.cos(ang) * 16, y1 + Math.sin(ang) * 10); c.stroke(); } c.restore(); };

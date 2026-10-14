@@ -1,6 +1,6 @@
-// 口播对位：TM.cue('s03', '2007年') = 「2007年」这几个字开始被念出的时刻（本段局部秒，lt）。
-// TM.end('s03', '2007年') = 这几个字念完的时刻。TM.dur('s03') 段长；TM.vo('s03') = [口播开始, 口播结束]（局部秒）。
-// 键必须是该段字幕文本里的原样子串（第一次出现）；写错了会 console.error 并让渲染失败。
+// Voiceover alignment: TM.cue('s03', '2007年') = start of spoken '2007年' (segment-local seconds, lt).
+// TM.end('s03', '2007年') = end of phrase. TM.dur('s03') = segment duration; TM.vo('s03') = [voiceover start, voiceover end] (local seconds).
+// Keys must exactly match a subtitle substring in that segment (first occurrence); mistakes console.error and fail rendering.
 window.TM = (() => {
   const seg = id => { const s = TIMING.seg[id]; if (!s) throw new Error('TIMING 没有段 ' + id); return s; };
   function find(id, key, which) {

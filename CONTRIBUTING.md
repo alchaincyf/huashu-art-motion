@@ -1,6 +1,16 @@
 # 维护与扩展
 
+**中文** · [English](CONTRIBUTING.en.md)
+
 公共代码、公共推荐放在包内；个人平台、声音和凭证引用保存在安装目录外。不要把个人经验变成所有人的默认授权。
+
+## 翻译维护
+
+中文文档为源版本；英文参考文档放在 `references/en/`，其他目录使用同级 `.en.md`。修改文档时同时更新两种语言及双向语言链接，英文版的链接和参考路径优先指向对应英文文件。
+
+术语保持一致：口播 voiceover/narration、镜头表 shot list、风格配方 style recipe、动画语法 animation grammar、一帧先行 frame-first、长卷片 long-scroll film、门禁 gate、母题动作 motif motion、签名转场 signature transition、正面经验 proven practices、成片 finished film、帧库 frame library、画风 art style、色板 palette、蓝紫 blue-purple。完整翻译，保留数字、单位、示例与原文顺序。
+
+可执行代码、命令、字符串、机器解析的中文键和运行时文件名保持不变。翻译注释和文档字符串时不改代码、缩进、行数；注释中引用的机器标记和工具指令保留原样。镜头表检查器仍以中文键为准，部分词表不识别英文，英文物体和动作描述需人工复核。
 
 ## 本地检查
 

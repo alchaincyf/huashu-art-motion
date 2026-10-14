@@ -1,5 +1,7 @@
 # 02_egypt · 公元前1350年埃及墓室壁画（纯代码）
 
+**中文** · [English](../en/style-recipes/02_egypt.md)
+
 文件：`scenes/02_egypt.js`（约 460 行）。性能：warm max 20.7ms / mean 10.5ms（1920×1080），boot 时 `init()` 预热缓存，第一帧不再卡 170ms。确定性检查通过。
 
 ## 管线

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""绿幕抠图＋按列空隙切成单个姿势：python3 key_split.py 图.png --out 前缀 [--pick 0]（只要第几个）"""
+"""Green-screen key + split individual poses at column gaps: python3 key_split.py 图.png --out 前缀 [--pick 0] (select pose index)"""
 import argparse
 import numpy as np
 from PIL import Image

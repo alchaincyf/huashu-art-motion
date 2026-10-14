@@ -1,5 +1,7 @@
 # y4 · 故事型简笔角色动画（YouTube storytime animation）
 
+**中文** · [English](../en/animation-grammars/y4_storytime.md)
+
 > 一句话语法：**口播是主角，画面是给口播配的「表情包」——角色在几个姿势之间快切（0.1 秒）然后定住，笑点靠切到反应大特写、并在那一下里闭嘴。**
 
 代表：TheOdd1sOut（James Rallison）、Jaiden Animations、Domics。工具：据 Jaiden 的 FAQ 和二手资料，三人早期都用 Flash / Adobe Animate（这条没拿到一手原文，只作背景）。

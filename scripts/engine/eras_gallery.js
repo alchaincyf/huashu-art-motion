@@ -1,9 +1,9 @@
-// 全风格样片：skill 里 35 种风格（15 原段＋迁移测试 A–D 的 20 段）各一段，按年代排，用作回归测试与风格目录。
-//   打开：index.html?film=gallery    渲染：render.py --film gallery    验收：qa.py --project scripts/engine --film gallery
-// 每段 5 个八分音符（128 BPM ≈ 1.17s），最后一段 6 个。相邻段用「进入段」的签名转场（原 16 段沿用原片转场，A–D 组用各自配方卡里的转场；
-// 每组第一段原来在片头没有进入转场，样片补了 inkBloom / redWedge / comicPanels / chiaroscuro）。
-// 角标：年份严格单调，所以全片一个年份计数器连续滚动；各段沿用自己风格的字体与版式，label 写风格名。转场中点硬切新旧角标（引擎默认）。
-// name 字段只给总览图/文档用（「年份＋风格名」），引擎不读。
+// All-style sample: 35 styles (15 original +20 from migration tests A–D), one segment each in chronological order, for regression testing/style directory.
+//   Open: index.html?film=gallery    Render: render.py --film gallery    Verify: qa.py --project scripts/engine --film gallery
+// Each segment5 eighth notes (128 BPM ≈1.17s), last6. Incoming section's signature transition (original16 keep originals; A–D use respective recipe cards;
+// each group's first section originally opened without transition; sample adds inkBloom / redWedge / comicPanels / chiaroscuro).
+// Counter: strictly increasing years, one continuously rolling film-wide counter; each section retains own font/layout, label is style name. Hard-cut counters at transition midpoint (engine default).
+// name used only in overview/docs (year +style), not read by engine.
 const R = 1866;
 const box = (x0, y0, x1, y1, fill, stroke, lw = 4, inset = 0) => c => {
   c.save(); c.fillStyle = fill; c.fillRect(x0, y0, x1 - x0, y1 - y0);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""增量发布检查：扫描Git实际待发对象，核最终文件清单；不推送。"""
+"""Incremental release check: scans actual Git objects pending release and verifies the final file manifest; does not push."""
 import argparse
 import hashlib
 import json
@@ -73,7 +73,7 @@ def check(repo,ref,base=None,email=None):
     if ref!='INDEX':
         revision=base+'..'+ref if base and set(base)!={'0'} else ref
         commits=git(repo,'rev-list',revision).decode().splitlines()
-        # 每个待发提交都扫描，防止先提交秘密再删除后仅检查HEAD。
+        # Scan every outgoing commit to prevent secrets committed and then deleted being invisible at HEAD-only checks.
         for commit in commits:
             raw=git(repo,'cat-file','commit',commit)
             if SECRET.search(raw):raise ValueError('提交元数据/说明含私人路径或凭据形态：'+commit[:12])

@@ -1,12 +1,12 @@
-// S11 · 2026（D 行右中段，x 6150–9550）。三拍：
-// ① 「2026年」→ 大圈「SpaceX」→ 箭头「收购」→ 小圈「xAI」（下注「马斯克的AI公司」）→ 小圈被吸进大圈里；
-// ② 相机右移：「6月上市」＋一条往上走的橙色折线 →「募资超过」＋「750亿美元」砸入 → 奖杯「史上最大的一次上市」；
-// ③ 再右移：「9.28」（和开头那个 9.28 同样画两道橙线）→ 地球、轨道、星舰绕着走，一颗一颗放出 26 颗卫星，「26颗」弹出。
+// S11 · 2026 (row D middle-right, x 6150–9550). Three beats:
+// ① 2026 → large SpaceX circle → acquisition arrow → small xAI circle (Musk's AI company beneath) → small circle absorbed into large one;
+// ② Camera moves right: June IPO and rising orange line → raised over and $75 billion slam in → largest IPO ever trophy;
+// ③ Farther right: 9.28 (same double orange underline as opening) → Earth, orbit, circling Starship releases 26 satellites one by one; 26 satellites pops up.
 WB.chapter('s11', id => {
   const q = k => WB.q(id, k), { OR, INK } = WB, D = WB.D, Y = v => WB.ROW.D + v;
   const t0 = WB.T0(id);
-  // ---- ① 收购 xAI ----
-  WB.lead([5800, Y(600)], [6270, Y(580)], q('2026年') - 0.12 - 0.62, 0.5);   // 引线和相机同时走：笔领着相机，落位那一刻正好开写
+  // ---- ① Acquire xAI ----
+  WB.lead([5800, Y(600)], [6270, Y(580)], q('2026年') - 0.12 - 0.62, 0.5);   // Lead-in and camera move together: pen leads, writing begins exactly on arrival
   WB.go(q('2026年') - 0.12); WB.text('2026年', 6210, Y(240), 120, { rate: 10 });
   const AX = 6490, AY = Y(570), AR = 180, BX = 7010, BR = 100;
   WB.go(q('SpaceX') - 0.05); WB.line(WB.circ(AX, AY, AR, 1.05), { speed: 4400, w: 7 });
@@ -19,25 +19,25 @@ WB.chapter('s11', id => {
   const lab2 = WB.text('马斯克的AI公司', BX, AY + BR + 70, 46, { align: 'center', rate: 14 });
   WB.go(q('xAI') + 0.05);
   const bt = WB.text('xAI', BX, AY + 50, 56, { align: 'center', rate: 12 });
-  const br = WB.sk(D.brain(80), BX, AY - 34, { speed: 4000, w: 5 });   // 一个大脑：AI
+  const br = WB.sk(D.brain(80), BX, AY - 34, { speed: 4000, w: 5 });   // Brain: AI
   const tM0 = Math.max(WB.cur + 0.05, q('6月') - 0.1), tM1 = tM0 + 0.55;
   [bc, bt, ...br].forEach(s => (s.until = tM0)); WB.fade([...arr, lab, lab2], tM0, 0.35);
   const BCp = WB.prep([{ p: WB.circ(0, 0, BR, 1.05) }], 6), BRp = WB.prep(WB.xf ? D.brain(80).map(k => ({ ...k, p: k.p.map(([x, y]) => [x, y - 34]) })) : [], 5);
   WB.custom({ t0: tM0, t1: tM1, bb: [AX - 250, AY - 250, BX + 150, AY + 250], draw(g, qq) {
     const e = MO.backOut(qq, 1.4), x = U.lerp(BX, AX + 10, e), y = U.lerp(AY, AY + 82, e), s = U.lerp(1, 0.42, MO.smooth(qq));
     WB.drawPrep(g, BCp, x, y, s, 0); WB.drawPrep(g, BRp, x, y, s, 0); g.font = `${56 * s}px ${WB.FONT}`; g.textAlign = 'center'; g.fillStyle = INK; g.fillText('xAI', x, y + 50 * s); return null; } });
-  // ---- ② 6月上市，募资超过750亿美元，史上最大的一次上市 ----
+  // ---- ② June IPO, raises over $75 billion, largest IPO ever ----
   WB.go(q('6月') + 0.25); WB.text('6月上市', 7230, Y(250), 92, { rate: 10 });
   WB.sk(D.bell(260), 7480, Y(520), { speed: 4800 });
   WB.go(q('募资') + 0.05); WB.text('募资超过', 7850, Y(400), 60, { rate: 12 });
   WB.pop('750亿美元', 8150, Y(545), 130, { at: q('亿美元') + 0.15 });
   WB.go(q('史上最大') - 0.05); WB.sk(D.trophy(140), 7410, Y(775), { speed: 4600 }); WB.fill(WB.xf(D.trophy(140)[0].p, 7410, Y(775)), WB.WASH, 0.3);
   WB.text('史上最大的一次上市', 7520, Y(800), 58, { rate: 11 });
-  // ---- ③ 9月28号，星舰入轨，放出了26颗新一代星链卫星 ----
+  // ---- ③ September 28: Starship enters orbit and releases 26 next-generation Starlink satellites ----
   WB.go(q('9月28号') + 0.1); WB.text('9.28', 8710, Y(250), 110, { rate: 12 });
   WB.line([[8702, Y(276)], [8830, Y(282)], [8950, Y(274)]], { col: OR, w: 7, speed: 4000 }); WB.line([[8710, Y(294)], [8830, Y(300)], [8942, Y(292)]], { col: OR, w: 6, speed: 4500 });
-  // 回扣开头：相机一口气退到能同时看见开头那个 9.28 和这个 9.28，两个各画一个橙圈，中间牵一条橙色点线（随后淡掉，圈留着）
-  // 回扣停多久跟着口播走：「星舰入轨」前留出的气口越长，拉远停得越久（最多 1.7s）
+  // Opening callback: pull back to show both opening and current 9.28, circle each orange, connect with dotted orange line (then fade line, retain circles)
+  // Callback hold follows narration: longer pause before Starship orbit means longer pullback hold (maximum 1.7s)
   const tBack = WB.cur + 0.02, tRet = Math.max(tBack + 0.95, Math.min(tBack + 1.7, q('星舰入轨') - 0.5)), R1 = [2955, 648, 240, 104], R2 = [8830, Y(212), 200, 100];
   [R1, R2].forEach(([x, y, rx, ry], i) => WB.line(WB.ell(x, y, rx, ry, -2.4, 1.06, -0.05, 48), { col: OR, w: 18, t0: tBack + 0.3 + i * 0.14, dur: 0.3, handed: false, nofit: true }));
   const link = WB.line(WB.quad([R1[0] + 250, R1[1] + 40], [6800, 1200], [R2[0] - 210, R2[1] - 20], 40), { col: OR, w: 18, dash: [1, 34], t0: tBack + 0.5, dur: 0.35, handed: false, nofit: true });
@@ -50,9 +50,9 @@ WB.chapter('s11', id => {
   const tS = WB.cur, tR0 = q('放出') - 0.05, tR1 = tR0 + 1.6, W0 = Math.PI * 0.95, SPD = 1.15, SPD2 = 2.1;
   const pos = (w, f = 1) => { const X0 = Math.cos(w) * RX * f, Y0 = Math.sin(w) * RY * f, c = Math.cos(ROT), n = Math.sin(ROT); return [EX + X0 * c - Y0 * n, EY + X0 * n + Y0 * c]; };
   WB.custom({ t0: tS, t1: tS + 0.3, bb: [EX - 420, EY - 300, EX + 420, EY + 300], draw(g, qq, t) {
-    const wAt = tt => W0 + (Math.min(tt, tR0) - tS) * SPD + U.clamp(tt - tR0, 0, tR1 - tR0) * SPD2 + Math.max(0, tt - tR1) * SPD, w = wAt(t);   // 放卫星时船走得快一点，卫星才排得开
-    // 卫星：放出时刻 ti 时在船的位置，之后沿同一轨道稍慢地走、往外散一点
-    // 26 颗卫星：在船经过的位置一颗颗放出，然后沿径向慢慢往外散开（一串小珠子：黑点＋两片橙色小太阳翼）
+    const wAt = tt => W0 + (Math.min(tt, tR0) - tS) * SPD + U.clamp(tt - tR0, 0, tR1 - tR0) * SPD2 + Math.max(0, tt - tR1) * SPD, w = wAt(t);   // Move spacecraft faster while releasing satellites so they separate
+    // Satellite: starts at spacecraft position at release time ti, then follows same orbit slightly slower and drifts outward
+    // 26 satellites: released at successive spacecraft positions, then slowly spread radially (string of beads: black dots and two small orange solar panels)
     g.lineCap = 'round';
     for (let i = 0; i < 26; i++) { const ti = tR0 + (tR1 - tR0) * i / 25; if (t < ti) break;
       const u = MO.cubicOut(U.clamp((t - ti) / 1.2)), wi = wAt(ti) - 0.06, [x, y] = pos(wi, 1 + 0.32 * u), k = MO.backOut(U.clamp((t - ti) / 0.16), 2.2);
@@ -64,10 +64,10 @@ WB.chapter('s11', id => {
     WB.drawPrep(g, SP, x, y, 1, a, MO.smooth(qq)); return null; } });
   WB.pop('26颗', 9800, Y(380), 110, { at: q('26颗') + 0.3 });
   WB.go(q('新一代') + 0.05); WB.text('新一代星链卫星', 9800, Y(480), 54, { align: 'center', rate: 14 });
-  // ---- 相机 ----
+  // ---- Camera ----
   const T = t0 + TIMING.seg[id].dur;
   WB.shot(q('2026年') - 0.12 - 0.62, 0.6, t0, q('6月'), { zmax: 1.2 });
-  WB.shot(q('6月') - 0.05, 0.75, q('6月'), q('9月28号'), { zmax: 1.15, add: [[7820, Y(380), 8480, Y(560)]] });   // 上市这一拍一个中景到底，不再特写→拉远
+  WB.shot(q('6月') - 0.05, 0.75, q('6月'), q('9月28号'), { zmax: 1.15, add: [[7820, Y(380), 8480, Y(560)]] });   // Hold one medium shot for IPO beat, without close-up then pullback
   WB.shot(q('9月28号') - 0.15, 0.55, q('9月28号'), q('9月28号') + 0.3, { zmax: 1.2, add: [[8660, Y(120), 9220, Y(330)]] });
   const [bx, by, bz] = WB.fit(0, 0, { add: [[R1[0] - 300, R1[1] - 200, R1[0] + 300, R1[1] + 160], [R2[0] - 260, R2[1] - 160, R2[0] + 260, R2[1] + 160]], pad: 120, sy: 450 });
   WB.move(tBack - 0.02, tBack + 0.55, bx, by, bz, { ease: MO.cubicInOut });

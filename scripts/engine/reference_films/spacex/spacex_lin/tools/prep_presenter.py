@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""讲解员帧：绿幕 sprite 表 → 抠图切帧 → 量脚底中心与「帽顶到脚底」身高 → spacex_lin/assets/p_<姿势>_<i>.png ＋ spacex_lin/presenter_meta.js
-用法：python3 prep_presenter.py   （扫 assets/src/sheet_*.png，外加混合版 s11 的指向表与已切好的惊讶帧）"""
+"""Presenter frames: green-screen sprite sheet → key/slice → measure foot center and hat-to-foot height → spacex_lin/assets/p_<姿势>_<i>.png + spacex_lin/presenter_meta.js
+Usage: python3 prep_presenter.py (scan assets/src/sheet_*.png, plus mixed s11 pointing sheet and pre-sliced surprised frames)"""
 from pathlib import Path
 import json
 import numpy as np
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]; SRC = ROOT / 'assets' / 'src'; OUT =
 MIX = ROOT.parent / 'spacex' / 'assets'
 SHEETS = {p.stem[6:]: p for p in sorted(SRC.glob('sheet_*.png'))}
 SHEETS.setdefault('point', MIX / 's11_sheet_point.png')
-PRECUT = {'wow': [MIX / f's11_wow_{i}.png' for i in range(3)]}   # 混合版已切好（三帧手臂相连，按列切不开）
+PRECUT = {'wow': [MIX / f's11_wow_{i}.png' for i in range(3)]}   # Mixed sheet already sliced (three connected arm frames cannot be split by columns)
 EXPECT = {'walk': 6, 'bust': 4}
 
 
@@ -30,7 +30,7 @@ def runs(mask):
             if x - x0 > 60: out.append((x0, x))
         x += 1
     if out:
-        mw = max(b - a for a, b in out); out = [r for r in out if r[1] - r[0] >= 0.45 * mw]   # 汗珠、强调线这类碎块不算一帧
+        mw = max(b - a for a, b in out); out = [r for r in out if r[1] - r[0] >= 0.45 * mw]   # Fragments such as sweat drops/emphasis lines are not frames
     return out
 
 
@@ -41,8 +41,8 @@ def crop(fr):
 
 def measure(fr):
     m = fr[..., 3] > 127; h, w = m.shape
-    bot = m[int(h * 0.94):]; xs = np.where(bot)[1]; ax = float(xs.mean()) if len(xs) else w / 2   # 脚底中心
-    white = (fr[..., :3].astype(int).min(2) > 228) & m; cnt = white.sum(1)                          # 帽顶：第一行近白像素 ≥ 40
+    bot = m[int(h * 0.94):]; xs = np.where(bot)[1]; ax = float(xs.mean()) if len(xs) else w / 2   # Foot-center anchor
+    white = (fr[..., :3].astype(int).min(2) > 228) & m; cnt = white.sum(1)                          # Hat top: first row with ≥40 nearly white pixels
     top = int(np.argmax(cnt >= 40)) if (cnt >= 40).any() else 0
     return w, h, round(ax, 1), top
 

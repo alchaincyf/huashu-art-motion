@@ -1,5 +1,7 @@
 # 15_raytrace · 1993 早期光线追踪 CGI
 
+**中文** · [English](../en/style-recipes/15_raytrace.md)
+
 不用 3D 引擎，靠 2D Canvas 的「着色约定」假装是渲染器出图。
 
 ## 塑料着色（每个部件都过一遍）

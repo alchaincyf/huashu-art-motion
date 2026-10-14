@@ -1,5 +1,7 @@
 # Y1 · Kurzgesagt 扁平科普：视频动画语法卡
 
+**中文** · [English](../en/animation-grammars/y1_kurzgesagt.md)
+
 一句话：把一个抽象概念画成一个具体的物，放进能无限缩放的发光世界里，相机在尺度之间穿行；环境层（星、粒子）可以一直轻轻动，主体和信息在口播节点上发生变化，落定后停住。
 
 示范片：`scripts/engine/demos/y1_kurzgesagt/`（渲染 `render.py --film demos/y1_kurzgesagt`）（8s，3 镜 2 转场），总览：`assets/动画语法/y1_kurzgesagt_总览.jpg`

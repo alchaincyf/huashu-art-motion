@@ -1,5 +1,7 @@
 # 25_ghibli · 1988 吉卜力式手绘水彩背景美术
 
+**中文** · [English](../en/style-recipes/25_ghibli.md)
+
 > 来源：迁移测试 B（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/25_ghibli.js`。
 
 实验时的文件名：`scenes/c4_ghibli.js`（约 270 行）。每帧中位 17ms，**首帧 619ms**（水彩底版缓存）；帧差 5.1%。

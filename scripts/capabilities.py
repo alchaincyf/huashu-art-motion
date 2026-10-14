@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""可选语音配置。status/resolve不联网；个人配置位于skill安装目录外。"""
+"""Optional voice configuration. status/resolve work offline; personal config lives outside the skill install directory."""
 import argparse
 from contextlib import contextmanager
 import copy
@@ -54,7 +54,7 @@ def merge(base, patch):
 
 
 def validate(data, schema=None, where='config'):
-    # 本包schema只使用以下JSON Schema关键字；不声称实现通用schema解释器。
+    # This package's schema uses only the JSON Schema keywords below; no claim of a general-purpose schema interpreter.
     schema = schema or read_json(ROOT / 'schemas/media.schema.json')
     types = {'object': dict, 'string': str, 'integer': int, 'boolean': bool}
     typ = schema.get('type')
@@ -120,7 +120,7 @@ def effective(explicit=None, project=None):
 def locked(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_name(path.name + '.lock')
-    # 内核文件锁在进程退出后释放；不通过删除锁文件争抢所有权。
+    # Kernel file lock is released on process exit; ownership is not contested by deleting the lock file.
     with lock_path.open('a+b') as lock:
         if os.name == 'nt':
             import msvcrt
@@ -151,7 +151,7 @@ def save_patch(path, patch, expected=None, reset=None):
             raise ConfigError('配置已被其他进程修改；请重读后重试')
         updated = merge(old, patch)
         if reset:
-            # 只允许重置公开字段；不执行动态路径表达式。
+            # Only public fields may be reset; dynamic path expressions are not evaluated.
             keys = reset.split('.')
             if keys[0] not in {'preferences', 'policy', 'bindings', 'provider_options', 'onboarding'}:
                 raise ConfigError('不支持这个reset路径')
@@ -199,7 +199,7 @@ def speaker(config, explicit=None):
     if voice and voice.get('speaker_id'):
         return voice['speaker_id']
     if explicit and not voice:
-        # 兼容旧命令的注册表别名或平台ID。
+        # Treat as a registry alias or platform ID from a legacy command.
         voice = {'entry': explicit}
     voice = voice or {'entry': 'default'}
     registry_path = Path(voice.get('registry_file') or config['bindings']['volcengine']['registry_file']).expanduser()
@@ -278,7 +278,7 @@ def inspect_audio(path):
 def system_voice_for(text, configured=None):
     if configured:
         return configured
-    # macOS默认英文音色可能对中文返回近空音频；只从已安装音色选，不下载。
+    # macOS default English voice may return near-silent audio for Chinese; select only from installed voices, no download.
     if re.search(r"[\u4e00-\u9fff]", text):
         result = subprocess.run(['say', '-v', '?'], capture_output=True, text=True, check=True)
         names = [m.group(1).strip() for line in result.stdout.splitlines()
@@ -308,7 +308,7 @@ def run_say(args, config):
     requested_format = args.format
     out.parent.mkdir(parents=True, exist_ok=True)
     import koubo
-    # 临时工作区防止失败或半段响应污染最终产物。
+    # Temp workspace prevents a failed or partial response from polluting the final output.
     with tempfile.TemporaryDirectory(prefix='voice-', dir=out.parent) as temp:
         staged = Path(temp) / (out.name + '.wav' if requested_format == 'pcm' else out.name)
         if result['mode'] == 'system':
@@ -332,7 +332,7 @@ def run_say(args, config):
             koubo.configure_backend(config)
             args = copy.copy(args)
             args.out = str(staged)
-            # 先用容器音频完成拟合/电平/终止状态验收，再导出裸PCM。
+            # Fit/level/termination checks run on the container audio first, then export raw PCM.
             if requested_format == 'pcm': args.format = 'wav'
             args.voice = speaker(config, args.voice)
             opts = config['provider_options']['volcengine']
@@ -345,7 +345,7 @@ def run_say(args, config):
         if artifact['duration'] < 0.12 or volume is None or volume < -60:
             raise ConfigError('合成音频近空或无有效声音，不作为成功产物')
         if args.fit and abs(artifact['duration'] - args.fit) > .05:
-            # 保留诊断候选，但不把它当成合格的最终输出。
+            # Keep the diagnostic candidate, but do not treat it as a valid final output.
             candidate = out.with_name(out.stem + '.unfitted' + out.suffix)
             if not candidate.exists():
                 shutil.copy2(staged, candidate)
@@ -370,7 +370,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] in ('image-status', 'image-plan', 'accept-image', 'use-image'):
         import images
         return images.main()
-    # 生成/训练命令共用原CLI，避免两套参数漂移。
+    # say/train commands share the original CLI to prevent argument drift between two separate parsers.
     if len(sys.argv) > 1 and sys.argv[1] in ('say', 'train', 'voices'):
         import koubo
         return koubo.main()

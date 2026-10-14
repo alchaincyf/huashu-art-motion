@@ -1,34 +1,34 @@
-// S06 · 蒸汽波 / 赛博霓虹（风格卡 26_vaporwave）——「2018年，重型猎鹰首飞，把一辆跑车送上了绕太阳的轨道，两枚助推器并排落回地面。」
-// 管线：整幅先画进离屏 S → P.vhs 后期（RGB 通道分离、跟踪噪声带撕裂、扫描线、暗角；OSD 自己画在右上，不进字幕区）。
-//   天空渐变＋星星（视差 0.6）→ 横条落日（这个太阳就是跑车要绕的太阳，视差 0.12）＋霓虹椭圆轨道（后半在日后、前半在日前）
-//   → 线框山＋洋红透视网格地面（滚动）＋棕榈剪影 → 发射台/两个着陆圈 → 重型猎鹰（三芯并联，深紫剪影＋粉/青双色轮廓辉光）→ 霓虹灯管字「2018」
-// 镜头只做竖直摇：升空时跟着火箭摇上去（地面掉出画面、只剩太阳和星空，跑车放出来绕日）；「两枚助推器」时跟着它们摇回地面，并排落在两个发光圈上。
-// 跑车：通用造型的红色敞篷车，无任何品牌标志；驾驶座上是头盔面罩不透明的宇航服剪影（无脸）。
+// S06 · Vaporwave/cyber neon (26_vaporwave): 2018 Falcon Heavy maiden flight sends roadster into solar orbit; two boosters land side by side.
+// Pipeline: render whole frame to offscreen S → P.vhs (RGB split, tracking-noise tears, scanlines, vignette; custom OSD upper right, outside subtitle area).
+//   Sky gradient + stars (parallax 0.6) → striped sunset (the roadster's orbital Sun, parallax 0.12) + neon ellipse (back half behind Sun, front half in front)
+//   → wireframe mountains + scrolling magenta perspective grid + palm silhouettes → pad/two landing rings → three-core Falcon Heavy (dark purple + pink/cyan edge glow) → neon-tube 2018.
+// Camera pans vertically only: tracks launch up (ground exits, Sun/stars remain, roadster released); follows two boosters down to adjacent glowing rings.
+// Roadster: generic red convertible, no brand marks; driver is faceless spacesuit silhouette with opaque visor.
 (() => {
 const W = 1920, H = 1080, { clamp, lerp, rng } = U, P = PAINT, seg = MO.seg, sm = MO.smooth, TAU = Math.PI * 2;
 const ID = 's06';
-ERAS.find(e => e.id === ID).transition = { type: 'vhs', dur: 0.6 };              // 签名转场：磁带撕裂、场同步丢失上滚
+ERAS.find(e => e.id === ID).transition = { type: 'vhs', dur: 0.6 };              // Signature transition: tape tear, sync loss rolls upward.
 const DUR = TM.dur(ID), cue = k => TM.cue(ID, k);
 const C = { pink: '#ff4fd8', hot: '#ff2f8f', cyan: '#3ff6ff', deep: '#12052a', yellow: '#ffd84a', orange: '#ff8a3a', sil: '#1c0838', sil2: '#0f0322' };
 const glow = P.glowStroke;
 const T = { sub: '重型猎鹰首飞' };
 
-// ---------- 时刻 ----------
+// ---------- Times ----------
 const t18 = cue('2018年'), tSub = cue('重型猎鹰'), tLift = cue('首飞') - 0.15;
 const tUp = [tLift + 0.3, tLift + 1.4];
 const tCar = cue('跑车') + 0.1, tOrbit = [cue('绕太阳'), cue('轨道') + 0.35];
 const tB0 = cue('两枚') - 0.05, tTouch = cue('落回'), tDown = [cue('两枚'), cue('两枚') + 1.2];
 const tBurn = [tTouch - 0.95, tTouch + 0.02], tLegs = [tTouch - 0.6, tTouch - 0.1];
 
-// ---------- 布局 ----------
-const HOR = 640, VPX = 960, K = 7;                     // 地平线、消失点；火箭 1 m = 7 px
+// ---------- Layout ----------
+const HOR = 640, VPX = 960, K = 7;                     // Horizon, vanishing point; rocket 1m = 7px.
 const PADX = 900, LZX = [1220, 1440], FLOORY = 880;
 const SUN = { x: 960, y: 430, r: 262 };
 const ORB = { rx: 610, ry: 150, tilt: -0.08 };
 const camY = t => 900 * MO.sineInOut(seg(t, ...tUp)) * (1 - MO.sineInOut(seg(t, ...tDown)));
 const sunAt = cy => [SUN.x, SUN.y + cy * 0.12];
 
-// ---------- 天空、星星 ----------
+// ---------- Sky and stars ----------
 const STARS = (() => { const r = rng(606), o = []; for (let i = 0; i < 240; i++) o.push({ x: r() * W, y: -1500 + r() * 2150, s: 0.8 + r() * 2.2, ph: r() * TAU, f: 1.5 + r() * 3, col: r() < 0.2 ? C.cyan : r() < 0.4 ? '#ffb8f0' : '#ffffff' }); return o; })();
 function sky(g, cy, t) {
   const gr = g.createLinearGradient(0, -1300 + cy, 0, HOR + cy);
@@ -39,7 +39,7 @@ function sky(g, cy, t) {
     g.globalAlpha = a; g.fillStyle = s.col; g.fillRect(s.x - s.s / 2, y - s.s / 2, s.s, s.s); if (s.s > 2.2) { g.fillRect(s.x - s.s * 2, y - 0.5, s.s * 4, 1); g.fillRect(s.x - 0.5, y - s.s * 2, 1, s.s * 4); } }
   g.globalAlpha = 1;
 }
-// ---------- 横条落日（离屏画，destination-out 切横缝，缝随时间上移、越往下越宽） ----------
+// ---------- Striped sunset (offscreen, destination-out gaps move up and widen downward) ----------
 function sun(g, t, cx, cy) {
   const R = SUN.r, sc = P.scratch('s06sun'), s = sc.getContext('2d'); s.reset();
   const ox = 300, oy = 300;
@@ -52,18 +52,18 @@ function sun(g, t, cx, cy) {
   for (let k = 0; k < 9; k++) { const q = (k + ph) / 9, y = oy + R * (q * 1.05 - 0.02), h = 2 + q * q * 22; s.fillRect(ox - R, y, R * 2, h); }
   g.drawImage(sc, 0, 0, 600, 600, cx - ox, cy - oy, 600, 600);
 }
-// ---------- 轨道与跑车 ----------
+// ---------- Orbit and roadster ----------
 const orbPt = (cx, cy, f) => { const x = ORB.rx * Math.cos(f), y = ORB.ry * Math.sin(f), c = Math.cos(ORB.tilt), s = Math.sin(ORB.tilt); return [cx + x * c - y * s, cy + x * s + y * c]; };
 const F0 = -0.35, OMEGA = 0.85;
 const carPhi = t => F0 + OMEGA * (t - tCar);
 function orbitArc(g, cx, cy, f0, f1, front) {
-  // 只画落在前半（sin>0）或后半的那部分
+  // Draw only front (sin>0) or back half.
   const n = Math.max(2, Math.ceil(Math.abs(f1 - f0) * 40)); g.beginPath(); let on = false;
   for (let i = 0; i <= n; i++) { const f = lerp(f0, f1, i / n), isF = Math.sin(f) > 0; const [x, y] = orbPt(cx, cy, f);
     if (isF === front) { on ? g.lineTo(x, y) : g.moveTo(x, y); on = true; } else on = false; }
   g.lineCap = 'round'; glow(g, C.pink, 5, 22); g.strokeStyle = '#ffe6fa'; g.lineWidth = 1.6; g.stroke();
 }
-// 跑车（车头朝右，长约 200 px）：车身红、深色车轮、斜挡风、驾驶座上无脸宇航服剪影（面罩不透明）
+// Roadster faces right, ~200px long: red body, dark wheels, slanted windshield, faceless astronaut with opaque visor.
 const CAR = (() => {
   const body = new Path2D();
   [[-100, 12], [-102, -6], [-72, -15], [-30, -17], [-12, -14], [10, -15], [24, -19], [62, -15], [100, -5], [100, 12], [82, 12], [80, 0], [62, -8], [44, 0], [42, 12], [-42, 12], [-44, 0], [-62, -8], [-80, 0], [-82, 12]].forEach(([x, y], i) => i ? body.lineTo(x, y) : body.moveTo(x, y)); body.closePath();
@@ -75,16 +75,16 @@ const CAR = (() => {
 })();
 function car(g, x, y, s, rot) {
   g.save(); g.translate(x, y); g.rotate(rot); g.scale(s, s);
-  // 双色轮廓辉光：同一剪影向左偏一点填粉、向右偏一点填青，再盖本色
+  // Two-color edge glow: same silhouette offset left in pink/right in cyan, then original fill on top.
   g.save(); g.shadowBlur = 18; g.shadowColor = C.pink; g.fillStyle = C.pink; g.translate(-3, 0); g.fill(CAR.body); g.fill(CAR.helmet); g.restore();
   g.save(); g.shadowBlur = 18; g.shadowColor = C.cyan; g.fillStyle = C.cyan; g.translate(3, 0); g.fill(CAR.body); g.fill(CAR.helmet); g.restore();
   g.fillStyle = '#f0f0ff'; g.fill(CAR.suit); g.fill(CAR.helmet); g.fillStyle = '#1a0630'; g.fill(CAR.visor);
   const bg = g.createLinearGradient(0, -20, 0, 14); bg.addColorStop(0, '#ff5a6e'); bg.addColorStop(1, '#b0102e'); g.fillStyle = bg; g.fill(CAR.body);
-  g.strokeStyle = '#ffd0e0'; g.lineWidth = 2; g.beginPath(); g.moveTo(24, -19); g.lineTo(10, -40); g.stroke();       // 挡风玻璃框
+  g.strokeStyle = '#ffd0e0'; g.lineWidth = 2; g.beginPath(); g.moveTo(24, -19); g.lineTo(10, -40); g.stroke();       // Windshield frame.
   g.fillStyle = '#12052a'; g.fill(CAR.wheels); g.strokeStyle = C.cyan; g.lineWidth = 2.5; g.stroke(CAR.wheels);
   g.restore();
 }
-// ---------- 地面：线框山、洋红透视网格（滚动）、棕榈 ----------
+// ---------- Ground: wireframe mountains, scrolling magenta grid, palms ----------
 const MTN = (() => { const r = rng(61), o = [[0, HOR]]; for (let x = 0; x <= W; x += 60) o.push([x, HOR - 18 - (Math.abs(x - 960) > 300 ? 40 + 70 * r() * clamp((Math.abs(x - 960) - 300) / 400) : 10 * r())]); o.push([W, HOR]); return o; })();
 function ground(g, cy, t) {
   const hy = HOR + cy; if (hy > H + 10) return;
@@ -99,14 +99,14 @@ function ground(g, cy, t) {
   const ph = (t * 1.2) % 1;
   for (let k = 0; k < 16; k++) { const d = k + 1 - ph, y = HOR + 300 / d; if (y > HOR + 900) continue; g.lineWidth = 1 + 2.4 * clamp((y - HOR) / 440); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
   g.restore();
-  // 棕榈剪影（左右各一，摇）
+  // Palm silhouettes (one each side, swaying).
   [[150, 780, 1], [1770, 790, -1]].forEach(([x, y, s], k) => {
     const sw = Math.sin(t * 1.8 + k * 1.4) * 0.05;
     g.save(); g.translate(x, y); g.rotate(sw * s); g.fillStyle = '#090114'; g.strokeStyle = '#090114';
     g.lineWidth = 14; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(s * 26, -170, s * 8, -330); g.stroke();
     for (let f = 0; f < 8; f++) { const a = -Math.PI / 2 + (f - 3.5) * 0.42 + Math.sin(t * 2.6 + f) * 0.05, L = 110 + (f % 3) * 24; g.save(); g.translate(s * 8, -330); g.rotate(a); g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * 0.5, -20, L, 18); g.quadraticCurveTo(L * 0.5, 6, 0, 6); g.fill(); g.restore(); }
     g.restore(); });
-  // 发射台＋两个着陆圈
+  // Launch pad + two landing rings.
   g.fillStyle = '#1a0830'; g.fillRect(PADX - 70, FLOORY, 140, 16); g.beginPath(); g.moveTo(PADX - 70, FLOORY); g.lineTo(PADX + 70, FLOORY); glow(g, C.cyan, 3, 14);
   const pulse = seg(t, tTouch, tTouch + 0.9);
   for (const x of LZX) {
@@ -116,7 +116,7 @@ function ground(g, cy, t) {
   }
   g.restore();
 }
-// ---------- 火箭：深紫剪影＋粉/青双色轮廓辉光 ----------
+// ---------- Rocket: dark-purple silhouette + pink/cyan edge glow ----------
 function silhouette(g, parts, x, y, rot) {
   g.save(); g.translate(x, y); g.rotate(rot); g.scale(K, K);
   for (const [col, dx] of [[C.pink, -3.5 / K], [C.cyan, 3.5 / K]]) { g.save(); g.translate(dx, 0); g.shadowColor = col; g.shadowBlur = 16; g.fillStyle = col; parts.forEach(q => g.fill(q.p)); g.restore(); }
@@ -128,9 +128,9 @@ function neonFlame(g, x, y, len, w, t, seed) {
   RK.flame(g, x, y, len, w, t, ['rgba(255,47,143,.85)', 'rgba(255,216,74,.9)', '#fff6fb'], seed); g.restore();
 }
 const HEAVY = RK.heavy({ payload: 'fairing' }).parts;
-// 侧助推器（落回时）：一级＋头锥＋自画着陆腿（底部铰接、向下外翻，脚垫低于发动机）＋栅格舵
+// Returning side boosters: stage 1 + nose + custom landing legs (bottom hinges, outward/downward feet below engines) + grid fins.
 function sideBooster(legs) {
-  const parts = RK.falcon9({ stage: 'booster', fins: 1 }).parts.filter((q, i) => i !== 3);   // 去掉 RK 的收起态腿，换成下面的展开腿
+  const parts = RK.falcon9({ stage: 'booster', fins: 1 }).parts.filter((q, i) => i !== 3);   // Remove RK's stowed legs, replace with deployed legs below.
   parts.push({ k: 'nose', p: RK.ogive(3.7, 4.5, -41) });
   const lg = new Path2D(), a = legs * 2.1, L = 9.5;
   for (const s of [-1, 1]) { const hx = s * 1.85, hy = -1.2, tx = hx + s * Math.sin(a) * L, ty = hy - Math.cos(a) * L, nx = -Math.cos(a) * 0.35 * s, ny = -Math.sin(a) * 0.35;
@@ -138,7 +138,7 @@ function sideBooster(legs) {
   parts.push({ k: 'dark', p: lg });
   return parts;
 }
-// ---------- 霓虹灯管字「2018」（自画折线，不依赖字体） ----------
+// ---------- Neon-tube 2018 (custom polylines, no font dependency) ----------
 const ell = (cx, cy, rx, ry, n = 28) => { const o = []; for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + i / n * TAU; o.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); } return o; };
 const DIG = {
   '2': [[[0.1, 0.24], [0.22, 0.06], [0.5, 0.0], [0.78, 0.06], [0.9, 0.26], [0.8, 0.46], [0.1, 1.0], [0.94, 1.0]]],
@@ -168,12 +168,12 @@ SCENES[ID] = {
     const S = P.scratch('s06S'), g = S.getContext('2d'); g.reset();
     sky(g, cy, tt);
     const [sx, sy] = sunAt(cy);
-    // —— 轨道＋跑车（后半在太阳后面） ——
+    // —— Orbit + roadster (rear half behind Sun) ——
     const oq = sm(seg(tt, ...tOrbit)), f = carPhi(tt);
     let carXY = null, front = Math.sin(f) > 0;
     if (tt >= tCar) {
       const op = orbPt(sx, sy, f), rel = sm(seg(tt, tCar, tCar + 0.75));
-      const noseY = 880 - 1900 * Math.pow(clamp((tCar - tLift) / 1.45), 2.2) - 490 + cy;               // 放出时火箭头锥所在的屏幕位置
+      const noseY = 880 - 1900 * Math.pow(clamp((tCar - tLift) / 1.45), 2.2) - 490 + cy;               // Rocket nose screen position at release.
       const start = [PADX, Math.min(noseY, 40)];
       carXY = [lerp(start[0], op[0], rel), lerp(start[1], op[1], rel) - Math.sin(rel * Math.PI) * 60];
     }
@@ -183,21 +183,21 @@ SCENES[ID] = {
     sun(g, tt, sx, sy);
     if (oq > 0) orbitArc(g, sx, sy, F0, F0 + TAU * oq, true);
     if (carXY && front) car(g, carXY[0], carXY[1], carScale, carRot);
-    // 跑车放出时的霓虹火花
+    // Neon sparks on roadster release.
     const sp = seg(tt, tCar, tCar + 0.6);
     if (sp > 0 && sp < 1 && carXY) { const r = rng(808); g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 18; i++) { const a = r() * TAU, d = 30 + 110 * MO.cubicOut(sp) * (0.5 + r()); g.fillStyle = r() < 0.5 ? C.cyan : C.pink; g.globalAlpha = 1 - sp; g.fillRect(carXY[0] + Math.cos(a) * d, carXY[1] + Math.sin(a) * d, 4, 4); } g.restore(); }
-    // —— 地面 ——
+    // —— Ground ——
     ground(g, cy, tt);
-    // —— 重型猎鹰：发射台上排气 → 点火升空（三芯三道霓虹尾焰） ——
+    // —— Falcon Heavy: vent on pad → launch (three cores, three neon exhausts) ——
     const ry = FLOORY - K - 1900 * Math.pow(clamp((tt - tLift) / 1.45), 2.2) + cy;
     if (ry > -40) {
       const ig = sm(seg(tt, tLift - 0.35, tLift + 0.1));
       if (ig > 0) for (const dx of [-4.05, 0, 4.05]) neonFlame(g, PADX + dx * K, ry + 7, (90 + 160 * clamp((tt - tLift) / 0.8)) * ig, 30, tt, dx);
       silhouette(g, HEAVY, PADX, ry, 0);
-      if (tt < tLift + 0.6) { const r = rng(17); g.save(); g.globalCompositeOperation = 'lighter';       // 排气白雾（粉/青）
+      if (tt < tLift + 0.6) { const r = rng(17); g.save(); g.globalCompositeOperation = 'lighter';       // Venting mist (pink/cyan).
         for (let i = 0; i < 9; i++) { const ph = (tt * 0.5 + r()) % 1, x = PADX + (r() - 0.5) * 220 * (0.4 + ph), y = FLOORY + cy - 30 - ph * 90; g.globalAlpha = 0.18 * (1 - ph) * (1 + 2 * ig); g.fillStyle = r() < 0.5 ? C.pink : C.cyan; g.beginPath(); g.arc(x, y, 26 + ph * 40, 0, TAU); g.fill(); } g.restore(); }
     }
-    // —— 两枚侧助推器同步竖直落回两个相邻的发光圈 ——
+    // —— Two side boosters land vertically in sync on adjacent glowing rings ——
     if (tt > tB0) {
       const e = MO.bezier(0.3, 0.1, 0.25, 1)(seg(tt, tB0, tTouch)), by = lerp(-820, FLOORY - 3.6 * K, e) + cy;
       const legs = sm(seg(tt, ...tLegs)), parts = sideBooster(legs), burn = sm(seg(tt, tBurn[0], tBurn[0] + 0.15)) * (1 - sm(seg(tt, tBurn[1] - 0.12, tBurn[1])));
@@ -205,9 +205,9 @@ SCENES[ID] = {
         if (burn > 0) neonFlame(g, x, by + 7, 120 * burn, 26, tt, 5 + i);
         silhouette(g, parts, x, by, wob); });
     }
-    // —— HUD：霓虹灯管字、OSD ——
+    // —— HUD: neon-tube text, OSD ——
     neon18(g, tt);
-    // —— VHS 后期 ——
+    // —— VHS post-processing ——
     P.vhs(c, S, t, lt, { osd: false });
     const f30 = Math.floor(t * 60);
     if ((f30 >> 4) % 2 === 0) { c.save(); c.font = '30px "PressStart2P-400"'; c.fillStyle = '#ffffff'; c.shadowColor = 'rgba(0,0,0,.8)'; c.shadowOffsetX = 3; c.shadowOffsetY = 3; c.fillText('PLAY', 1610, 104); c.beginPath(); c.moveTo(1770, 76); c.lineTo(1798, 91); c.lineTo(1770, 106); c.closePath(); c.fill(); c.restore(); }

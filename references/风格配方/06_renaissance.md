@@ -1,5 +1,7 @@
 # 06_renaissance · 1503 文艺复兴盛期（达芬奇式）
 
+**中文** · [English](../en/style-recipes/06_renaissance.md)
+
 每帧 16–37ms（中位 16ms）。
 
 ## 管线

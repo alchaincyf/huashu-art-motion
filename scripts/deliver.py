@@ -2,25 +2,25 @@
 # requires-python = ">=3.10"
 # dependencies = ["numpy", "opencv-python-headless"]
 # ///
-"""deliver.py —— 一条命令交付：量门禁 → 红灯不出片；绿灯、黄灯复制成片并写交付说明，说明里的事实由脚本写。
+"""deliver.py —— one-command delivery: run the gate → red light aborts; green/yellow copies the finished film and writes the delivery note, facts written by the script.
 
     uv run deliver.py <成片.mp4> --out output/ [--spec 片段.json | --project <代码工程>] [--qa <qa 输出目录>] [--root <项目目录>]
                       [--sub-band 0.15] [--vertical auto|yes|no] [--allow-blue-purple "理由"]
-    uv run deliver.py --verify output/交付说明.md       # 核对事实段有没有被改过
+    uv run deliver.py --verify output/交付说明.md       # verify that the facts section has not been modified
 
-做三件事：
-  1. 跑同目录的 film_gate.py。红灯：不复制成片、不写说明，打印原因和怎么改，退出码 2。
-  2. 绿灯、黄灯：把成片复制到 --out，写 --out/交付说明.md。事实段全部由脚本写：
-     时长、分辨率、帧率、音轨、文件指纹；门禁各指标和灯；最差 30 秒窗口；
-     qa 跑没跑过、结果如何（读 qa 输出目录里的 qa.json，没有就写「没跑」）；
-     有没有独立审片记录（<项目目录>/审片/*.md 在不在，列出文件名；没有就写「没派审片」）。
-  3. 事实段末尾带指纹。制作者只在「制作说明」段补主观描述（用了哪个语法、黄灯项为什么可以这样、六种做坏方式自查），
-     不改事实段；改了 --verify 会报出来。
+Does three things:
+  1. Runs film_gate.py from the same directory. Red light: does not copy the film or write the note, prints reason and fix, exits with code 2.
+  2. Green/yellow light: copies the film to --out and writes --out/交付说明.md. The facts section is fully script-written:
+     duration, resolution, frame rate, audio track, file fingerprint; gate metrics and lights; worst 30-second window;
+     whether qa was run and its results (reads qa.json in the qa output dir; if absent writes "not run");
+     whether an independent review exists (<project dir>/审片/*.md, lists filenames; if absent writes "no reviewer assigned").
+  3. Facts section ends with a fingerprint. The creator only adds subjective notes in the "production notes" section
+     (syntax used, why yellow-light items are acceptable, six-failure-mode self-check); do not edit the facts section — --verify will catch changes.
 
-约定：
-  - qa 输出目录：--qa 优先；否则和 qa.py 的默认一致——--spec → <spec 所在目录>/qa，--project → <代码工程的上一级>/qa。
-  - 项目目录：--root 优先；否则 --project 的上一级；否则 --spec 所在目录；否则成片所在目录。
-  - 审片人（没参与制作的 agent 或人）把结论写成 <项目目录>/审片/<任意名>.md。脚本只看文件在不在，不读内容，不替审片人下结论。
+Conventions:
+  - qa output dir: --qa takes priority; otherwise matches qa.py default — --spec → <spec dir>/qa, --project → <project parent>/qa.
+  - project dir: --root first; then --project parent; then --spec dir; then film dir.
+  - Reviewer (agent or person not involved in production) writes conclusions to <project dir>/审片/<any name>.md. Script only checks file existence, does not read content.
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def stamp(p):
 
 
 def qa_facts(qa_dir, spec):
-    """读 qa.py 的输出。返回事实行（列表）。"""
+    """Read qa.py output. Return factual lines (list)."""
     if qa_dir is None:
         return ["- 没跑（没给 --spec / --project / --qa，不知道去哪找 qa 输出）"]
     f = qa_dir / "qa.json"

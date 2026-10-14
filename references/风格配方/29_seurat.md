@@ -1,5 +1,7 @@
 # 29_seurat · 1884 修拉《大碗岛的星期天下午》（点彩：视觉混色渲染器）
 
+**中文** · [English](../en/style-recipes/29_seurat.md)
+
 > 来源：迁移测试 C（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/29_seurat.js`。
 
 实验时的文件名：`scenes/k3_seurat.js`（136 行）。每帧约 100ms，帧差 7.4%（静穆，相邻帧均差 0.45）。

@@ -2,24 +2,24 @@
 # /// script
 # dependencies = ["fonttools"]
 # ///
-"""从一个中文字体里抽子集，写成 woff 放进 engine/lib/fonts/。缺字形会静默回退系统字体（换台机器就变样），
-所以画面里要用的中文字必须真的在子集里——引擎启动时 U.assertGlyphs 会查角标的字，缺了 console.error，qa 失败。
+"""Subset a Chinese font into woff under engine/lib/fonts/. Missing glyphs silently fall back to system fonts (different across machines),
+so required Chinese glyphs must be in the subset; engine U.assertGlyphs checks counter text at startup, console.error on missing glyphs makes QA fail.
 
-    uv run scripts/font_subset.py                         # 重建预置的霞鹜文楷子集（扫 engine/ 下全部 .js 里的中文＋内置常用字）
-    uv run scripts/font_subset.py --scan <代码工程目录>     # 把另一个工程里用到的中文也并进来
-    uv run scripts/font_subset.py --text "皮影戏蓝色时期"   # 追加指定文字
-    uv run scripts/font_subset.py --font path/to/XXX.ttf --out <工程>/lib/fonts/XXX-400.woff --text "..."   # 别的字体
-    uv run scripts/font_subset.py --gb2312 ...           # 再并进 GB2312 全部 6763 个汉字（解说片换题目不用每次补字；单字重约 1MB）
-    uv run scripts/font_subset.py --fix-widths engine/lib/fonts/PuHui-Medium.woff   # 只修字宽为 0 的全角空格（普惠体 Medium/Bold 源字体的 bug）
+    uv run scripts/font_subset.py                         # Rebuild preset LXGW WenKai subset (scan Chinese in all engine/ .js + built-in common glyphs)
+    uv run scripts/font_subset.py --scan <代码工程目录>     # Also include Chinese used by another project
+    uv run scripts/font_subset.py --text "皮影戏蓝色时期"   # Append specified text
+    uv run scripts/font_subset.py --font path/to/XXX.ttf --out <工程>/lib/fonts/XXX-400.woff --text "..."   # Other font
+    uv run scripts/font_subset.py --gb2312 ...           # Include all 6763 GB2312 Han glyphs (no per-topic additions for explainers; about 1MB per weight)
+    uv run scripts/font_subset.py --fix-widths engine/lib/fonts/PuHui-Medium.woff   # Only fix zero-width full-width space (PuHui Medium/Bold source bug)
 
-预置的解说片字体（YouTube 语法示范与新片都用，见 references/09）就是这么做的（开源版的中文黑体换成了思源黑体，--font 指向 Noto Sans SC 按字重实例化后的 ttf；普惠体许可不允许转换后再分发，只能自己本地生成）：
-    uv run scripts/font_subset.py --gb2312                                                     # 霞鹜文楷（白板）
-    for w in 65-Medium:Medium 85-Bold:Bold 105-Heavy:Heavy 115-Black:Black; do                # 阿里巴巴普惠体 3.0 四个字重
+Preset explainer fonts (YouTube grammar demos/new films, references/09) use this method (public version uses Noto Sans SC, --font points to weight-instantiated ttf; PuHui forbids redistribution after conversion, so generate locally only):
+    uv run scripts/font_subset.py --gb2312                                                     # LXGW WenKai (whiteboard)
+    for w in 65-Medium:Medium 85-Bold:Bold 105-Heavy:Heavy 115-Black:Black; do                # Alibaba PuHuiTi 3.0 four weights
       uv run scripts/font_subset.py --gb2312 --font path/to/AlibabaPuHuiTi-3-${w%%:*}.ttf --out scripts/engine/lib/fonts/PuHui-${w##*:}.woff; done
 
-默认字体：霞鹜文楷 Medium（LXGW WenKai，SIL Open Font License 1.1，可商用、可再分发、可嵌入），
-没有源文件就从 https://github.com/lxgw/LxgwWenKai/releases 下 LXGWWenKai-Medium.ttf，用 --font 指过去。
-新字体加进 engine/lib/fonts.js 才会注册（family 名 = 文件名去扩展名）。
+Default font: LXGW WenKai Medium (SIL Open Font License 1.1, commercial use/redistribution/embedding permitted);
+if missing, download LXGWWenKai-Medium.ttf from https://github.com/lxgw/LxgwWenKai/releases and point --font at it.
+Register new fonts in engine/lib/fonts.js (family = filename without extension).
 """
 import argparse, re, sys
 from pathlib import Path
@@ -28,7 +28,7 @@ from fontTools.ttLib import TTFont
 
 HERE = Path(__file__).resolve().parent
 ENGINE = HERE / 'engine'
-# 预置字：数字、标点、年代/朝代、常见风格与画种用字。子集保持小（几十 KB），用到新字再跑一次本脚本。
+# Preset characters: digits, punctuation, eras/dynasties, common styles/art terms. Keep subset small (tens of KB); rerun when new glyphs are needed.
 BASE = ('0123456789０１２３４５６７８９ ，。、：；！？「」『』《》（）·—…～'
         '年代世纪公元前后约初中晚期朝唐宋元明清汉魏晋隋周秦商夏民国现当今古'
         '水墨写意工笔山水花鸟人物画法风格派主义时期艺术家作品壁窟敦煌莫高佛飞天供养'
@@ -41,12 +41,12 @@ BASE = ('0123456789０１２３４５６７８９ ，。、：；！？「」『
         '蒸汽波像素光追橡皮管一二三四五六七八九十百千万')
 
 
-# 解说片常用的全角标点与符号
+# Common full-width punctuation/symbols for explainers
 PUNCT = '，。、：；！？「」『』《》（）【】·—–…～“”‘’％＋－×÷→←↑↓▲▼≈±°¥€①②③④⑤⑥⑦⑧⑨⑩✓'
 
 
 def gb2312_l1():
-    """GB2312 全部 6763 个汉字（一级 3755 常用字＋二级 3008 次常用字，如「渲」「浏」）"""
+    """All 6763 GB2312 Han glyphs (3755 common level-one + 3008 less-common level-two, e.g. 渲/浏)"""
     out = set()
     for hi in range(0xB0, 0xF8):
         for lo in range(0xA1, 0xFF):
@@ -63,7 +63,7 @@ STR = re.compile(r"'(?:[^'\\\n]|\\.)*'|\"(?:[^\"\\\n]|\\.)*\"|`(?:[^`\\]|\\.)*`"
 
 
 def scan(d):
-    """只收 JS 字符串字面量里的中文（注释里的中文不会画到画面上，算进来子集会胖 20 倍）"""
+    """Collect Chinese only from JS string literals (comments are not rendered; including them bloats subset 20×)"""
     out = set()
     for f in Path(d).rglob('*.js'):
         try: src = f.read_text(encoding='utf-8')
@@ -74,8 +74,8 @@ def scan(d):
 
 
 def fix_blank_widths(font):
-    """全角空格 U+3000 在阿里巴巴普惠体 3.0 的 Medium／Bold 源字体里字宽是 0（Heavy／Black 正常 984/990），
-    「月收盘价，美元　纵轴未从 0 开始」会粘成一串。把它设成和「一」同宽。返回修了几个。"""
+    """Full-width space U+3000 has zero width in Alibaba PuHuiTi 3.0 Medium/Bold source (Heavy/Black normal 984/990),
+    joining "月收盘价，美元　纵轴未从 0 开始". Set width equal to "一". Return number fixed."""
     cmap, hm, n = font.getBestCmap(), font['hmtx'], 0
     ref = cmap.get(0x4E00)
     for cp in (0x3000,):
@@ -105,7 +105,7 @@ def main():
     chars = set(BASE) | set(a.text)
     if not a.no_default_scan: chars |= scan(ENGINE)
     for d in a.scan: chars |= scan(d)
-    chars |= set(chr(c) for c in range(0x20, 0x7F))           # ASCII 全带上（年份、英文副标题）
+    chars |= set(chr(c) for c in range(0x20, 0x7F))           # Include all ASCII (years, English subtitles)
     if a.gb2312: chars |= gb2312_l1() | set(PUNCT)
     font = TTFont(a.font)
     cmap = font.getBestCmap()

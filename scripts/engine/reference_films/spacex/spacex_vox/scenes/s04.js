@@ -1,5 +1,5 @@
-// S04 · 2008.12 合同 → 2012 龙飞船：红线「三个月后」从上一格的剪报牵到一份别着回形针的合同，荧光笔跟读「16亿美元」「12次空间站补给」；
-// 相机沿第二根红线掠过「2010 猎鹰9号首飞」小卡，落到空间站网点照片：剪纸龙飞船一顿一顿靠上去对接，红笔圈住，黑标签打字。
+// S04 · December 2008 contract → 2012 Dragon: three-months-later red thread leads from previous clipping to paperclipped contract; highlighter follows $1.6 billion / 12 station resupply missions;
+// Camera follows another red thread past small 2010 Falcon 9 maiden-flight card to halftone station photo; paper-cut Dragon docks in steps, circled red, black label types.
 (() => {
 const ID = 's04', V = VOX, C = V.C, F = V.F, PH = V.PH, TAU = Math.PI * 2;
 const { clamp, lerp } = U, seg = MO.seg, step = V.step;
@@ -7,7 +7,7 @@ const cell = V.cell(ID), X0 = cell.x, Y0 = cell.y, xy = (x, y) => ({ x: X0 + x, 
 const cue = k => TM.cue(ID, k), G = k => V.cue(ID, k), t0 = V.t0(ID);
 const T = { tag3: '三个月后', kick: '2008.12', head: 'NASA 商业补给合同', l1a: '合同金额', l1b: '16亿美元', l2a: '任务', l2b: '12次空间站补给', c10: '2010 · 猎鹰9号首飞', yr: '2012', lb: '第一艘造访国际空间站的私人飞船' };
 
-// ---------- 合同（回形针＋打字表格）----------
+// ---------- Contract (paperclip and typed table) ----------
 const NW = 780, NH = 600, N = xy(640, 1000), NR = -0.022;
 const POS = {};
 const doc = () => V.spr('s04doc', NW, NH, (g, w, h) => {
@@ -28,7 +28,7 @@ V.item({ key: 's04doc', ...N, r: NR, z: 11, at: t0 - 1, draw(g, T_) {
   V.hl(g, POS.h2.x, POS.h2.y, POS.h2.w, POS.h2.h, MO.sineInOut(seg(st, G('往空间站'), G('送货') + 0.2)));
   g.restore();
 } });
-// ---------- 2010 小卡 ----------
+// ---------- Small 2010 card ----------
 const C10 = xy(1180, 1420);
 V.item({ key: 's04c10', ...C10, r: 0.045, z: 10, at: t0 - 1, draw(g) {
   V.blit(g, V.spr('s04c10', 380, 300, (gg, w, h) => {
@@ -38,7 +38,7 @@ V.item({ key: 's04c10', ...C10, r: 0.045, z: 10, at: t0 - 1, draw(g) {
     V.text(gg, T.c10, w / 2, h - 34, 30, F.bold, C.ink, 'center');
   }));
 } });
-// ---------- 空间站网点照片＋剪纸龙飞船 ----------
+// ---------- Halftone station photo and paper-cut Dragon ----------
 const P2 = xy(1700, 880), PW = 820, PHh = 520, PR = 0.02;
 const stationDraw = (g, w, h) => {
   const cx = w / 2, cy = h / 2;
@@ -56,7 +56,7 @@ const stationDraw = (g, w, h) => {
   g.fillStyle = '#bdbdbd'; g.fillRect(-12, 96, 24, 14);
   g.restore();
 };
-const PORT = [0, -60 + 110];                                   // 对接口（照片中心坐标系）
+const PORT = [0, -60 + 110];                                   // Docking port (photo-centered coordinates)
 const dragon = () => V.cutout('s04dragon', 64, 118, (g, w, h) => RK.at(g, w / 2, h, 16.5, 0, q => V.shadeFill(q, RK.dragon({ trunk: true }), { body: '#ececec', trunk: '#b5b5b5', nose: '#dadada', window: '#202020', line: '#3a3a3a', lw: 0.12 })), { cell: 4, edge: 6, sh: { blur: 8, x: 3, y: 5, col: 'rgba(0,0,0,.4)' } });
 const tDr = G('龙飞船') - 0.15, tDock = G('国际空间站') + 0.2, DC = V.circle('s04dock', 96, 74, 13);
 V.item({ key: 's04iss', ...P2, r: PR, z: 10, at: t0 - 1, draw(g, T_) {
@@ -69,16 +69,16 @@ V.item({ key: 's04iss', ...P2, r: PR, z: 10, at: t0 - 1, draw(g, T_) {
   }
   g.save(); g.translate(PORT[0], PORT[1] + 40); V.pen(g, DC, MO.cubicOut(seg(st, tDock + 0.1, tDock + 0.7)), { lw: 7 }); g.restore();
 } });
-// 黑底标签条（压在照片左下角）：「2012」随条滑入，下一行打字
+// Black label strip (over lower-left photo): 2012 slides with strip, next line types
 const LB = xy(1640, 1215);
 V.item({ key: 's04lb', ...LB, r: -0.02, z: 12, at: G('2012') - 0.05, enter: { from: [-60, 380], tilt: -0.14, dur: 0.45 }, draw(g, T_) {
-  // 黑条跟着打字往右长（不留一大截空黑条）
+  // Black strip grows right with typing (no long empty black tail)
   const n = V.nTyped(T_, G('第一艘'), 13); g.font = V.font(34, F.heavy); const tw = g.measureText([...T.lb].slice(0, n).join('')).width;
   const W0 = 660, w = Math.max(240, Math.min(W0, tw + 70)), h = 180; g.save(); g.translate(-W0 / 2, -h / 2); g.fillStyle = C.black; CL.tornRect(g, w, h, 77, 3); g.fill(); g.restore();
   V.text(g, T.yr, -W0 / 2 + 30, -h / 2 + 92, 78, F.num, C.yel);
   V.typed(g, T.lb, -W0 / 2 + 30, h / 2 - 32, n, 34, F.heavy, C.paper);
 } });
-// ---------- 红线：上一格剪报 → 合同（三个月后）；合同 → 2010 小卡 → 照片 ----------
+// ---------- Red thread: previous clipping → contract (three months later); contract → 2010 card → photo ----------
 const PREV = [V.cell('s03').x + 1500 + 420, 1390 - 150];
 const A1 = PREV, B1 = [N.x - NW / 2 + 40, N.y - NH / 2 + 30];
 const mk = (a, b, sag) => { const pts = CL.stringPts(a, b, sag); return { a, b, pts, cum: DG.cum(pts) }; };
@@ -92,17 +92,17 @@ V.item({ key: 's04str', x: X0 + 600, y: 1000, rad: 2600, z: 48, at: tS1[0], draw
   g.restore();
 } });
 
-// ---------- 相机 ----------
+// ---------- Camera ----------
 const at = (x, y, z, sy) => V.at(X0 + x, Y0 + y, z, sy);
 const pan2 = cue('2012') - 0.25;
 const cam = (lt) => CAM.at([
   V.key(0, V.camEnd('s03')),
   V.key(0.35, at(-420, 1180, 0.95), MO.cubicIn),
-  V.key(1.35, at(620, 970, 1.14), MO.longTail),                 // 沿红线追过去：长尾
+  V.key(1.35, at(620, 970, 1.14), MO.longTail),                 // Follow red thread: long tail
   V.key(cue('16亿'), at(610, 975, 1.17), MO.sineInOut),
-  V.key(cue('送货') + 0.3, at(600, 1010, 1.32), MO.sineInOut),     // 荧光笔期间慢推向那两行
+  V.key(cue('送货') + 0.3, at(600, 1010, 1.32), MO.sineInOut),     // Slow push toward those two lines during highlighting
   V.key(pan2, at(605, 1012, 1.33), MO.sineInOut),
-  V.key(pan2 + 0.6, at(1250, 1120, 0.95), MO.cubicInOut),       // 「找下一张卡」：拉开、掠过 2010 小卡
+  V.key(pan2 + 0.6, at(1250, 1120, 0.95), MO.cubicInOut),       // Find next card: pull out, pass small 2010 card
   V.key(pan2 + 1.25, at(1690, 960, 1.08), MO.longTail),
   V.key(TM.dur(ID), at(1700, 975, 1.2), MO.sineInOut),
 ], lt);

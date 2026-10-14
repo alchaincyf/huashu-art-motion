@@ -1,5 +1,7 @@
 # 31_haring · 1982 凯斯·哈林
 
+**中文** · [English](../en/style-recipes/31_haring.md)
+
 > 来源：迁移测试 C（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/31_haring.js`。
 
 实验时的文件名：`scenes/k5_haring.js`（109 行）。每帧约 4ms，帧差 11.5%。

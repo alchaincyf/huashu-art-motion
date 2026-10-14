@@ -1,5 +1,7 @@
 # t2_keynote_ui · 发布会式界面与渐变动效
 
+**中文** · [English](../en/animation-grammars/t2_keynote_ui.md)
+
 > 一句话语法：**一屏一件事，产品本身（截图、录屏、实物）当主角，名词和数字在口播说到时落定；字收紧，弹簧无回弹或轻回弹。** 光斑渐变底、毛玻璃卡、渐变字、居中模糊浮现、装饰漂浮都是可选包装，慎用（见「起手必查」）。
 >
 > 示范片：`scripts/engine/demos/t2_keynote_ui/`（渲染 `render.py --film demos/t2_keynote_ui`）（8s，3 镜头）· 总览 `assets/动画语法/t2_keynote_ui_总览.jpg` · 代码 `scripts/engine/demos/t2_keynote_ui/`

@@ -1,5 +1,7 @@
 # 30_matisse · 1947 马蒂斯《爵士》剪纸
 
+**中文** · [English](../en/style-recipes/30_matisse.md)
+
 > 来源：迁移测试 C（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/30_matisse.js`。
 
 实验时的文件名：`scenes/k4_matisse.js`（167 行）。每帧约 25ms，帧差 9.3%。

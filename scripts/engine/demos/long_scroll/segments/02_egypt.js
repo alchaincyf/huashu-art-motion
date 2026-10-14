@@ -1,26 +1,26 @@
-// 02_egypt · 古埃及墓室壁画（约公元前 1350 年，新王国）—— 横向「分栏壁画」世界
-// 世界＝墓室墙上的三层分栏（register）：顶上 kheker 饰带＋彩块边；上栏是美杜姆群鹅、有翼日盘、纸莎草丛里惊飞的水鸟（内巴蒙猎禽图的母题）和象形文字栏；
-// 540 处一道彩块分栏线（地平线）；中栏是他走的这一层（供桌、尖底罐、蓝莲花）；760 处彩块地线；下栏是尼罗河之字形水纹、游鱼、蓝莲。
-// 画法沿用 scenes/02_egypt.js：灰泥墙底＋平涂色块＋深色勾线＋四色彩块边框＋象形字库＋整幅 multiply 壁画表面（斑驳、发丝裂纹、颗粒）。
-// 活：水纹流动、鱼游、水鸟扑翅、群鹅点头啄食、纸莎草摇、日盘脉动。
-// 互动：圣甲虫推着太阳球从前面滚来，他埃及舞者式跳起让开，球和圣甲虫从他脚下滚过去、一路滚出画外；他回头看、得意地叉腰。
-// 圣甲虫推着球走开，帽子保持纯白，不累积纪念品
+// 02_egypt · Ancient Egyptian tomb mural (c.1350 BCE, New Kingdom) — horizontal register-based mural world
+// World = three tomb-wall registers: top kheker frieze + colored border; upper register Meidum geese, winged sun disk, waterbirds startled from papyrus (Nebamun hunting motif), hieroglyph panels;
+// Colored divider at 540 (horizon); middle walking register (offering table, pointed jars, blue lotus); colored ground line at 760; lower register Nile zigzags, fish, blue lotus.
+// Same technique as scenes/02_egypt.js: plaster base + flat colors + dark contours + four-color border + hieroglyph library + full-surface multiply weathering (mottling, hairline cracks, grain).
+// Motion: flowing water, swimming fish, flapping birds, geese pecking, swaying papyrus, pulsing sun disk.
+// Interaction: scarab rolls solar ball toward him; he jumps aside like an Egyptian dancer; ball/scarab pass beneath feet and exit; he looks back, proudly puts hands on hips.
+// Scarab rolls ball away; hat stays pure white, no souvenir accumulation
 if (!window.XJ) { const x = new XMLHttpRequest(); x.open('GET', 'demos/long_scroll/lib/xing2_jia.js', false); x.send(); (0, eval)(x.responseText + '\n//# sourceURL=demos/long_scroll/lib/xing2_jia.js'); }
 (() => {
 const { clamp, lerp, rng, ss } = U, P = PAINT, TAU = Math.PI * 2, H = 1080, W = 1920;
 const w = 2100, OX = 160, WW = w + 2 * OX, G = WORLD.GROUND, REG = 540;
-const WALK = { st: [49.0, 23.6, -1.4, -53.7, 51.4, 27.0, -22.6, -55.4], fps: 12.6 };   // 支撑脚 x（身高300）与步速330时的帧率，从走路帧逐帧量出
+const WALK = { st: [49.0, 23.6, -1.4, -53.7, 51.4, 27.0, -22.6, -55.4], fps: 12.6 };   // Support-foot x (height300), frame rate at speed330, measured frame by frame
 const K = { walk: 'egypt_walk8', act: 'egypt_dodge' };
 const AT = 1000, DUR = 1.6;
-const AX = AT + WORLD.V * 0.11;   // 他互动时实际站的位置（XJ.glide 缓停滑过的那一小段之后）
-const T_HIT = 0.6, V_SC = 650;     // 互动内秒：球滚到他脚下；圣甲虫速度（px/s，与步速无关）。加快甲虫并拉长腾空时间，让整只甲虫在角色落地前通过
+const AX = AT + WORLD.V * 0.11;   // Actual standing position during action (after XJ.glide braking displacement)
+const T_HIT = 0.6, V_SC = 650;     // Action seconds: ball reaches feet; scarab speed (px/s, independent of walking). Faster beetle and longer airtime let entire beetle pass before landing
 const C = { wall: [234, 220, 184], wall2: [216, 197, 151], line: '#2a1810', rule: '#9a2b22', red: '#b8322a', blue: '#2a58a8', green: '#2e8a55', yellow: '#e2b13a', black: '#231a14',
   gold: '#e0ab38', cream: '#f2ead6', white: '#f6f2e8', terra: '#d4936a', lapis: '#2c56b0', turq: '#3fa6a0', water: '#2f5fa8', papy: '#3f8a4a', papyL: '#7ab45a' };
 const BAND = [C.red, C.blue, C.yellow, C.green];
 const poly = (g, pts, close = true) => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); if (close) g.closePath(); };
 const fs = (g, fill, stroke, lw = 2.5) => { if (fill) { g.fillStyle = fill; g.fill(); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); } };
 
-// ---------- 象形文字（字形取自 scenes/02_egypt.js） ----------
+// ---------- Hieroglyphs (shapes from scenes/02_egypt.js) ----------
 const GL = {
   ankh: { h: 60, cols: [C.blue, C.green, C.black, C.red], d(g) { g.lineWidth = 3.6; g.beginPath(); g.ellipse(0, -17, 8, 11, 0, 0, 7); g.moveTo(-16, -3); g.lineTo(16, -3); g.moveTo(0, -5); g.lineTo(0, 29); g.stroke(); } },
   sun: { h: 40, cols: [C.black, C.blue, C.red], d(g) { g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 15, 0, 7); g.stroke(); g.beginPath(); g.arc(0, 0, 4, 0, 7); g.fill(); } },
@@ -45,7 +45,7 @@ const glyphCols = (g, xs, y0, y1, seed) => { const r = rng(seed); g.lineCap = 'r
   for (let k = 0; k < xs.length - 1; k++) { const cx = (xs[k] + xs[k + 1]) / 2, s = (xs[k + 1] - xs[k]) / 78; let y = y0 + 8, prev = '';
     while (true) { let n; do { n = GN[(r() * GN.length) | 0]; } while (n === prev); prev = n; const gl = GL[n]; if (y + gl.h * s > y1) break;
       g.save(); g.translate(cx, y + gl.h * s / 2); g.scale(s, s); const col = gl.cols[(r() * gl.cols.length) | 0]; g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 3.1; g.lineJoin = 'round'; gl.d(g); g.restore(); y += gl.h * s + 7; } } };
-// 彩块边（水平/竖直），块间黑缝
+// Colored border (horizontal/vertical), black gaps between blocks
 function blocks(g, x0, y0, x1, y1, len, off = 0) {
   const hor = (x1 - x0) > (y1 - y0), L = hor ? x1 - x0 : y1 - y0;
   g.fillStyle = C.cream; g.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -65,69 +65,69 @@ function jar(g, cx, y0, s) {
   g.beginPath(); g.moveTo(-14, 20); g.quadraticCurveTo(-14, -6, 0, -6); g.quadraticCurveTo(14, -6, 14, 20); g.closePath(); fs(g, '#3a302a', C.line, 2);
   g.restore();
 }
-// 供桌：苇席桌上摞面包、蓝莲、鸭、葡萄
+// Offering table: bread, blue lotus, duck, grapes stacked on reed mat
 function offering(g, x, y) {
   g.fillStyle = C.yellow; g.fillRect(x - 70, y - 120, 140, 10); g.strokeStyle = C.line; g.lineWidth = 2; g.strokeRect(x - 70, y - 120, 140, 10);
   g.fillStyle = C.yellow; g.fillRect(x - 8, y - 110, 16, 110); g.strokeRect(x - 8, y - 110, 16, 110); g.fillRect(x - 30, y - 8, 60, 8); g.strokeRect(x - 30, y - 8, 60, 8);
   [[-52, -136, C.terra], [-20, -140, C.yellow], [14, -138, C.terra], [44, -134, '#c8802a']].forEach(([dx, dy, col]) => { g.beginPath(); g.ellipse(x + dx, y + dy, 18, 12, 0, 0, TAU); fs(g, col, C.line, 2); });
   g.beginPath(); g.ellipse(x - 4, y - 166, 40, 13, 0, 0, TAU); fs(g, '#e8e0cc', C.line, 2);
   for (let k = 0; k < 7; k++) { g.beginPath(); g.arc(x + 40 + (k % 3) * 9, y - 176 + Math.floor(k / 3) * 9, 5, 0, TAU); fs(g, '#5a3a7a', C.line, 1.2); }
-  // 蓝莲两朵从桌上垂下
+  // Two blue lotuses hang from table
   [[-60, 1], [60, -1]].forEach(([dx, sg]) => { g.strokeStyle = C.green; g.lineWidth = 3; g.beginPath(); g.moveTo(x + dx * 0.6, y - 120); g.quadraticCurveTo(x + dx * 1.3, y - 80, x + dx * 1.2, y - 30); g.stroke();
     poly(g, [[x + dx * 1.2, y - 30], [x + dx * 1.2 - 12, y - 4], [x + dx * 1.2, y - 12], [x + dx * 1.2 + 12, y - 4]]); fs(g, C.blue, C.line, 1.6); void sg; });
 }
 
-// ---------- 静态层（世界坐标 +OX，缓存） ----------
+// ---------- Static layer (world coordinates +OX, cached) ----------
 const WALLTEX = () => P.cached('je_walltex', WW, H, g => {
   const hw = Math.ceil(WW / 2), hh = H / 2, s = P.canvas(hw, hh), sg = s.getContext('2d'), img = sg.createImageData(hw, hh), d = img.data, r = rng(13);
   for (let y = 0; y < hh; y++) for (let x = 0; x < hw; x++) { const n = P.fbm(x * 0.007 + 3, y * 0.007, 4), m = P.fbm(x * 0.05, y * 0.05 + 9, 2), k = (y * hw + x) * 4;
     const col = P.mix(C.wall, C.wall2, clamp(0.35 - n * 1.2)); const v = 1 + m * 0.05 + (r() - 0.5) * 0.04; d[k] = col[0] * v; d[k + 1] = col[1] * v; d[k + 2] = col[2] * v; d[k + 3] = 255; }
   sg.putImageData(img, 0, 0); g.imageSmoothingQuality = 'high'; g.drawImage(s, 0, 0, WW, H);
 });
-const SURF = () => P.cached('je_surface', WW, H, g => {          // 壁画表面（multiply）：斑驳＋发丝裂纹＋颗粒
+const SURF = () => P.cached('je_surface', WW, H, g => {          // Mural surface (multiply): mottling + hairline cracks + grain
   const hw = Math.ceil(WW / 2), hh = H / 2, s = P.canvas(hw, hh), sg = s.getContext('2d'), img = sg.createImageData(hw, hh), d = img.data, r = rng(99);
   for (let y = 0; y < hh; y++) for (let x = 0; x < hw; x++) { const n = P.fbm(x * 0.012 + 40, y * 0.012, 4), m = P.fbm(x * 0.06, y * 0.06 + 9, 2), v = 243 + n * 30 + m * 12 + (r() - 0.5) * 18, k = (y * hw + x) * 4; d[k] = v; d[k + 1] = v - 6; d[k + 2] = v - 16; d[k + 3] = 255; }
   sg.putImageData(img, 0, 0); g.drawImage(s, 0, 0, WW, H);
   const rr = rng(5); for (let q = 0; q < 9; q++) { let x = rr() * WW, y = rr() < 0.5 ? 0 : rr() * H, a = rr() * TAU; g.strokeStyle = 'rgba(90,70,50,.5)'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 34; k++) { a += (rr() - 0.5) * 0.7; x += Math.cos(a) * 14; y += Math.sin(a) * 14; g.lineTo(x, y); } g.stroke(); }
   for (let x = 0; x < WW; x += W) g.drawImage(P.grain('eg_specks', 0.018, [70, 50, 30], 0.4), x, 0);
 });
-const GEESE = [[300, 498, 1], [520, 498, -1], [700, 498, 1]];          // 美杜姆群鹅（世界 x、脚底 y、朝向）
-const PAPY = [1260, 1760];                                               // 纸莎草丛 x 范围（上栏）
+const GEESE = [[300, 498, 1], [520, 498, -1], [700, 498, 1]];          // Meidum geese (world x, feet y, facing)
+const PAPY = [1260, 1760];                                               // Papyrus x range (upper register)
 const DISC = [880, 210];
 const STATIC = () => P.cached('je_static', WW, H, g => {
   g.drawImage(WALLTEX(), 0, 0); const X = x => x + OX;
-  // 顶：kheker 饰带（束起的芦苇头）＋彩块边
+  // Top: kheker frieze (bundled reed tips) + colored border
   g.fillStyle = C.cream; g.fillRect(0, 0, WW, 74);
   for (let x = 0, k = 0; x < WW; x += 34, k++) { g.beginPath(); g.moveTo(x + 6, 74); g.lineTo(x + 6, 26); g.quadraticCurveTo(x + 17, 0, x + 28, 26); g.lineTo(x + 28, 74); g.closePath(); fs(g, [C.red, C.blue, C.green][k % 3], C.black, 2);
     g.fillStyle = C.cream; g.fillRect(x + 12, 34, 10, 8); g.fillStyle = C.yellow; g.beginPath(); g.arc(x + 17, 22, 5, 0, TAU); g.fill(); }
   blocks(g, 0, 74, WW, 96, 44, 0);
-  // 上栏：象形字栏（三组）
+  // Upper register: hieroglyph panels (three groups)
   glyphCols(g, [X(-120), X(-44), X(32), X(108)], 112, 500, 1350);
   glyphCols(g, [X(1060), X(1132), X(1204)], 112, 520, 1351);
   glyphCols(g, [X(1880), X(1956), X(2032), X(2108), X(2184)], 112, 520, 1352);
-  // 有翼日盘的翅膀（静态部分；日盘本身每帧画以便脉动）
+  // Winged sun-disk wings (static; disk drawn per frame for pulse)
   const [dx, dy] = [X(DISC[0]), DISC[1]];
   for (const sg2 of [-1, 1]) { for (let r2 = 0; r2 < 3; r2++) { g.beginPath(); g.moveTo(dx + sg2 * 40, dy - 10 + r2 * 12); g.quadraticCurveTo(dx + sg2 * 150, dy - 34 + r2 * 18, dx + sg2 * (250 - r2 * 40), dy - 4 + r2 * 18); g.lineTo(dx + sg2 * (240 - r2 * 40), dy + 12 + r2 * 18); g.quadraticCurveTo(dx + sg2 * 140, dy - 6 + r2 * 18, dx + sg2 * 40, dy + 6 + r2 * 12); g.closePath(); fs(g, [C.blue, C.green, C.red][r2], C.black, 2); }
     for (let f = 0; f < 9; f++) { g.strokeStyle = C.black; g.lineWidth = 1.4; g.beginPath(); g.moveTo(dx + sg2 * (60 + f * 22), dy - 18); g.lineTo(dx + sg2 * (60 + f * 22), dy + 40); g.stroke(); } }
-  // 上栏底的水带（纸莎草下的沼泽）
+  // Water band below upper register (marsh beneath papyrus)
   g.fillStyle = C.water; g.fillRect(X(1180), 500, 680, 40); g.strokeStyle = C.black; g.lineWidth = 2; g.strokeRect(X(1180), 500, 680, 40);
-  // 540 分栏线、760 地线：彩块带
+  // Divider 540, ground760: colored bands
   blocks(g, 0, REG - 8, WW, REG + 8, 38, 1);
   blocks(g, 0, G, WW, G + 16, 38, 2);
-  // 中栏：尖底罐、供桌（他走过时在身后）
+  // Middle register: pointed jars, offering table (behind him as he passes)
   jar(g, X(250), G - 256 * 0.86, 0.86); jar(g, X(330), G - 256 * 0.8, 0.8);
   offering(g, X(620), G);
   jar(g, X(1660), G - 256 * 0.86, 0.86);
   offering(g, X(1880), G);
   glyphCols(g, [X(1420), X(1490), X(1560)], 562, 740, 1353);
-  // 下栏：尼罗河（水色带＋黑色之字水纹另画动态）＋底部护墙裙
+  // Lower register: Nile (water band + separately animated black zigzags) + bottom dado
   g.fillStyle = C.water; g.fillRect(0, G + 16, WW, 230);
   blocks(g, 0, G + 246, WW, G + 262, 38, 3);
   g.fillStyle = '#7a2a1c'; g.fillRect(0, G + 262, WW, H - G - 262); g.fillStyle = C.black; g.fillRect(0, G + 290, WW, 6); g.fillStyle = C.yellow; g.fillRect(0, G + 296, WW, 3);
 });
 
-// ---------- 动态母题 ----------
-function goose(c, x, y, fx, t, k) {               // 美杜姆鹅：侧身、平涂、勾线；点头啄食
+// ---------- Animated motifs ----------
+function goose(c, x, y, fx, t, k) {               // Meidum goose: profile, flat fill, outline; nodding/pecking
   const peck = Math.max(0, Math.sin(t * 2.2 + k * 2.1)) ** 3;
   c.save(); c.translate(x, y); c.scale(fx * 1.2, 1.2);
   c.strokeStyle = C.line; c.lineWidth = 2; c.beginPath(); c.moveTo(-6, -14); c.lineTo(-10, 0); c.moveTo(6, -14); c.lineTo(10, 0); c.stroke();
@@ -140,21 +140,21 @@ function goose(c, x, y, fx, t, k) {               // 美杜姆鹅：侧身、平
   c.fillStyle = '#fff'; c.beginPath(); c.arc(18, -60, 2.4, 0, TAU); c.fill();
   c.restore(); c.restore();
 }
-function papyrus(c, x0, x1, t, camX) {            // 纸莎草丛：茎＋伞形花头，成片摇；水鸟从丛中惊飞
+function papyrus(c, x0, x1, t, camX) {            // Papyrus: stems + umbrella heads, swaying mass; waterbirds fly out
   const r = rng(77);
   for (let i = 0; i < 26; i++) { const bx = lerp(x0, x1, r()) - camX, top = 170 + r() * 120, sw = Math.sin(t * 1.4 + i * 0.7) * 10 * (0.5 + r() * 0.5);
     if (bx < -100 || bx > W + 100) { r(); continue; }
     c.strokeStyle = C.papy; c.lineWidth = 4; c.beginPath(); c.moveTo(bx, 500); c.quadraticCurveTo(bx + sw * 0.3, (500 + top) / 2, bx + sw, top); c.stroke();
     c.save(); c.translate(bx + sw, top); c.rotate(sw * 0.02); poly(c, [[0, 0], [-34, -46], [34, -46]]); fs(c, i % 3 ? C.papyL : C.papy, C.line, 2);
     c.strokeStyle = C.line; c.lineWidth = 1.2; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(0, 0); c.lineTo(k * 15, -46); c.stroke(); } c.fillStyle = C.yellow; c.fillRect(-34, -50, 68, 5); c.restore(); }
-  // 水鸟：在纸莎草上方绕圈扑翅（两套翅膀姿态，10fps 交替）
+  // Waterbirds circle above papyrus, flapping (two wing poses alternate at10fps)
   for (let k = 0; k < 6; k++) { const ph = t * 0.9 + k * 1.05, bx = (x0 + x1) / 2 + Math.cos(ph) * 220 + (k - 2.5) * 30 - camX, by = 200 + Math.sin(ph * 1.3) * 60 + k * 8; if (bx < -60 || bx > W + 60) continue;
     const up = Math.floor(t * 10 + k) % 2, fx = Math.sin(ph) < 0 ? 1 : -1;
     c.save(); c.translate(bx, by); c.scale(fx, 1); c.beginPath(); c.ellipse(0, 0, 18, 8, 0, 0, TAU); fs(c, k % 2 ? C.white : '#5a8ab0', C.line, 1.6);
     c.beginPath(); c.arc(18, -4, 6, 0, TAU); fs(c, k % 2 ? C.green : '#2a3a5a', C.line, 1.4); poly(c, [[23, -4], [32, -2], [23, 0]]); fs(c, C.yellow, null);
     poly(c, up ? [[-6, -2], [-16, -30], [6, -4]] : [[-6, 2], [-18, 22], [6, 4]]); fs(c, k % 2 ? '#c8d8e8' : '#3a6a9a', C.line, 1.4); c.restore(); }
 }
-function nile(c, t, camX) {                       // 下栏：黑色之字水纹向左流，鱼游，蓝莲点头
+function nile(c, t, camX) {                       // Lower register: black water zigzags flow left, fish swim, blue lotus nods
   const y0 = G + 30, y1 = G + 236, step = 26, off = (t * 60) % (step * 2);
   c.save(); c.strokeStyle = '#13213f'; c.lineWidth = 3; c.lineJoin = 'miter';
   for (let y = y0; y < y1; y += 30) { c.beginPath(); const sh = ((y / 30) % 2) * step; for (let x = -step * 2 - off + sh - (camX % (step * 2)); x < W + step * 2; x += step) { const yy = y + ((Math.round((x + off - sh + camX) / step)) % 2 ? 9 : -9); x === -step * 2 - off + sh - (camX % (step * 2)) ? c.moveTo(x, yy) : c.lineTo(x, yy); } c.stroke(); }
@@ -172,17 +172,17 @@ function nile(c, t, camX) {                       // 下栏：黑色之字水纹
     c.save(); c.translate(lx, G + 18); c.rotate(nod); c.strokeStyle = C.green; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 30); c.lineTo(0, -10); c.stroke();
     poly(c, [[0, -8], [-14, -36], [-5, -30], [0, -44], [5, -30], [14, -36]]); fs(c, k % 2 ? C.blue : C.white, C.line, 1.6); c.restore(); }
 }
-// 有翼日盘：红盘＋两条圣蛇，光晕脉动
+// Winged sun disk: red disk + two uraei, pulsing halo
 function disc(c, x, y, t) { const pu = 0.5 + 0.5 * Math.sin(t * TAU / 0.9);
   const hg = c.createRadialGradient(x, y, 30, x, y, 80 + 20 * pu); hg.addColorStop(0, `rgba(255,180,80,${0.35 * pu + 0.1})`); hg.addColorStop(1, 'rgba(255,170,70,0)'); c.fillStyle = hg; c.fillRect(x - 110, y - 110, 220, 220);
   c.beginPath(); c.arc(x, y, 34, 0, TAU); fs(c, '#c8372b', '#7a1c14', 3);
   for (const s of [-1, 1]) { c.beginPath(); c.moveTo(x + s * 30, y + 26); c.quadraticCurveTo(x + s * 44, y + 6, x + s * 38, y - 14); c.lineWidth = 6; c.strokeStyle = C.gold; c.stroke(); c.beginPath(); c.arc(x + s * 38, y - 16, 6, 0, TAU); fs(c, C.gold, C.black, 1.4); } }
 
-// ---------- 圣甲虫（背视：青金石身、绿松石鞘翅），头朝左推着红色太阳球滚 ----------
+// ---------- Scarab (top view: lapis body, turquoise wing cases), faces left pushing red solar ball ----------
 function scarab(c, x, y, s, t) {
   c.save(); c.translate(x, y); c.scale(s, s); c.lineCap = 'round'; c.lineJoin = 'round'; c.rotate(-Math.PI / 2);
   const pose = Math.floor(t * 15) % 2;
-  c.strokeStyle = '#141a30'; c.lineWidth = 3;                  // 腿：两套姿态交替
+  c.strokeStyle = '#141a30'; c.lineWidth = 3;                  // Legs: alternate two poses
   const legs = pose ? [[-14, -16, -26], [0, -18, -6], [14, -14, 18]] : [[-14, -14, -32], [0, -19, 2], [14, -18, 24]];
   legs.forEach(([ly, lx, ex]) => { for (const sg of [-1, 1]) { c.beginPath(); c.moveTo(sg * 10, ly + 14); c.lineTo(sg * 24, ly + 14 + (ex - ly) * 0.3); c.lineTo(sg * 30, ly + 24 + (pose ? 3 : -3) * sg); c.stroke(); } void lx; });
   c.beginPath(); c.ellipse(0, 8, 17, 23, 0, 0, TAU); fs(c, C.lapis, '#0d1430', 2.2);
@@ -190,26 +190,26 @@ function scarab(c, x, y, s, t) {
   c.fillStyle = C.turq; c.beginPath(); c.ellipse(-7, 6, 4, 13, 0.1, 0, TAU); c.fill(); c.beginPath(); c.ellipse(7, 6, 4, 13, -0.1, 0, TAU); c.fill();
   c.beginPath(); c.ellipse(0, -18, 12, 8, 0, 0, TAU); fs(c, '#3a68c4', '#0d1430', 2);
   c.beginPath(); c.moveTo(-10, -24); for (let k = 0; k < 5; k++) c.lineTo(-10 + k * 5, -28 - (k % 2) * 4); c.lineTo(10, -24); fs(c, '#3a68c4', '#0d1430', 1.6);
-  const by = -52, br = 23;                                       // 日球：在头前，随滚动转
+  const by = -52, br = 23;                                       // Solar ball: ahead of head, rotates while rolling
   c.beginPath(); c.arc(0, by, br, 0, TAU); fs(c, '#c8302a', '#3a0c08', 2.2);
   c.save(); c.clip(); c.fillStyle = '#f2c23a'; for (let k = 0; k < 6; k++) { const a = t * 10 + k * 1.05; c.beginPath(); c.arc(Math.cos(a) * br * 0.55, by + Math.sin(a) * br * 0.55, 3.4, 0, TAU); c.fill(); } c.restore();
   c.restore();
 }
-// 圣甲虫在世界里的位置（ta = 互动内秒）：一直往左滚，从他脚下穿过、滚出画外
-const SC_S = 1.9, scX = ta => AX + 52 * SC_S + V_SC * (T_HIT - ta);   // 圣甲虫身体中心；球在它左边 52*SC_S，T_HIT 时球正好滚到他脚下
+// Scarab world position (ta = action seconds): rolls left, passes beneath him, exits frame
+const SC_S = 1.9, scX = ta => AX + 52 * SC_S + V_SC * (T_HIT - ta);   // Scarab body center; ball 52*SC_S to left, reaches feet at T_HIT
 function scarabWorld(c, s, seg) {
   const ta = XJ.ta(seg, s); if (ta < -3 || ta > 6) return;
   const x = scX(ta) - s.camX; if (x < -200 || x > W + 150) return;
   scarab(c, x, G - 23 * SC_S - 3, SC_S, s.t);
 }
-// ---------- 主角材质：灰泥墙面斑驳 multiply（只在人身上），白保持白 ----------
+// ---------- Hero texture: plaster mottling multiply (character only), whites stay white ----------
 const heroMat = (g, ww, hh, i) => {
   XJ.texInside(g, ww, hh, (tg, w2, h2) => { const S = SURF(); tg.drawImage(S, -((i * 137) % 600) - 200, -300); });
 };
 
 WORLD.add({
   id: '02_egypt', year: -1350, name: '古埃及壁画', w, burst: 'jia_egypt', labelColor: 'rgba(42,24,16,.85)',
-  hero: { walk: K.walk, h: 300, fps: WALK.fps,   // 一个步态循环 8 帧（4 帧一步）；帧率按量出的步幅定，脚底锁见 XJ.walkLock
+  hero: { walk: K.walk, h: 300, fps: WALK.fps,   // Walk cycle 8 frames (4 per step); fps from measured stride, foot lock in XJ.walkLock
     shadow: null, draw(c, key, i, o, S) { if (key === K.act) { const gw = XJ.glideWalk(S, DUR, WALK.fps, 8, 0.22, true); if (gw != null) { key = K.walk; i = gw; } } if (key === K.walk) o.lock = (S.act ? 0 : XJ.walkLock({ w }, S, i, WALK.st, WALK.fps)); XJ.actor(c, key, i, o, 'egypt', heroMat); } },
   acts: [{ at: AT, dur: DUR, key: K.act, lead: 0, ...XJ.glide(DUR),
     frame: XJ.actFrame([[0, 1], [0.22, 2], [0.3, 3], [0.42, 4], [1.04, 5], [1.2, 6], [1.4, 7]]),
@@ -224,11 +224,11 @@ WORLD.add({
     c.save(); c.globalCompositeOperation = 'multiply'; c.drawImage(SURF(), -OX - s.camX, 0); c.restore();
   },
   front(c, s) {
-    // 跳起时脚下扬起的一点金色尘（埃及式：小三角点）
+    // Small golden dust puff beneath jumping feet (Egyptian-style triangular specks)
     const ta = XJ.ta(this, s);
     if (ta > 1.1 && ta < 1.5) { const q = (ta - 1.1) / 0.4, x = AX - s.camX; c.save(); c.globalAlpha = 1 - q; c.fillStyle = C.gold; for (let k = 0; k < 8; k++) { const a = Math.PI + (k / 7) * Math.PI, d = 30 + q * 60; c.beginPath(); c.arc(x + Math.cos(a) * d, G - 6 + Math.sin(a) * d * 0.3, 4, 0, TAU); c.fill(); } c.restore(); }
   },
-  // 进入埃及的边界：一条竖向四色彩块边（墓室壁画的边框语言）
+  // Incoming Egyptian boundary: vertical four-color border (tomb mural framing language)
   seam(c, y, sx, t) { const k = Math.floor((y + 1000) / 36), yy = (y + 1000) % 36; c.fillStyle = yy < 3 ? C.black : BAND[k % 4]; c.fillRect(sx - 10, y, 20, 6); c.fillStyle = C.black; c.fillRect(sx - 12, y, 2, 6); c.fillRect(sx + 10, y, 2, 6); },
 });
 })();

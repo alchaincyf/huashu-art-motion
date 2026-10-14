@@ -1,5 +1,7 @@
 # 03_greek · 公元前530 阿提卡黑绘陶器 —— 代码画法笔记
 
+**中文** · [English](../en/style-recipes/03_greek.md)
+
 文件：`scenes/03_greek.js`（纯 Canvas 2D，无图片）。最终自检：warm max 15.9ms / mean 7.6ms / cold 80ms，确定性通过，0.2↔0.7s 运动差分 22% 像素在动。
 
 ## 一句话诀窍

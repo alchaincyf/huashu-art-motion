@@ -1,5 +1,7 @@
 # 04_roman · 公元79年 庞贝马赛克 —— 手法笔记
 
+**中文** · [English](../en/style-recipes/04_roman.md)
+
 文件：`scenes/04_roman.js`（约 330 行）。最终自检：warm max 17ms / mean 13ms（1920×1080），init 206ms（boot 时一次），17,871 块石头，其中 13,067 块在动态区每帧重新取色。确定性通过。
 
 ## 核心思路：布局只算一次，颜色每帧流过石块

@@ -2,169 +2,163 @@
 
 [简体中文](README.md) | **English**
 
-<img src="assets/showcase/hero.png" alt="huashu-art-motion film gallery: 35 art styles and 9 explainer animation grammars" width="100%" />
+<img src="assets/showcase/hero.png" alt="huashu-art-motion gallery: 35 art styles, 9 explainer grammars" width="100%" />
 
-# huashu-art-motion · Art in Motion
+# huashu-art-motion · Art Motion
 
 Let your coding agent turn art styles into paintings that move.
 
-35 art styles · 9 explainer animation grammars · 8 types of parameterized clips · Reference code for narrated films
+35 art styles · 9 explainer grammars · 8 parameterized clips · reference code for full narrated films
 
 ```sh
 npx skills add alchaincyf/huashu-art-motion
 ```
 
-[Watch animations](#animation-showcase) · [Explore styles](#see-the-results) · [Get started](#whats-included) · [Download full demos](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
+[Animations](#animation-samples) · [Styles](#see-it) · [Get started](#whats-inside) · [Download full samples](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
 
 </div>
 
-The skill instructions and most reference documents are in Chinese. This README provides an English guide; it does not translate the installed skill itself.
+> English documentation covers the whole skill. For English requests, `SKILL.md` routes agents to [SKILL.en.md](SKILL.en.md) and the English references under `references/en/`. Chinese documents remain available through the language links.
 
-## Animation showcase
+## Animation samples
 
-### Featured demo: Huashu enters Super Mario
+### Featured: Huashu jumps into Super Mario
 
-Turn yourself into a pixel-art hero and play through a whole level. Bricks, pipes, level movement, and transitions are built in code; the character is composited from generated frames. These clips come directly from the 65-second film.
+Turn yourself into a pixel hero and run a full level. Bricks, pipes, level motion and transitions are done in code; the character is composited from generated frames. The clips below are cut straight from the 65-second film.
 
-<img src="assets/showcase/mario-claude.gif" alt="Huashu hits a brick to open a subscription choice, moves the cursor from OpenAI to Claude, and grows after receiving a starburst power-up" width="100%" />
+<img src="assets/showcase/mario-claude.gif" alt="Huashu hits a brick that triggers a membership choice; the cursor moves from OpenAI to Claude, a star power-up drops and he grows" width="100%" />
 
-Even eating a mushroom requires choosing a subscription: OpenAI or Claude? Choose Claude, and a starburst power-up drops in to make Huashu grow.
+Even eating a mushroom requires picking a membership first: OpenAI or Claude? Pick Claude, the star power-up drops, and Huashu grows.
 
 <table><tr>
-<td width="50%"><img src="assets/showcase/mario-combo.gif" alt="Huashu stomps a pixel enemy, kicks its curled-up form into another character, then breaks bricks overhead" width="100%" /><br/>Stomp and kick · Pixel Sam and Dario cameo as enemies</td>
-<td width="50%"><img src="assets/showcase/mario-pipe.gif" alt="Huashu enters a pipe; the camera travels through a green tunnel into a coin chamber, then returns above ground with a scanline whip transition" width="100%" /><br/>Down the pipe · Coin chamber and scanline whip transition</td>
+<td width="50%"><img src="assets/showcase/mario-combo.gif" alt="Huashu stomps a pixel enemy, kicks the shell into the character ahead, then smashes a brick" width="100%" /><br/>Stomp and kick · pixel Sam and Dario cameo as enemies</td>
+<td width="50%"><img src="assets/showcase/mario-pipe.gif" alt="Huashu enters a pipe; the camera passes through a green tunnel into a coin room, then whip-pans back above ground with scanlines" width="100%" /><br/>Down the pipe · coin room and scanline whip-pan</td>
 </tr></table>
 
-These show the finished film. The GIFs are silent and loop. See [clip timestamps and export settings](assets/showcase/mario-clips.md).
+These show the finished film; GIFs are silent and loop. [Clip timestamps and export settings](assets/showcase/mario-clips.en.md).
 
 ### Clawd: Night at the Museum
 
-Clawd, Claude Code's pixel mascot, jumps out of the terminal on a security guard's computer, explores New York's Metropolitan Museum of Art with a flashlight, crosses Central Park to the natural history museum, and returns before dawn to pose as an exhibit. The film runs 98 seconds across 16 scenes, with no narration. Its music is synthesized in code too.
+Clawd, Claude Code's pixel mascot, hops out of the terminal on a security guard's computer, patrols the Metropolitan Museum of Art with a flashlight, crosses Central Park to the Natural History Museum, and races back before dawn to pose as an exhibit. 98 seconds, 16 scenes, no narration; the score is synthesized in code too.
 
-<img src="assets/showcase/clawd-vangogh.gif" alt="Clawd jumps into Van Gogh's Wheat Field with Cypresses, is redrawn with impasto brushstrokes, and runs through the wheat" width="100%" />
+<img src="assets/showcase/clawd-vangogh.gif" alt="Clawd jumps into Van Gogh's Wheat Field with Cypresses, gets repainted in impasto, and runs through the wheat" width="100%" />
 
-Inside Van Gogh's *Wheat Field with Cypresses*, brushstroke directions come from the original painting's structure tensor, and Clawd is redrawn in impasto.
-
-<table><tr>
-<td width="50%"><img src="assets/showcase/clawd-trex.gif" alt="A T. rex skeleton pounces after the flashlight spot like a cat chasing a laser pointer" width="100%" /><br/>T. rex skeleton · Chasing the flashlight</td>
-<td width="50%"><img src="assets/showcase/clawd-dawn.gif" alt="At dawn, Clawd poses inside a picture frame while the guard sets down a coffee; Clawd blinks once" width="100%" /><br/>Dawn · Posing as an exhibit, with one blink</td>
-</tr></table>
-
-The darkness is rendered as a charcoal night scene; color appears only where the flashlight shines. The five paintings Clawd enters—by Van Gogh, Seurat, Vermeer, Rembrandt, and Leutze—are CC0 originals from The Met's Open Access collection, redrawn in code using each painter's brushwork. Find the full film in [Releases](https://github.com/alchaincyf/huashu-art-motion/releases/latest), with [clip timestamps and notes](assets/showcase/clawd-clips.md).
-
-### Huashu walks through famous paintings
-
-The paintings actually move. These three clips come from the same journey film: scenes are drawn in code, and characters are composited from generated frames.
-
-<img src="assets/showcase/monet.gif" alt="Monet's Japanese Bridge: a skipping stone sends ripples across the water" width="100%" />
-
-Skipping a stone by the Japanese Bridge.
+Into Van Gogh's *Wheat Field with Cypresses*: brushstroke direction comes from the original's structure tensor, and Clawd is repainted in impasto.
 
 <table><tr>
-<td width="50%"><img src="assets/showcase/egypt.gif" alt="Ancient Egypt: interacting with a scarab beetle" width="100%" /><br/>Ancient Egypt · Scarab beetle</td>
-<td width="50%"><img src="assets/showcase/pixel.gif" alt="8-bit: hitting a block to release a coin" width="100%" /><br/>8-bit · Coins from blocks</td>
+<td width="50%"><img src="assets/showcase/clawd-trex.gif" alt="A T. rex skeleton pounces after the flashlight spot like a cat chasing a laser pointer" width="100%" /><br/>T. rex skeleton · chasing the flashlight</td>
+<td width="50%"><img src="assets/showcase/clawd-dawn.gif" alt="At dawn Clawd poses inside a frame, the guard puts down his coffee, and Clawd blinks" width="100%" /><br/>Dawn · posing as an exhibit, one blink</td>
 </tr></table>
 
-## See the results
+The dark is a charcoal night scene; only what the flashlight hits shows color. The five paintings featured (Van Gogh, Seurat, Vermeer, Rembrandt, Leutze) are CC0 originals from The Met Open Access, each repainted in code in its painter's technique. Full film in [Releases](https://github.com/alchaincyf/huashu-art-motion/releases/latest); [clip timestamps and notes](assets/showcase/clawd-clips.en.md).
 
-<img src="assets/全风格总览.jpg" alt="Overview of actual demo frames across 35 art styles" width="100%" />
+### Huashu through famous paintings
 
-One frame from each of 35 animated demos: the same girl, orange-and-white cat, and table travel from caves in 40,000 BCE to 2026. Every scene moves: Van Gogh's starry sky turns, mosaic colors flow across stones, and ink washes carry the image into the next era.
+The paintings really move. The three clips below come from the same time-travel short: scenes are drawn in code, the character is composited from generated frames.
 
-The shared composition is part of the art-history speedrun: styles change while the scene stays the same. It is not a prescribed composition for these styles. For a new subject, design a new composition rather than reusing this room.
+<img src="assets/showcase/monet.gif" alt="Monet's Japanese Bridge: skipping a stone, ripples spread across the water" width="100%" />
 
-👉 [Download the all-style demo (MP4)](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
+Skipping a stone from the Japanese bridge.
 
-The long-scroll demo follows a character walking from left to right. At each boundary, both the world and the character change art style. The repository includes three sample worlds: Egyptian murals → Monet's *Japanese Bridge* → 8-bit.
+<table><tr>
+<td width="50%"><img src="assets/showcase/egypt.gif" alt="Ancient Egypt: interacting with a scarab" width="100%" /><br/>Ancient Egypt · scarab</td>
+<td width="50%"><img src="assets/showcase/pixel.gif" alt="8-bit: hitting a block to pop out a coin" width="100%" /><br/>8-bit · coin block</td>
+</tr></table>
 
-<img src="assets/长卷穿越_总览.jpg" alt="Long-scroll demo: Egyptian murals, Monet's Japanese Bridge, and 8-bit pixel art" width="100%" />
+## See it
 
-Eight explainer animation grammars each have a runnable demo film; the images below show one frame per shot. A ninth, presenter-led finance explainers, includes a grammar card and a full-film code snapshot that requires your own character assets. Whiteboard works well for drawing relationships alongside narration; Vox works well for graphics and information collage.
+<img src="assets/全风格总览.jpg" alt="Overview of real frames from all 35 art styles" width="100%" />
+
+One frame from each of the 35 samples: the same girl, the same orange-and-white cat, the same table, traveling from a 40,000 BC cave to 2026. Every segment moves: Van Gogh's stars swirl, mosaic colors flow across the stones, ink wash bleeds the frame into the next era.
+
+Note: all 35 tiles share one composition. That is the mechanism of the art-history speedrun (the style changes, the scene doesn't), not the composition of these styles. For a new subject, compose for that subject; don't move this room over.
+
+👉 [Download the all-styles sample (MP4)](https://github.com/alchaincyf/huashu-art-motion/releases/latest)
+
+Long-scroll film: one person walks left to right, and the moment they cross a boundary, the world and their own art style change together (below are the 3 demo segments shipped in the repo: Egyptian mural → Monet's *Japanese Bridge* → 8-bit):
+
+<img src="assets/长卷穿越_总览.jpg" alt="Long-scroll demo: Egyptian mural, Monet's Japanese Bridge, 8-bit pixel" width="100%" />
+
+Each of the 8 explainer grammars has a runnable demo film (one frame per shot below). A 9th, "presenter-led finance explainer", ships as a grammar card plus a full-film code snapshot that needs your own character. Whiteboard suits drawing relationships along with narration; Vox suits graphics and information collage:
 
 | | |
 |---|---|
-| <img src="assets/动画语法/y1_kurzgesagt_总览.jpg" alt="Kurzgesagt style" /> Kurzgesagt: flat shapes without outlines, journeys across scales | <img src="assets/动画语法/y2_vox_总览.jpg" alt="Vox style" /> Vox: clippings, red lines, highlighter marks |
-| <img src="assets/动画语法/y3_whiteboard_总览.jpg" alt="Whiteboard style" /> Whiteboard: a pen tip reveals the line drawing | <img src="assets/动画语法/t1_3b1b_总览.jpg" alt="3Blue1Brown style" /> 3Blue1Brown: one object transforms into the next |
-| <img src="assets/动画语法/y4_storytime_总览.jpg" alt="Storytime style" /> Storytime: reaction close-ups and pauses for jokes | <img src="assets/动画语法/y5_kinetic_type_总览.jpg" alt="Kinetic typography" /> Kinetic type: key words land with impact |
-| <img src="assets/动画语法/t2_keynote_ui_总览.jpg" alt="Keynote presentation style" /> Keynote UI: light spots, frosted-glass cards, large numbers | <img src="assets/动画语法/t3_finance_chart_总览.jpg" alt="Finance charts" /> Finance charts: axes first, then data, with one thing highlighted |
+| <img src="assets/动画语法/y1_kurzgesagt_总览.jpg" alt="Kurzgesagt style" /> Kurzgesagt: flat, no outlines, journeys across scale | <img src="assets/动画语法/y2_vox_总览.jpg" alt="Vox style" /> Vox: clippings, red lines, highlighter |
+| <img src="assets/动画语法/y3_whiteboard_总览.jpg" alt="Whiteboard style" /> Whiteboard: pen tip reveals line art | <img src="assets/动画语法/t1_3b1b_总览.jpg" alt="3Blue1Brown style" /> 3Blue1Brown: one object morphs into the next |
+| <img src="assets/动画语法/y4_storytime_总览.jpg" alt="Storytime style" /> Storytime: reaction close-ups, comedic pauses | <img src="assets/动画语法/y5_kinetic_type_总览.jpg" alt="Kinetic type" /> Kinetic type: the key word slams in |
+| <img src="assets/动画语法/t2_keynote_ui_总览.jpg" alt="Keynote style" /> Keynote: bokeh background, frosted-glass cards, big numbers | <img src="assets/动画语法/t3_finance_chart_总览.jpg" alt="Finance chart" /> Finance chart: axes first, then data, annotate one thing |
 
 ---
 
-## What it can do
+## What it does
 
-| You ask | It does |
+| You say | It does |
 |---|---|
-| “Recreate this animation” or “Break down this clip” | Runs the breakdown script to measure transitions, a beat grid, and motion heatmaps for each segment, then recreates the underlying mechanisms in code |
-| “Make an animation in the style of Van Gogh, Monet, or Bauhaus” | Designs one frame first, then animates it; 35 style recipe cards provide starting points |
-| “Make an art animation from my narration” | Builds a shot list → chooses styles → adds a camera to a world canvas → outputs a visual track |
-| “Make a film of someone walking through famous paintings” | Uses the long-scroll skeleton: one segment file per world, a hero moving rightward, style changes at boundaries, and a camera that only moves forward |
-| “Make an animated segment for an explainer video” | Chooses a grammar for the narration and renders a JSON spec into a frame-accurate clip, in landscape or portrait, with optional transparency |
-| “I need a person in the scene” | Uses an image-generation model for character frames; code handles compositing, frame changes, and materials |
-| “Add music and time it to the action” | Synthesizes music in code using a BPM grid, motifs passed between instruments, and a closing sequence of sound effects |
+| "Recreate this animation" / "Break this clip down" | Runs the breakdown script to measure cuts, beat grid and per-segment motion heatmaps, then recreates it in code by mechanism |
+| "Make an animation like Van Gogh / Monet / Bauhaus" | Designs one frame first, then makes it move; 35 style recipe cards as starting points |
+| "Turn my voiceover into an art animation" | Shot list → pick style → world canvas plus camera → output one picture track |
+| "Make a film of someone walking through famous paintings" | Long-scroll skeleton: one segment file per world, the hero keeps walking right, style changes at each boundary, camera only moves forward |
+| "Make animated segments for an explainer video" | Picks a grammar for the narration, feed it a JSON spec, get a clip timed to the exact frame (landscape/portrait, optional transparent background) |
+| "I need a person in the shot" | People come from an image model as frames; code handles compositing, frame swaps and texture |
+| "Score it and hit the beats" | BPM grid, motif re-orchestration, ending sound sequences, all synthesized in code |
 
-Before delivery, `qa.py` measures stability, efficiency, motion, smoothness, and cues for text-box framing. An agent that did not make the film then reviews the finished output. Finally, `deliver.py` handles delivery in one command: the film must first pass an anti-slideshow gate. If almost the entire film lacks fast action within shots, delivery is blocked. Once it passes, the script copies the film and writes delivery notes using measured facts.
+Before delivery there is a numeric check: `qa.py` measures stability, efficiency, motion, smoothness and text-framing cues, then an agent that took no part in production reviews only the finished film for problems. Finally `deliver.py` delivers in one command: the film must first pass the anti-slideshow gate (if the whole film has almost no in-shot fast motion it goes red and nothing ships); only then does it copy the film and write delivery notes, with facts in the notes written by the script.
 
 ---
 
-## What's included
+## What's inside
 
-| Component | Quantity / location |
+| | Count |
 |---|---|
-| Art-style recipe cards: parameters, motif motion, signature transitions, and current limitations | 35 cards in `references/风格配方/` |
-| Corresponding scene code | 35 scenes in `scripts/engine/scenes/` |
-| Explainer animation grammar cards | 9 cards; 8 include demo films, parameterized clips, and example specs |
-| Reference code for narrated films | Mixed styles, whiteboard, Vox, and presenter-led explainers; some assets must be supplied separately—see the directory READMEs |
-| Long-scroll demo: skeleton, three worlds, and a character frame library | One demo in `scripts/engine/demos/long_scroll/` |
-| Transitions | Art-style signature transitions and explainer transitions, including fades, hard cuts, and paper transitions |
-| Drawing and animation libraries: brushes, renderers, post-processing, skeletons, cameras, charts, typography, and more | 17 libraries in `scripts/engine/lib/` |
-| Method documents: breakdown, mechanisms, frame-first design, code drawing, music and rhythm, characters, long-scroll films, and more | 12 core documents, `references/01`–`12`, plus an [optional voice guide](references/capabilities.md) |
+| Art style recipe cards (parameters, motif motions, signature transitions, known weaknesses) | 35, `references/en/style-recipes/` |
+| Matching scene code | 35, `scripts/engine/scenes/` |
+| Explainer animation grammar cards | 9; 8 of them with demo films, parameterized clips and sample specs |
+| Reference code for full narrated films | Mixed styles, whiteboard, Vox, presenter; some assets must be supplied yourself, see the [reference-film README](scripts/engine/reference_films/spacex/README.en.md) |
+| Long-scroll demo (skeleton + 3 segments + character frame library) | 1, `scripts/engine/demos/long_scroll/` |
+| Transitions | Signature art-style transitions and explainer transitions, including fades, hard cuts and paper transitions |
+| Painting and animation libraries (brushes, renderers, post, rigs, camera, charts, typography…) | 17, `scripts/engine/lib/` |
+| Method docs (breakdown, mechanism, frame-first, pure-code drawing, rhythm and score, characters, long scroll…) | 12 core docs, from [01: breakdown](references/en/01-breakdown.md) to [12: full narrated films](references/en/12-full-narrated-films-and-feedback-loop.md); plus an [optional voice guide](references/en/capabilities.md) |
 
-```text
+```
 huashu-art-motion/
-├── SKILL.md                 # Classify the task, then read the relevant documents
-├── references/              # Methods 01–12, 35 style recipes, 9 grammar cards, proven practices
-├── assets/                  # Overview images used in the README
+├── SKILL.md                 # classify the task first, then read the matching docs from the table
+├── references/              # 01–12 method docs, 35 style recipe cards, 9 grammar cards, proven practices
+├── assets/                  # overview images (used by the README)
 └── scripts/
-    ├── engine/              # Portable animation project: engine, transitions, libraries, scenes, demos, clips
-    ├── analyze/breakdown.py # Turn a reference animation into a map you can implement in code
-    ├── qa.py                # Run QA in one command
-    ├── film_gate.py         # Detect slideshow-like cuts and empty middle sections; reads MP4 only
-    ├── deliver.py           # Gate → copy the film → write delivery notes
-    ├── audio/               # Templates for music synthesized in code
-    └── font_subset.py ...   # Font subsetting and green-screen removal
+    ├── engine/              # self-contained animation project you can copy whole: engine, transitions, libs, scenes, demos, clips
+    ├── analyze/breakdown.py # turns a reference animation into a "map you can code from"
+    ├── qa.py                # one-command QA
+    ├── film_gate.py         # film gate: measures slideshow feel, checks for blank mid-film frames (reads mp4 only)
+    ├── deliver.py           # one-command delivery: gate → copy film → write delivery notes
+    ├── audio/               # templates for scoring in pure code
+    └── font_subset.py ...   # font subsetting, green-screen keying
 ```
 
-Requires [uv](https://docs.astral.sh/uv/), ffmpeg, and Playwright Chromium. Install Chromium before the first render:
-
-```sh
-uv run --with playwright playwright install chromium
-```
-
-Try rendering a frame from the Van Gogh scene or a finance-chart clip:
+Requirements: [uv](https://docs.astral.sh/uv/), ffmpeg, Playwright Chromium (first run: `uv run --with playwright playwright install chromium`). Try it:
 
 ```sh
 cd huashu-art-motion
-uv run --with playwright python scripts/engine/render.py --solo 09_postimp --stills 0.3 --out preview
-uv run --with playwright python scripts/engine/render.py --spec scripts/engine/examples/t3_finance_chart.json --out finance-chart.mp4
+uv run --with playwright python scripts/engine/render.py --solo 09_postimp --stills 0.3 --out stills   # one frame of the Van Gogh segment
+uv run --with playwright python scripts/engine/render.py --spec scripts/engine/examples/t3_finance_chart.json --out finance_chart.mp4
 ```
 
 ---
 
 ## The story behind it
 
-In early October 2026, I saw a 15-second animation on X by Tak ([@cherry_mx_reds](https://x.com/cherry_mx_reds/status/2106095190285144331)): a girl and a cat travel through 40,000 years of art history. Each era lasts only about a second, yet the things inside the paintings keep moving.
+In early October 2026 I saw a 15-second animation on X by Tak ([@cherry_mx_reds](https://x.com/cherry_mx_reds/status/2106095190285144331)): a girl and a cat travel through 40,000 years of art history, each era lasting about a second, yet everything in the paintings moves.
 
-I asked Claude to recreate it. The first version just transitioned between still paintings. I rejected it: even when the original spends only a second in an era, the elements within the painting are in motion. So we started with a breakdown—measuring transitions, fitting a beat grid, and checking where each segment moves—then drew and animated the paintings layer by layer in code.
+I asked Claude to recreate it. The first version was "transitions between still paintings", and I rejected it: each era in the original might only last a second, but everything in the frame flows. So we switched to breaking it down first (measuring cuts, fitting a beat grid, seeing where each segment moves), then painting it layer by layer in code and making it move.
 
-During the process, I told it: “We're not just recreating this. I need you to learn from it.” The skill therefore records both the code and the practices that proved useful (`references/07-正面经验.md`), along with each style's pitfalls and limitations. Later, four groups of agents, given only the skill, built 20 styles it had not seen before. Their reusable components became a shared library. We added eight YouTube explainer animation grammars and connected them to my narrated-video pipeline. Finally, I used the same tools to make *Huashu Walks Through Famous Paintings*: 23 styles over 2 minutes 8 seconds, walking from caves to 2026. Its skeleton and three sample worlds are included here.
+Along the way I told it: "We're not just recreating this; I need you to accumulate experience." So this skill records not only code but which approaches proved effective (`references/en/07-proven-practices.md`) and each style's pitfalls and weaknesses. I then sent 4 groups of agents that had only read the skill to build 20 styles it had never seen, and merged the wheels each of them reinvented into a shared library. Then came 8 YouTube explainer grammars, wired into my own voiceover video pipeline. Finally I used the same toolkit to make *Huashu Through Famous Paintings*: 23 styles, 2:08, walking from the cave all the way to 2026. Its skeleton and 3 of its segments are included here.
 
 ---
 
-## Acknowledgments
+## Acknowledgements
 
-- **Tak ([@cherry_mx_reds](https://x.com/cherry_mx_reds))** and his *Art History Speedrun* inspired this skill. The scene compositions for 16 art eras and the girl-and-cat journey follow the original's ideas. Every image here is redrawn in code. The music scripts contain original example scores; the repository retains the breakdown method, not a transcription of the original music. It includes no frames, screenshots, or audio files from the original film. Visit his X account to see the original.
-- The channels and sources studied in the explainer grammar cards—Kurzgesagt, Vox, 3Blue1Brown, RSA Animate, TheOdd1sOut, and others—are linked under each card's primary references. The repository records measured parameters, not their footage.
-- Fonts are open-source under SIL OFL 1.1. See the inventory and copyright notices in `scripts/engine/lib/fonts/LICENSES.md`.
+- **Tak ([@cherry_mx_reds](https://x.com/cherry_mx_reds))**'s *Art History Speedrun* is where this skill started. The scene compositions of the 16 art eras and the "girl + cat time travel" premise follow the original's ideas; every frame is redrawn in code, and the scoring script contains an original example score (only the breakdown method is kept, not a transcription of the original music). The repo contains no frames, screenshots or audio files from the original film. See his X for the original.
+- Channels and sources analyzed in the grammar cards (Kurzgesagt, Vox, 3Blue1Brown, RSA Animate, TheOdd1sOut, etc.) are linked under "primary references" on each card. The repo records only measured parameters, none of their imagery.
+- All fonts are SIL OFL 1.1 open-source fonts; see the [font list and copyright](scripts/engine/lib/fonts/LICENSES.en.md).
 
 ---
 
@@ -172,26 +166,41 @@ During the process, I told it: “We're not just recreating this. I need you to 
 
 | | |
 |:---|:---|
-| 🌐 Websites | [bookai.top](https://bookai.top) · [huasheng.ai](https://www.huasheng.ai) |
+| 🌐 Website | [bookai.top](https://bookai.top) · [huasheng.ai](https://www.huasheng.ai) |
 | 𝕏 Twitter | [@AlchainHust](https://x.com/AlchainHust) |
 | 📺 Bilibili | [花叔v](https://space.bilibili.com/14097567) |
 | ▶️ YouTube | [@Alchain](https://www.youtube.com/@Alchain) |
 | 📕 Xiaohongshu | [花叔](https://www.xiaohongshu.com/user/profile/5abc6f17e8ac2b109179dfdf) |
-| 💬 WeChat public account | Search for “花叔” in WeChat |
+| 💬 WeChat Official Account | search "花叔" in WeChat |
+
+## Optional media capabilities
+
+Basic code animation needs no voice or image accounts. Existing assets are used first; when generation is needed, it follows the user's choices and the current environment. Voice supports macOS system voices and your own Volcengine cloned voice; images support importing existing files and bridging to the current agent's/MCP tools.
+
+- [Voice and private config](references/en/capabilities.md): configure on demand, skippable; the old koubo entry point stays compatible.
+- [Image tool integration](references/en/images.md): generate a plan first, let the agent call the tool, then verify and file the assets.
+- [Compatibility and verification scope](references/en/compatibility.md): install/reinstall passes on all three hosts; Codex online regression passes; Claude Code/Kimi online regression is blocked by test-account conditions and still pending.
+- [Maintenance, extension and release](CONTRIBUTING.en.md): public defaults kept separate from private config, upgrades don't overwrite personal choices, release checks cover the actual outgoing Git objects.
+
+Run `python scripts/capabilities.py status --explain` first. New capabilities default to unselected and unauthorized; detecting a key or tool never implies permission to spend. A standalone image API executor is a possible future extension and will not switch providers automatically.
+
+## Thanks for the feedback
+
+Thanks to [@ismilewolf-eng](https://github.com/ismilewolf-eng) ([PR#1](https://github.com/alchaincyf/huashu-art-motion/pull/1)) and [@noahark](https://github.com/noahark) ([PR#2](https://github.com/alchaincyf/huashu-art-motion/pull/2)) for fix suggestions and verification of the Windows concurrent-loading failure, [@nctt777-hue](https://github.com/nctt777-hue) ([Issue#3](https://github.com/alchaincyf/huashu-art-motion/issues/3)) for detailed repro, controlled experiments and retesting, and [@GFXfly](https://github.com/GFXfly) for macOS troubleshooting feedback. This feedback helped fix the concurrent-loading problem in the render and QA local servers.
 
 ## License
 
-Code and documentation: MIT. Use, modify, and build on them freely.
+Code and docs: MIT. Use it, change it, build with it.
 
-Exceptions: the derived stroke-order data in `scripts/engine/reference_films/spacex/spacex_wb/assets/strokes.js` retains the Arphic Public License, whose text accompanies the file. Fonts in `scripts/engine/lib/fonts/` retain their respective OFL licenses. Huashu's cartoon likeness and character frames (`scripts/engine/demos/_shared/hero/`, `scripts/engine/demos/long_scroll/frames/`, and `assets/角色/`), including the same likeness in overview images and demo videos, are provided only for this skill's demonstrations and are not licensed for other uses under MIT.
+Exceptions: the derived stroke-order data `reference_films/spacex/spacex_wb/assets/strokes.js` keeps the Arphic Public License (original text ships with the file); fonts in `scripts/engine/lib/fonts/` keep their respective OFL licenses; Huashu's cartoon likeness and character frames (`scripts/engine/demos/_shared/hero/`, `scripts/engine/demos/long_scroll/frames/`, `assets/角色/`), including the same likeness in overview images and demo videos, are for demonstrating this skill only and are not licensed under MIT for other uses.
 
-Clawd is Anthropic's Claude Code mascot, and the rights to its likeness belong to Anthropic. *Clawd: Night at the Museum* is an unofficial fan demo, not affiliated with Anthropic. Its GIFs and full film are also excluded from the MIT license. The paintings in the film come from The Met's Open Access collection (CC0).
+Clawd is Anthropic's Claude Code mascot and its likeness belongs to Anthropic. *Clawd: Night at the Museum* is an unofficial fan demo, not affiliated with Anthropic; its GIFs and film are likewise not covered by MIT. The paintings in it come from The Met Open Access (CC0).
 
 ---
 
 <div align="center">
 
-**[Nuwa](https://github.com/alchaincyf/nuwa-skill)** creates skills. **[Darwin](https://github.com/alchaincyf/darwin-skill)** helps skills evolve. **Art in Motion** makes paintings move.
+**[Nuwa](https://github.com/alchaincyf/nuwa-skill)** builds Skills. **[Darwin](https://github.com/alchaincyf/darwin-skill)** evolves Skills. **Art Motion** makes paintings move.
 
 MIT License © [花叔 Huashu](https://github.com/alchaincyf)
 
@@ -200,25 +209,8 @@ MIT License © [花叔 Huashu](https://github.com/alchaincyf)
 ---
 
 <div align="center">
-<sub>More projects by Huashu</sub>
+<sub>Other projects by 花叔 Huashu</sub>
 
-[![FanBox · A cockpit for coding agents](https://raw.githubusercontent.com/alchaincyf/fanbox/master/assets/promo-banner.jpg)](https://github.com/alchaincyf/fanbox)
+[![FanBox · the cockpit for coding agents](https://raw.githubusercontent.com/alchaincyf/fanbox/master/assets/promo-banner.jpg)](https://github.com/alchaincyf/fanbox)
 
 </div>
-
----
-
-## Optional media capabilities
-
-Basic code animation requires no voice or image-generation account. Reuse existing assets first; when generation is needed, use the user's chosen provider and the tools available in the current environment. Voice options include macOS system voices and your own voice clone on Volcengine. Image options include importing existing files and bridging to the current agent's image or MCP tools.
-
-- [Voice and private configuration](references/capabilities.md): configure only when needed, or skip it; the legacy `koubo` entry point remains compatible.
-- [Image-tool integration](references/images.md): create a plan first, let the agent call the tools, then validate and collect the assets.
-- [Compatibility and validation scope](references/compatibility.md): installation and reinstallation passed for all three supported agents—Claude Code, Codex, and Kimi. Live regression passed in Codex; Claude Code and Kimi live regression remains blocked by test-account conditions and needs further validation.
-- [Maintenance, extensions, and releases](CONTRIBUTING.md): public defaults stay separate from private configuration, upgrades preserve personal choices, and release checks inspect the actual Git objects being published.
-
-Start with `python scripts/capabilities.py status --explain`. New capabilities are unselected and unauthorized by default. Finding a key or a tool does not imply permission to spend. A standalone image API executor remains an optional future extension; the skill does not switch providers automatically.
-
-## Thanks for the feedback
-
-Thanks to [@ismilewolf-eng](https://github.com/ismilewolf-eng) ([PR #1](https://github.com/alchaincyf/huashu-art-motion/pull/1)) and [@noahark](https://github.com/noahark) ([PR #2](https://github.com/alchaincyf/huashu-art-motion/pull/2)) for proposed fixes and validation of concurrent-loading failures on Windows; [@nctt777-hue](https://github.com/nctt777-hue) ([Issue #3](https://github.com/alchaincyf/huashu-art-motion/issues/3)) for detailed reproductions, controlled experiments, and retesting; and [@GFXfly](https://github.com/GFXfly) for additional macOS troubleshooting feedback. Their reports helped fix concurrent loading in the local servers used for rendering and QA.

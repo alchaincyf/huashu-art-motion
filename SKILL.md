@@ -1,6 +1,6 @@
 ---
 name: huashu-art-motion
-description: "艺术与视频动画：拆解复刻动画；代码画35种艺术风格并让画活；9种解说动画语法，8种可按口播参数渲片段；含口播整片参考代码及框景检查；人用AI生帧；可选已有录音、系统声音与语音复刻，按需配置。"
+description: "艺术与视频动画：拆解复刻动画；代码画35种艺术风格并让画活；9种解说动画语法，8种可按口播参数渲片段；含口播整片参考代码及框景检查；人用AI生帧；可选已有录音、系统声音与语音复刻，按需配置。 Art and video animation: recreate animations, animate art styles, and make narrated explainer films. English documentation available."
 metadata:
   author: "花叔"
   homepage: "https://github.com/alchaincyf"
@@ -9,6 +9,10 @@ metadata:
 ---
 
 # 艺术动画
+
+**中文** · [English](SKILL.en.md)
+
+When the user communicates in English, read `SKILL.en.md` and follow its English reference paths. Keep script interfaces, machine-read Chinese tokens, and filenames unchanged.
 
 ## 先分档：你按哪一档读
 

@@ -1,5 +1,7 @@
 # Y6 · 讲解员式财经科普
 
+**中文** · [English](../en/animation-grammars/y6_presenter_explainer.md)
+
 一个卡通讲解员在纸面、图表和关键词之间串联信息。适合商业史、产品机制和带情绪反应的知识讲解。参考代码在`scripts/engine/reference_films/spacex/spacex_lin/`；这是第9种语法卡，目前没有独立参数化片段，也不附角色sprite。
 
 ## 起手必查

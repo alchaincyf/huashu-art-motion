@@ -1,5 +1,7 @@
 # 05_gothic · 1290 哥特泥金手抄本
 
+**中文** · [English](../en/style-recipes/05_gothic.md)
+
 每帧 11–22ms（中位 12ms）。静态层＋金箔掩膜在 `init()` 里一次性建好。
 
 ## 管线

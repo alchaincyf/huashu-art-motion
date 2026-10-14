@@ -1,5 +1,7 @@
 # 33_rubberhose · 1930 橡皮管卡通
 
+**中文** · [English](../en/style-recipes/33_rubberhose.md)
+
 > 来源：迁移测试 D（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/33_rubberhose.js`。
 
 实验时的文件名：`scenes/r2_rubberhose.js`，每帧约 20ms。

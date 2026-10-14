@@ -1,7 +1,7 @@
-// S03 · 猎鹰1号四次发射：摄影编辑的「印样」（contact sheet）。
-// 剪纸猎鹰1号立在桌上＋黑标签；一条胶片印样四格，相机一格一格快切过去（快档节奏），每念一次「失败」红色蜡笔打一个叉，
-// 片边印着日期；第四格被红圈圈住 → 推满 → 硬切成大幅扫描：它进了轨道（全片第一个高光，留一拍）；
-// 再切到剪报，荧光笔跟读「私人研制」「液体燃料」。
+// S03 · Four Falcon 1 launches: photo editor's contact sheet.
+// Paper-cut Falcon 1 stands on desk with black label; four-frame contact strip, camera hard-cuts through frames (fast pace), red crayon crosses each spoken failure,
+// Dates printed at film edges; fourth frame circled → push to fill frame → hard-cut to large scan: orbit achieved (first film highlight, hold one beat);
+// Cut to clipping, highlighter follows privately developed / liquid fuel.
 (() => {
 const ID = 's03', V = VOX, C = V.C, F = V.F, PH = V.PH, TAU = Math.PI * 2;
 const { clamp, lerp } = U, seg = MO.seg, step = V.step;
@@ -10,12 +10,12 @@ const cue = k => TM.cue(ID, k), G = k => V.cue(ID, k), t0 = V.t0(ID);
 const fail = [V.cueN(ID, '失败', 0), V.cueN(ID, '失败', 1), V.cueN(ID, '失败', 2)];
 const T = { name: '猎鹰1号', d: ['2006', '2007', '2008.8', '2008.9'], kick: '2008.9.28', h1: '第一枚私人研制、', h2: '进入轨道的液体燃料火箭', ok: '入轨' };
 
-// 剪纸猎鹰1号（细长：21×1.7 m）
+// Paper-cut Falcon 1 (slender: 21×1.7 m)
 const f1 = () => V.cutout('s03f1', 90, 800, (g, w, h) => PH.rocket(g, RK.falcon1(), w / 2, h - 30, (h - 40) / 22.7), { cell: 5, edge: 7 });
 V.item({ key: 's03f1', ...xy(230, 860), r: -0.03, z: 12, at: G('第一款') - 0.1, enter: { from: [-260, 420], tilt: -0.25, dur: 0.5 }, draw(g) { V.blit(g, f1()); } });
 V.item({ key: 's03name', ...xy(620, 470), r: -0.02, z: 13, at: G('猎鹰') - 0.12, enter: { drop: 0.25, dur: 0.25 }, draw(g, T_) { V.label(g, T.name, 82, { n: V.nTyped(T_, G('猎鹰'), 12) }); } });
 
-// 胶片印样：白相纸上一条黑胶片，四格正片（网点），片边印日期
+// Contact sheet: black film strip on white photo paper, four halftone positives, dates on film edge
 const SW = 1740, SH = 430, FW = 370, FH = 240, fx = i => 70 + FW / 2 + i * (FW + 40) - SW / 2, FY = -12;
 const okDraw = (g, w, h) => { PH.sky(g, w, h, '#1c1c1c', '#7a7a7a'); PH.plume(g, [[w * 0.36, h * 1.02], [w * 0.42, h * 0.74], [w * 0.5, h * 0.5]], 8, 20, 17, '#e4e4e4'); PH.glow(g, w * 0.53, h * 0.45, 40, 0.9); PH.flame(g, w * 0.53, h * 0.45, 46, 13, 0.45 + Math.PI * 0); PH.rocket(g, RK.falcon1(), w * 0.53, h * 0.45, h / 70, 0.45); };
 const frameDraw = [V.DRAW.failDraw(0), V.DRAW.failDraw(1), V.DRAW.failDraw(2), okDraw];
@@ -37,7 +37,7 @@ V.item({ key: 's03sheet', ...xy(SX, SY), r: SR, z: 10, at: t0 - 0.5, draw(g, T_)
   for (let i = 0; i < 3; i++) { g.save(); g.translate(fx(i), FY); V.drawCross(g, GX[i], T_, t0 + fail[i] + 0.04, { lw: 15, d: 0.17 }); g.restore(); }
   g.save(); g.translate(fx(3), FY); V.pen(g, GC, MO.cubicOut(seg(step(T_), G('四次'), G('四次') + 0.5)), { lw: 13 }); g.restore();
 } });
-// 剪报
+// Clipping
 const NW = 1000, NH = 420, N = xy(1500, 1390);
 const news = () => V.spr('s03news', NW, NH, (g, w, h) => {
   V.paper(g, w, h, 29, { amp: 5 });
@@ -53,7 +53,7 @@ V.item({ key: 's03news', ...N, r: -0.018, z: 11, at: t0 - 0.5, draw(g, T_) {
   g.restore();
 } });
 
-// ---------- 插入镜头：第四格的大幅扫描（它在轨道上）----------
+// ---------- Insert: large scan of fourth frame (in orbit) ----------
 const orbitDraw = (g, w, h) => {
   g.fillStyle = '#101010'; g.fillRect(0, 0, w, h); PH.stars(g, w, h, 21, 120);
   PH.earthLimb(g, w * 0.32, h * 2.05, h * 1.45, 9);
@@ -73,7 +73,7 @@ const insertShot = (c, lt) => {
   if (st >= ins0 + 0.35) { c.save(); c.translate(560, 250); c.rotate(-0.05); const s = 1 + 0.3 * (1 - MO.quartOut(clamp(step(lt - ins0 - 0.35) / 0.25))); c.scale(s, s); V.label(c, T.ok, 110, { bg: C.red2, padX: 34 }); c.restore(); }
 };
 
-// ---------- 相机 ----------
+// ---------- Camera ----------
 const at = (x, y, z, sy) => V.at(X0 + x, Y0 + y, z, sy);
 const FR = i => { const a = fx(i) * Math.cos(SR) - FY * Math.sin(SR), b = fx(i) * Math.sin(SR) + FY * Math.cos(SR); return [SX + a, SY + b]; };
 const frameCam = (i, z = 2.05) => { const [x, y] = FR(i); return at(x, y + 30, z, 500); };
@@ -82,7 +82,7 @@ const K = [
   V.key(0, V.camEnd('s02')),
   V.key(1.0, at(620, 820, 0.98), MO.longTail),
   V.key(d1 - 0.12, at(660, 820, 1.02), MO.sineInOut),
-  V.key(d1 + 0.28, frameCam(0), MO.cubicInOut),                  // 快切档：0.4s 跳到第一格
+  V.key(d1 + 0.28, frameCam(0), MO.cubicInOut),                  // Fast-cut pace: jump to first frame at 0.4s
   V.key(d2 - 0.12, frameCam(0, 2.1), MO.sineInOut),
   V.key(d2 + 0.22, frameCam(1), MO.cubicInOut),
   V.key(d3 - 0.12, frameCam(1, 2.1), MO.sineInOut),
@@ -96,7 +96,7 @@ const K2 = [
   V.key(ins1, at(1500, 1330, 1.12)),
   V.key(cue('液体'), at(1520, 1340, 1.2), MO.sineInOut),
   V.key(TM.dur(ID) - 0.55, at(1540, 1340, 1.22), MO.sineInOut),
-  V.key(TM.dur(ID), at(1760, 1240, 1.14), MO.cubicIn),           // 沿红线往右起步（下一段接着追）
+  V.key(TM.dur(ID), at(1760, 1240, 1.14), MO.cubicIn),           // Start moving right along thread (next segment continues tracking)
 ];
 const cam = (lt) => {
   if (lt >= ins1) return CAM.at(K2, lt);

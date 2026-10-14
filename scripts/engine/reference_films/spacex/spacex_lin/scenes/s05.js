@@ -1,6 +1,6 @@
-// S05 · 回收一级（慢推段，三个知识点）：① 猎鹰9号剖面：「二级」「一级」标签，一级发亮、分离、沿 U 形虚线箭头飞回地面，「重复用」循环箭头
-// ② 2015年12月：一级从天而降、展开着陆腿、点火减速，竖着落在着陆台上，扬尘＋「轨道火箭里 头一回」
-// ③ 2017年：同一枚一级贴上「回收」圆标，再次点火升空。转场：斜向黄蓝色带扫过（lin_wipe）。
+// S05 · First-stage recovery (slow push, three facts): ① Falcon 9 cutaway with second-stage/first-stage labels; first stage glows, separates, and returns along a U-shaped dashed arrow; reuse loop arrow
+// ② December 2015: first stage descends, deploys landing legs, ignites to slow down, and lands upright on the pad; dust and first among orbital rockets
+// ③ 2017: recovered badge on the same first stage, then ignition and liftoff again. Transition: diagonal yellow/blue bands sweep across (lin_wipe).
 (() => {
 const ID = 's05', L = LIN, { C, TAU } = L, { clamp, lerp } = U;
 let Q = null;
@@ -8,8 +8,8 @@ const q = () => Q || (Q = { jz: TM.cue(ID, '接着呢'), yj: L.cueN(ID, '一级'
   lyh: TM.cue(ID, '猎鹰9号'), szh: TM.cue(ID, '竖着'), dm: TM.cue(ID, '地面'), dmE: TM.end(ID, '地面'), gd: TM.cue(ID, '轨道火箭'), tyh: TM.cue(ID, '头一回'), y17: TM.cue(ID, '2017年'),
   hs: TM.cue(ID, '回收的'), yyc: TM.cue(ID, '又一次'), fst: TM.cue(ID, '飞上了天') });
 
-const SX = 1.75, SXA = 2.5;   // 剖面图更胖一点                                   // 猎鹰9号横向放宽（图标化）
-function recycle(g, lt, s) {                        // 循环箭头图标
+const SX = 1.75, SXA = 2.5;   // Slightly wider cutaway                                   // Widen Falcon 9 horizontally (icon treatment)
+function recycle(g, lt, s) {                        // Loop-arrow icon
   g.save(); g.scale(s, s); g.rotate(lt * 1.2); g.lineCap = 'round'; g.lineJoin = 'round';
   for (let i = 0; i < 3; i++) { g.save(); g.rotate(i * TAU / 3);
     g.strokeStyle = C.ink; g.lineWidth = 22; g.beginPath(); g.arc(0, 0, 60, -0.95, 0.75); g.stroke(); g.strokeStyle = C.teal; g.lineWidth = 13; g.stroke();
@@ -20,32 +20,32 @@ function recycle(g, lt, s) {                        // 循环箭头图标
 }
 function pageA(g, lt) {
   const Qv = q(), x = 900, base = 860, pxm = 8.4;
-  const sep = clamp((lt - Qv.fhl + 0.05) / 0.35);                     // 一级分离
+  const sep = clamp((lt - Qv.fhl + 0.05) / 0.35);                     // First-stage separation
   const glow = clamp((lt - Qv.yj) / 0.2);
-  // 二级（上半截）：分离后继续往上飞走
+  // Second stage (upper half): continues flying upward after separation
   const up = sep > 0 ? Math.pow(Math.max(0, lt - Qv.fhl), 2) * 900 : 0;
   g.save(); g.beginPath(); g.rect(0, 0, 1920, base - 41 * pxm - 2 + 0); g.clip();
   L.rocket(g, RK.falcon9({ payload: 'fairing' }), x, base - up, pxm, { sx: SXA, flame: sep > 0 ? 0.8 : 0, lt });
   g.restore();
-  // 一级：分离后先停住发亮，再沿 U 形箭头翻回去（画面上只画轨迹箭头＋小火箭沿线走）
+  // First stage: pauses and glows after separation, then returns along a U-shaped arrow (only draw the route arrow and a small rocket following it)
   g.save(); g.beginPath(); g.rect(0, base - 41 * pxm - 2, 1920, 1080); g.clip();
-  const fuA = MO.sineInOut(clamp((lt - Qv.fhl - 0.25) / 0.9));   // 一级「变成」沿箭头飞走的那枚小火箭：原位的一级同时淡出
+  const fuA = MO.sineInOut(clamp((lt - Qv.fhl - 0.25) / 0.9));   // First stage becomes the small rocket following the arrow: fade out the original stage simultaneously
   g.globalAlpha *= 1 - clamp(fuA * 2.5);
   if (glow > 0) { g.save(); g.shadowColor = 'rgba(255,212,71,0.95)'; g.shadowBlur = 40 * glow; L.rocket(g, F9B(), x, base, pxm, { sx: SXA, pal: { body: glow > 0.5 ? '#FFF2C2' : C.white } }); g.restore(); }
   else L.rocket(g, F9B(), x, base, pxm, { sx: SXA });
   g.restore();
-  // 标签
+  // Labels
   const kl = L.popK(lt, Qv.jz + 0.4, 0.4, 2);
   if (kl > 0) { L.at(g, x - 200, base - 470, kl, h => L.kw(h, '二级', 0, 0, { size: 38, fill: C.white, col: C.ink })); L.arrow(g, lt, x - 140, base - 470, x - 40, base - 440, kl, { seed: 4, bend: -10, lw: 5, head: 18 }); }
   const k1 = L.popK(lt, Qv.yj - 0.05, 0.4, 2.6);
   if (k1 > 0) { L.at(g, x - 210, base - 200, k1, h => L.kw(h, '一级', 0, 0, { size: 48, fill: C.yel, col: C.ink })); L.arrow(g, lt, x - 140, base - 200, x - 40, base - 210, k1, { seed: 5, bend: 10, lw: 5, head: 18 }); }
-  // 二级继续往上：一条虚线弧通向右上角的小卫星（入轨），和一级「掉头飞回」形成对照
+  // Second stage keeps rising: dashed arc to a small satellite at upper right (orbit), contrasting with the first stage's turnaround and return
   const up2 = MO.cubicOut(clamp((lt - Qv.fhl - 0.1) / 0.7));
   if (up2 > 0) { L.arrow(g, lt, x + 40, base - 600, 1240, 190, up2, { seed: 13, bend: 90, lw: 6, dash: [14, 12], head: 22 }); if (up2 > 0.9) L.sat(g, 1290, 170, 1.4, 0, 0); }
-  // U 形「飞回来」箭头：从一级顶上拱到右边的着陆台
+  // U-shaped return arrow: arches from above the first stage to the landing pad on the right
   const ap = MO.cubicOut(clamp((lt - Qv.fhl) / 0.55));
   L.arrow(g, lt, x + 60, base - 380, 1420, base - 60, ap, { seed: 6, bend: -260, lw: 8, dash: [18, 14] });
-  // 小一级沿箭头飞回（同 arrow() 的弧线公式）
+  // Small first stage follows the return arrow (same arc formula as arrow())
   const fu = MO.sineInOut(clamp((lt - Qv.fhl - 0.25) / 0.9));
   if (fu > 0 && fu < 1) { const x0 = x + 60, y0 = base - 380, x1 = 1420, y1 = base - 60, dx = x1 - x0, dy = y1 - y0, Ln = Math.hypot(dx, dy), nx = -dy / Ln, ny = dx / Ln;
     const P = u => [x0 + dx * u + nx * Math.sin(Math.PI * u) * -260, y0 + dy * u + ny * Math.sin(Math.PI * u) * -260], [px, py] = P(fu), [qx, qy] = P(Math.min(1, fu + 0.02));
@@ -55,10 +55,10 @@ function pageA(g, lt) {
   if (kr > 0) L.at(g, 1520, 360, kr, h => { recycle(h, lt, 0.9); L.kw(h, '重复用', 0, 130, { size: 50, fill: C.teal }); });
 }
 const F9B = (legs = 0, fins = 0) => RK.falcon9({ legs, fins, stage: 'booster' });
-// ② 着陆 ③ 复飞：同一枚一级
+// ② Landing ③ Reflight: same first stage
 const LX = 1180, GY = 820, PXM = 9.2;
 function boosterAt(lt) {
-  const Qv = q(), tA = Qv.y15 - 0.1, tD = Qv.dm + 0.05;           // tD 触地
+  const Qv = q(), tA = Qv.y15 - 0.1, tD = Qv.dm + 0.05;           // tD: touchdown
   if (lt < tD) { const u = clamp((lt - tA) / (tD - tA)), e = 1 - Math.pow(1 - u, 2.2); return { a: clamp(u / 0.15), y: lerp(520, GY, e), legs: clamp((lt - (tD - 0.9)) / 0.6), flame: lt > tD - 1.2 ? 1 : 0.25, fins: 1, rot: 0.25 * (1 - MO.smooth(clamp(u * 1.4))) }; }
   const tL = Qv.fst - 0.35;
   if (lt < tL) return { y: GY, legs: lt > Qv.hs ? 1 - clamp((lt - Qv.yyc) / 0.4) : 1, flame: lt < tD + 0.15 ? 1 : 0, fins: 1, rot: 0 };
@@ -66,26 +66,26 @@ function boosterAt(lt) {
 }
 function pageB(g, lt) {
   const Qv = q(); if (lt < Qv.y15 - 0.4) return;
-  // 地面＋着陆台
-  g.save(); g.lineWidth = 5; g.strokeStyle = C.ink; g.fillStyle = '#EADFCB'; g.beginPath(); g.rect(0, GY + 12, 1920, 300); g.fill();   // 地面铺满全宽，讲解员也站在地上
+  // Ground and landing pad
+  g.save(); g.lineWidth = 5; g.strokeStyle = C.ink; g.fillStyle = '#EADFCB'; g.beginPath(); g.rect(0, GY + 12, 1920, 300); g.fill();   // Ground fills the full width; presenter stands on it too
   g.beginPath(); g.moveTo(0, GY + 12); g.lineTo(1920, GY + 12); g.stroke();
   g.fillStyle = C.steelD; g.beginPath(); g.ellipse(LX, GY + 14, 150, 24, 0, 0, TAU); g.fill(); g.stroke(); g.restore();
-  // 返回轨迹：从左上方高空划下来的虚线（一级就是沿它飞回来的）
+  // Return trajectory: dashed line descending from high at upper left (the first stage follows it back)
   const tp = MO.cubicOut(clamp((lt - Qv.y15 + 0.1) / 1.2));
   if (tp > 0 && lt < Qv.y17) { g.save(); g.setLineDash([16, 14]); g.lineDashOffset = -lt * 50; g.lineWidth = 5; g.strokeStyle = C.ink; g.globalAlpha = 0.4; g.lineCap = 'round';
     g.beginPath(); for (let i = 0; i <= 30; i++) { const u = i / 30 * tp, x = lerp(640, LX, u) , y = lerp(140, GY - 420, Math.pow(u, 0.6)); i ? g.lineTo(x - (1 - u) * (1 - u) * 0, y) : g.moveTo(x, y); } g.stroke(); g.restore(); }
   const b = boosterAt(lt), Bs = RK.falcon9({ legs: b.legs, fins: b.fins, stage: 'booster' });
-  // 2017 复飞的不是 2015 落地的那一枚（核对：SES-10 用的是另一枚回收一级）：2015 那枚滑出画面，另一枚「回收的一级」吊装上台
+  // The 2017 reflight did not use the stage landed in 2015 (verified: SES-10 used another recovered first stage): the 2015 stage slides out, and another recovered stage is hoisted onto the pad
   const sw = Qv.y17 - 0.05, so = MO.cubicIn(clamp((lt - sw) / 0.4)), si = MO.cubicOut(clamp((lt - sw - 0.25) / 0.45));
   if (lt < sw + 0.4) { g.save(); g.globalAlpha *= (b.a ?? 1) * clamp((b.y - 420) / 160) * (1 - so); L.rocket(g, RK.falcon9({ legs: lt < sw ? b.legs : 1, fins: 1, stage: 'booster' }), LX - 700 * so, lt < sw ? b.y : GY, PXM, { sx: SX, flame: lt < sw ? b.flame : 0, lt, rot: lt < sw ? b.rot : 0 }); g.restore(); }
   if (lt > sw + 0.25) { const yIn = lt < sw + 0.7 ? lerp(GY - 300, GY, si) : b.y; g.save(); g.globalAlpha *= clamp((lt - sw - 0.25) / 0.2) * clamp((yIn - 420) / 160);
-    L.rocket(g, RK.falcon9({ legs: lt < sw + 0.7 ? 1 : b.legs, fins: b.fins, stage: 'booster' }), LX, yIn, PXM, { sx: SX, flame: lt < sw + 0.7 ? 0 : b.flame, lt, rot: 0, pal: { body: '#ECE6DA' } });   // 身上发黄发旧：飞过的一级
+    L.rocket(g, RK.falcon9({ legs: lt < sw + 0.7 ? 1 : b.legs, fins: b.fins, stage: 'booster' }), LX, yIn, PXM, { sx: SX, flame: lt < sw + 0.7 ? 0 : b.flame, lt, rot: 0, pal: { body: '#ECE6DA' } });   // Yellowed, weathered body: a previously flown first stage
     g.restore(); }
-  // 触地扬尘＋放射线
+  // Touchdown dust and radiating lines
   const kd = lt - (Qv.dm + 0.05);
   L.dust(g, LX, GY + 6, kd, { spread: 280, seed: 77 });
   L.burstLines(g, LX, GY - 200, 300, 380, clamp(kd / 0.5), { n: 12, col: C.ink, lw: 6 });
-  // 标签
+  // Labels
   const kn = L.popK(lt, Qv.lyh - 0.05, 0.4, 2);
   if (kn > 0 && lt < Qv.y17) L.at(g, LX - 330, 380, kn, h => L.kw(h, '猎鹰9号的一级', 0, 0, { size: 40, fill: C.white, col: C.ink }));
   const ks = L.popK(lt, Qv.szh, 0.38, 2.4);
@@ -96,11 +96,11 @@ function pageB(g, lt) {
   if (kt > 0 && lt < Qv.y17 + 0.2) { g.save(); g.globalAlpha = 1 - L.outK(lt, Qv.y17 - 0.1, 0.25);
     L.at(g, 1580, 300, kt, h => { L.txt(h, '轨道火箭里', 0, -70, 38, { align: 'center', col: C.sub }); L.kw(h, '头一回！', 0, 0, { size: 64, fill: C.red }); }, -0.05);
     L.twinkles(g, lt, [[1390, 230], [1780, 240], [1760, 390]], { r: 20 }); g.restore(); }
-  // ③ 2017：贴「回收」圆标，再飞一次
+  // ③ 2017: attach recovered badge and fly again
   const kh = L.popK(lt, Qv.hs - 0.05, 0.36, 2.8);
   if (kh > 0 && b.y > 300) L.at(g, LX + 70, b.y - 250, kh, h => { h.lineWidth = 5; h.strokeStyle = C.ink; h.beginPath(); h.arc(0, 0, 58, 0, TAU); h.fillStyle = C.teal; h.fill(); h.stroke();
       L.txt(h, '回收', 0, 3, 34, { col: C.white, align: 'center', base: 'middle' }); }, 0.15);
-  const kq = L.popK(lt, Qv.fst - 0.15, 0.4, 2.2);   // 火箭飞走后，台上留一张小卡
+  const kq = L.popK(lt, Qv.fst - 0.15, 0.4, 2.2);   // Leave a small card on the pad after the rocket departs
   if (kq > 0) L.at(g, LX, GY - 150, kq, h => { L.kw(h, '回收的一级 · 再飞一次', 0, 0, { size: 48, fill: C.white, col: C.ink }); }, -0.03);
   const ky = L.popK(lt, Qv.yyc - 0.05, 0.4, 2.4);
   if (ky > 0) L.at(g, 1580, 330, ky, h => L.kw(h, '又一次飞上天', 0, 0, { size: 54, fill: C.blue }), 0.04);
@@ -112,7 +112,7 @@ SCENES[ID] = {
     L.CUR_T = L.T0(ID) + lt;
     const Qv = q();
     L.bg(c, lt, { seed: 2615 });
-    // 页内切换：念到「2015年12月」时纸面往上卷（内容只在讲解员右边上下走，不扫过他）；页眉不跟着卷，原地换
+    // In-page change: at December 2015, roll the paper upward (content moves vertically only to the presenter's right, never sweeping over them); header stays put and changes in place
     const sw = MO.cubicInOut(clamp((lt - (Qv.y15 - 0.4)) / 0.5));
     if (sw < 1) { c.save(); c.globalAlpha = Math.max(0, 1 - 2 * sw); c.translate(0, -1080 * sw); pageA(c, lt); c.restore(); }
     if (sw > 0) { c.save(); c.translate(0, 1080 * (1 - sw)); pageB(c, lt); c.restore(); }
@@ -123,11 +123,11 @@ SCENES[ID] = {
 ERAS.find(e => e.id === ID).transition = { type: 'lin_wipe', dur: 0.6, cols: [C.yel, C.blue] };
 L.cast(ID, [
   { t: 0.05, pose: 'think', fr: 'talk' },
-  { t: TM.cue(ID, '2015年12月') - 0.1, pose: 'stick', fr: 'talk', x: 560, walk: 0.8 },   // 走到着陆台跟前讲
+  { t: TM.cue(ID, '2015年12月') - 0.1, pose: 'stick', fr: 'talk', x: 560, walk: 0.8 },   // Walk closer to the landing pad to explain
   { t: TM.cue(ID, '地面') + 0.05, pose: 'wow', fr: 'bounce' },
   { t: TM.cue(ID, '2017年') - 0.05, pose: 'point', fr: 'talk' },
   { t: TM.cue(ID, '飞上了天') - 0.2, pose: 'cheer', fr: 'bounce' },
-  { t: TM.dur(ID) - 0.32, pose: 'walk', fr: 'walk', x: -260, walk: 0.32 },   // 段尾才快步出画，下一段立刻从右边进
+  { t: TM.dur(ID) - 0.32, pose: 'walk', fr: 'walk', x: -260, walk: 0.32 },   // Exit briskly only at segment end, then enter immediately from the right in the next segment
 ]);
 L.year(ID, [[TM.cue(ID, '2015年12月'), 2015], [TM.cue(ID, '2017年'), 2017]]);
 })();

@@ -2,19 +2,19 @@
 # /// script
 # dependencies = ["numpy", "pillow"]
 # ///
-"""一条命令把参考动画拆成「能写代码的地图」：接触表、逐帧差、转场起点＋节拍网格拟合、每个转场的 60fps 接触表、每段运动热图、关键帧总览。
+"""One command breaks a reference animation into a code-friendly map: contact sheets, frame diffs, shot starts + beat-grid fit, per-shot 60fps contact sheets, in-shot motion heatmaps, and keyframe overview.
 
     uv run breakdown.py --video 原片.mp4 --out 拆解/ [--thresh 5] [--debounce 12]
 
-产物（都在 --out 下）：
-  sheet_*.jpg          4fps 接触表（每张 30 帧，标秒）
-  diff.npy             逐帧平均灰度差（192x108），长度 N-1
-  cuts.json            转场起点帧号、节拍网格拟合（起点≈t0+k·step，报残差与 BPM 候选）
-  转场/T??.jpg         每个转场起点前 2 帧起、每 2 帧一格、15 格的原分辨率缩略接触表
-  镜内运动/运动热图.jpg 每段静止区间的逐像素最大帧差（红）叠在灰度底图上，标运动面积占比
-  关键帧总览.jpg        每段最后一帧（下个转场前 3 帧）拼图 = 每段的「参考帧」
-  ref/seg??.png        同上，原分辨率，喂给生图模型当构图参考
-判断阈值：静止段帧差 <2，转场段 10–40；默认阈值 5、去抖 12 帧，按片子调。
+Outputs (all under --out):
+  sheet_*.jpg          4fps contact sheet (30 frames per sheet, timestamped)
+  diff.npy             per-frame mean gray diff (192x108), length N-1
+  cuts.json            shot-start frame numbers, beat-grid fit (starts ≈ t0+k·step, reports residual and BPM candidates)
+  转场/T??.jpg         per-shot contact sheet: 15 thumbnails from 2 frames before each shot start, every 2 frames
+  镜内运动/运动热图.jpg per-segment max frame diff (red) overlaid on gray base, motion area fraction labelled
+  关键帧总览.jpg        last frame of each segment (3 frames before next shot start) composited = per-segment reference
+  ref/seg??.png        same, full resolution, fed to image-generation models as composition reference
+Detection thresholds: still-segment diff <2, shot-boundary 10–40; default threshold 5, debounce 12 frames, tune per clip.
 """
 import argparse, json, subprocess
 from pathlib import Path
@@ -37,13 +37,13 @@ def frames(w, h, fmt='rgb24'):
     c = 3 if fmt == 'rgb24' else 1
     return np.frombuffer(raw, np.uint8).reshape(-1, h, w, c) if c == 3 else np.frombuffer(raw, np.uint8).reshape(-1, h, w)
 
-# 1) 逐帧差
+# 1) per-frame diff
 g = frames(192, 108, 'gray').astype(np.float32)
 d = np.abs(np.diff(g, axis=0)).mean(axis=(1, 2)); np.save(out / 'diff.npy', d)
 starts = []
 for i in range(1, len(d)):
     if d[i] > a.thresh and d[i - 1] <= a.thresh and (not starts or i - starts[-1] > a.debounce): starts.append(i)
-# 网格拟合：找「大部分起点都落在 t0+k·step 上」的最大 step（容差 1.5 帧，允许 20% 离群——镜内大动作会被误检成转场）
+# grid fit: find the largest step where most starts fall on t0+k·step (tolerance 1.5 frames, 20% outliers allowed — large in-shot motion can be misdetected as a shot boundary)
 grid = None
 if len(starts) >= 4:
     S_ = np.array(starts, float); best = None
@@ -51,7 +51,7 @@ if len(starts) >= 4:
         for t0 in S_[:3]:
             k = np.round((S_ - t0) / step); res = S_ - (t0 + k * step); inl = np.abs(res) <= 1.5
             if inl.mean() < 0.8: continue
-            t0f = t0 + res[inl].mean(); res = S_ - (t0f + k * step); score = (step, inl.sum())   # 先要最大步长（小步长能硬凑任何点）
+            t0f = t0 + res[inl].mean(); res = S_ - (t0f + k * step); score = (step, inl.sum())   # prefer largest step (small steps can fit any point set)
             if best is None or score > best[0]: best = (score, step, t0f, k.astype(int).tolist(), np.abs(res[inl]).max(), (~inl).nonzero()[0].tolist())
     if best:
         _, step, t0, k, e, outl = best
@@ -60,7 +60,7 @@ if len(starts) >= 4:
 json.dump({'fps': FPS, 'size': [W, H], 'cuts_frames': starts, 'cuts_sec': [round(s / FPS, 3) for s in starts], 'grid': grid}, open(out / 'cuts.json', 'w'), indent=1, ensure_ascii=False)
 print('转场起点(秒):', [round(s / FPS, 3) for s in starts]); print('网格:', grid)
 
-# 2) 4fps 接触表
+# 2) 4fps contact sheet
 small = frames(480, 270)
 step4 = max(1, round(FPS / 4)); idx = list(range(0, len(small), step4))
 for p in range(0, len(idx), 30):
@@ -70,7 +70,7 @@ for p in range(0, len(idx), 30):
         x, y = (i % 6) * 480, (i // 6) * 288; S.paste(Image.fromarray(small[f]), (x, y + 18)); dr.text((x + 4, y + 3), f'{f / FPS:.2f}s', fill='black')
     S.save(out / f'sheet_{p // 30}.jpg', quality=85)
 
-# 3) 每个转场的接触表
+# 3) per-shot contact sheet
 (out / '转场').mkdir(exist_ok=True)
 mid = frames(384, 216)
 for n, s in enumerate(starts):
@@ -80,7 +80,7 @@ for n, s in enumerate(starts):
         x, y = (i % 5) * 384, (i // 5) * 230; S.paste(Image.fromarray(mid[f]), (x, y + 14)); dr.text((x + 3, y + 1), f'f{f} {f / FPS:.3f}s', fill='black')
     S.save(out / '转场' / f'T{n + 1:02d}.jpg', quality=85)
 
-# 4) 运动热图 + 5) 参考帧
+# 4) motion heatmap + 5) reference frames
 (out / '镜内运动').mkdir(exist_ok=True); (out / 'ref').mkdir(exist_ok=True)
 bounds = [0] + starts + [len(small)]
 heat, keys = [], []

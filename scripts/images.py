@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""图片接入：选择当前宿主工具、生成调用计划、验收并收纳素材。不代替Agent调用工具。"""
+"""Image integration: select current host tools, plan calls, validate/store assets. Does not call tools on the agent's behalf."""
 import argparse
 import hashlib
 import io
@@ -198,7 +198,7 @@ def import_artifact(file,out,meta):
     payload=Path(file).read_bytes()
     if hashlib.sha256(payload).hexdigest()!=meta['sha256']:raise c.ConfigError('验收期间图片已改变')
     meta=dict(meta,path=out.name)
-    # 配对写入由协作脚本锁串行；不覆盖用户现有版本。
+    # Companion-script lock serializes paired writes; never overwrite user's existing version.
     with c.locked(out):
         if out.exists() or sidecar.exists():raise c.ConfigError('目标已被其他进程创建')
         no_overwrite(out,payload)

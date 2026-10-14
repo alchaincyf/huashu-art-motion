@@ -1,35 +1,35 @@
-// 纯代码绘画工具库：噪声、纹理、手绘线、风格渲染器（笔触/色点/马赛克/网点/像素/切面）、共享编舞。
-// 约定：所有随机都用种子；「抖动线条」按 boilFps 换种子（手绘动画的 boiling line），其余保持帧间稳定。
+// Code-only painting helpers: noise, texture, rough lines, style renderers (strokes/dots/mosaic/halftone/pixels/facets), shared choreography.
+// Convention: all randomness seeded; rough lines change seed at boilFps (boiling line), everything else stable across frames.
 (() => {
-let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
+let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // Canvas dimensions follow U.setStage (default 1920×1080)
 const P = window.PAINT = {};
 const { clamp, lerp, ease, rng } = U;
 
-// ---------- 画布 ----------
+// ---------- Canvas ----------
 P.canvas = (w = W, h = H) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const CACHE = {};
 P.cached = (key, w, h, fn) => { if (!CACHE[key]) { const c = P.canvas(w, h); fn(c.getContext('2d'), c); CACHE[key] = c; } return CACHE[key]; };
 P.scratch = (key) => { if (!CACHE['s_' + key]) CACHE['s_' + key] = P.canvas(); return CACHE['s_' + key]; };
 
-// ---------- 噪声 ----------
+// ---------- Noise ----------
 const perm = new Uint8Array(512); { const r = rng(1337); const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = (r() * (i + 1)) | 0; [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
 const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
 const grad = (h, x, y) => { const u = (h & 1) ? x : -x, v = (h & 2) ? y : -y; return (h & 4) ? u + v * 0.5 : u * 0.5 + v; };
-P.noise = (x, y) => {                                   // Perlin 2D，约 [-1,1]
+P.noise = (x, y) => {                                   // Perlin 2D, approximately [-1,1]
   const X = Math.floor(x) & 255, Y = Math.floor(y) & 255; x -= Math.floor(x); y -= Math.floor(y);
   const u = fade(x), v = fade(y), a = perm[X] + Y, b = perm[X + 1] + Y;
   return lerp(lerp(grad(perm[a], x, y), grad(perm[b], x - 1, y), u), lerp(grad(perm[a + 1], x, y - 1), grad(perm[b + 1], x - 1, y - 1), u), v);
 };
 P.fbm = (x, y, o = 4) => { let s = 0, a = 0.5, f = 1; for (let i = 0; i < o; i++) { s += a * P.noise(x * f, y * f); a *= 0.5; f *= 2; } return s; };
 
-// ---------- 颜色 ----------
+// ---------- Color ----------
 P.hex = h => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 P.rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
 P.mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 P.jitter = (c, r, amt) => [c[0] + (r() - .5) * amt, c[1] + (r() - .5) * amt, c[2] + (r() - .5) * amt];
 
-// ---------- 纹理（缓存） ----------
-// 纸/墙/岩石：底色 + 多层噪声斑驳 + 细颗粒
+// ---------- Texture (cached) ----------
+// Paper/wall/rock: base color, layered noise mottling, fine grain
 P.texture = (key, base, opt = {}) => P.cached('tex_' + key, W, H, (g) => {
   const { scale = 0.004, amt = 26, grain = 14, dark = null, seed = 1 } = opt;
   const img = g.createImageData(W, H), d = img.data, b = P.hex(base), r = rng(seed);
@@ -43,13 +43,13 @@ P.texture = (key, base, opt = {}) => P.cached('tex_' + key, W, H, (g) => {
   }
   g.putImageData(img, 0, 0);
 });
-// 颗粒噪点叠层（扁平插画的 grain、旧印刷）：透明底上的随机点
+// Grain overlay (flat illustration, aged print): random dots on transparency
 P.grain = (key, density = 0.08, col = [0, 0, 0], alpha = 0.18) => P.cached('grain_' + key, W, H, (g) => {
   const img = g.createImageData(W, H), d = img.data, r = rng(key.length * 97 + 3);
   for (let i = 0; i < W * H; i++) if (r() < density) { d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255 * alpha * (0.4 + r() * 0.6); }
   g.putImageData(img, 0, 0);
 });
-// 龟裂纹（古典油画）：随机游走的细裂线网
+// Craquelure (classical oil): random-walk fine crack network
 P.craquelure = (key, alpha = 0.35) => P.cached('crack_' + key, W, H, (g) => {
   const r = rng(77); g.strokeStyle = `rgba(40,25,10,${alpha})`; g.lineWidth = 0.8;
   for (let k = 0; k < 900; k++) {
@@ -59,12 +59,12 @@ P.craquelure = (key, alpha = 0.35) => P.cached('crack_' + key, W, H, (g) => {
   }
 });
 
-// ---------- 手绘线 ----------
-// 把折线/曲线采样后加噪声抖动；boil = 当前时间换种子的频率（0 = 不抖）
+// ---------- Rough lines ----------
+// Sample polyline/curve and add noise jitter; boil = time-based seed-change frequency (0 = static)
 P.boilSeed = (t, fps = 12) => Math.floor(t * fps);
 P.roughPath = (c, pts, { amp = 2, seed = 1, closed = false, step = 6 } = {}) => {
   const r = rng(seed);
-  // 先按 step 重采样
+  // Resample at step first
   const out = [];
   const N = closed ? pts.length : pts.length - 1;
   for (let i = 0; i < N; i++) {
@@ -74,15 +74,15 @@ P.roughPath = (c, pts, { amp = 2, seed = 1, closed = false, step = 6 } = {}) => 
   if (!closed) out.push([pts[pts.length - 1][0] + (r() - .5) * amp, pts[pts.length - 1][1] + (r() - .5) * amp]);
   c.beginPath(); out.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); if (closed) c.closePath();
 };
-// 三次贝塞尔采样成点列（便于 roughPath / 变形）
+// Cubic Bézier to point list (for roughPath / deformation)
 P.bez = (p0, p1, p2, p3, n = 24) => { const o = []; for (let i = 0; i <= n; i++) { const t = i / n, u = 1 - t; o.push([u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0], u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]]); } return o; };
-// SVG path 字符串 → Path2D（写复杂轮廓最省事）
+// SVG path string → Path2D (simplest complex contours)
 P.path = (d) => new Path2D(d);
 
-// ---------- 风格渲染器（对一张底稿 canvas 做「重画」） ----------
-// 1) 流场笔触（梵高/印象派）：在抖动网格上取底稿颜色，沿 angle(x,y,t) 画短笔触，带深色描边
-//    cap：宽笔（width ≥ 30）密排时圆头会连成一排排「人头/鹅卵石」（迁移测试 D 蓝色时期），改 'butt'。
-//    boil：只给母题区域沸腾，静止区（地板、道具、角色）boil=0 种子固定——全屏 8fps 换种子读成满屏闪烁（迁移测试 C 莫奈）。
+// ---------- Style renderers (repaint source canvas) ----------
+// 1) Flow-field strokes (Van Gogh/Impressionism): sample source color on jittered grid, short strokes along angle(x,y,t) with dark outline
+//    cap: dense wide strokes (width ≥30) with round caps form rows of heads/pebbles (migration test D Blue Period); use 'butt'.
+//    boil: boil only motif regions; fixed seeds and boil=0 for floors/props/characters; full-screen 8fps seed changes flicker (migration test C Monet).
 P.strokes = (dst, src, { cell = 12, len = 22, width = 7, angle, seed = 1, t = 0, boil = 8, outline = 0.35, outlineCol = [20, 25, 60], outlineMix = 0.55, jitterCol = 18, mask, alphaMask = false, palette, cap = 'round' } = {}) => {
   const sd = src.getContext('2d').getImageData(0, 0, W, H).data;
   const r = rng(seed * 1000 + P.boilSeed(t, boil));
@@ -93,7 +93,7 @@ P.strokes = (dst, src, { cell = 12, len = 22, width = 7, angle, seed = 1, t = 0,
     if (mask && !mask(px, py)) continue;
     if (alphaMask && sd[i + 3] < 200) continue;
     let col = [sd[i], sd[i + 1], sd[i + 2]];
-    const pc = palette ? palette(px, py, col, r) : null; if (pc) col = pc;       // 区域色板：从色组里抽一个颜色
+    const pc = palette ? palette(px, py, col, r) : null; if (pc) col = pc;       // Regional palette: sample color from group
     const a = angle ? angle(px, py, t) : 0, l = len * (0.7 + r() * 0.6);
     const dx = Math.cos(a) * l / 2, dy = Math.sin(a) * l / 2;
     if (outline > 0) { dst.strokeStyle = P.rgb(P.mix(col, outlineCol, outlineMix), outline); dst.lineWidth = width + 2.5; dst.beginPath(); dst.moveTo(px - dx, py - dy); dst.lineTo(px + dx, py + dy); dst.stroke(); }
@@ -101,9 +101,9 @@ P.strokes = (dst, src, { cell = 12, len = 22, width = 7, angle, seed = 1, t = 0,
     dst.beginPath(); dst.moveTo(px - dx, py - dy); dst.lineTo(px + dx, py + dy); dst.stroke();
   }
 };
-// 色组工具：给一组 hex 和权重，返回按随机数抽色的函数（配 strokes 的 palette 用）；mixBase 把底稿色混进来保留明暗
+// Color-group helper: hex colors/weights → random color-sampling function (strokes palette); mixBase mixes source color to retain shading
 P.swatch = (hexes, mixBase = 0.35) => { const cs = hexes.map(P.hex); return (col, r) => { const k = cs[(r() * cs.length) | 0]; return P.mix(k, col, mixBase); }; };
-// 2) 色点（印象派）：椭圆短点，颜色带冷暖偏移、大小不一。注意这不是点彩——修拉的点彩是「等大点＋纯色板视觉混色」，用 P.pointillism（lib/render.js）
+// 2) Impressionist dabs: short ellipses, warm/cool shifts and varied size. Unlike Seurat pointillism's equal dots/pure palette optical mixing; use P.pointillism (lib/render.js).
 P.dabs = (dst, src, { cell = 10, size = 9, seed = 2, t = 0, boil = 8, angle = -0.6, shift = 22 } = {}) => {
   const sd = src.getContext('2d').getImageData(0, 0, W, H).data, r = rng(seed * 1000 + P.boilSeed(t, boil));
   for (let y = 0; y < H + cell; y += cell) for (let x = 0; x < W + cell; x += cell) {
@@ -114,7 +114,7 @@ P.dabs = (dst, src, { cell = 10, size = 9, seed = 2, t = 0, boil = 8, angle = -0
     dst.beginPath(); dst.ellipse(px, py, size * (0.8 + r() * 0.6), size * 0.45, angle + (r() - .5) * 0.5, 0, Math.PI * 2); dst.fill();
   }
 };
-// 3) 马赛克：带缝隙的小石块，颜色取中心，略有抖动与倒角
+// 3) Mosaic: small stones with gaps, center-sampled color, slight jitter/bevel
 P.mosaic = (dst, src, { tile = 14, grout = '#3b352e', seed = 3, jitter = 0.25 } = {}) => {
   const sd = src.getContext('2d').getImageData(0, 0, W, H).data, r = rng(seed);
   dst.fillStyle = grout; dst.fillRect(0, 0, W, H);
@@ -125,7 +125,7 @@ P.mosaic = (dst, src, { tile = 14, grout = '#3b352e', seed = 3, jitter = 0.25 } 
     dst.fillStyle = 'rgba(255,255,255,.12)'; dst.fillRect(cx - s / 2, cy - s / 2, s, 2);
   } }
 };
-// 4) 网点（本戴点）：颜色取中心，半径随暗度
+// 4) Halftone (Ben-Day dots): center color, radius follows darkness
 P.halftone = (dst, src, { cell = 14, paper = '#f4ecd8', seed = 4 } = {}) => {
   const sd = src.getContext('2d').getImageData(0, 0, W, H).data;
   dst.fillStyle = paper; dst.fillRect(0, 0, W, H);
@@ -136,7 +136,7 @@ P.halftone = (dst, src, { cell = 14, paper = '#f4ecd8', seed = 4 } = {}) => {
     dst.beginPath(); dst.arc(cx, y, cell * 0.72 * (0.3 + (1 - L) * 0.9), 0, Math.PI * 2); dst.fill();
   }
 };
-// 5) 像素：最近邻降采样，可选调色板量化
+// 5) Pixels: nearest-neighbor downsampling, optional palette quantization
 P.pixelate = (dst, src, { size = 8, palette } = {}) => {
   const w = Math.ceil(W / size), h = Math.ceil(H / size), s = P.scratch('px'), g = s.getContext('2d');
   g.imageSmoothingEnabled = false; g.clearRect(0, 0, w, h); g.drawImage(src, 0, 0, w, h);
@@ -145,7 +145,7 @@ P.pixelate = (dst, src, { size = 8, palette } = {}) => {
     g.putImageData(im, 0, 0); }
   dst.imageSmoothingEnabled = false; dst.drawImage(s, 0, 0, w, h, 0, 0, w * size, h * size); dst.imageSmoothingEnabled = true;
 };
-// 6) 立体主义切面：抖动三角网，每块取「偏移视角」的颜色做线性渐变，描暗边
+// 6) Cubist facets: jittered triangular mesh, shifted-viewpoint sample colors as linear gradients, dark outlines
 P.facets = (dst, src, { nx = 22, ny = 13, seed = 5, t = 0, shiftAmt = 26, edge = 'rgba(40,30,20,.45)' } = {}) => {
   const sd = src.getContext('2d').getImageData(0, 0, W, H).data, r = rng(seed);
   const pts = []; for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) { const e = i === 0 || j === 0 || i === nx || j === ny; pts.push([i / nx * W + (e ? 0 : (r() - .5) * W / nx * .9), j / ny * H + (e ? 0 : (r() - .5) * H / ny * .9)]); }
@@ -163,24 +163,24 @@ P.facets = (dst, src, { nx = 22, ny = 13, seed = 5, t = 0, shiftAmt = 26, edge =
   }
 };
 
-// ---------- 共享编舞：16 个时代用同一套动作曲线，各自用自己的画法画出来 ----------
-// lt = 本段局部时间（秒）。返回 0..1 或角度，时代代码按需取用。
-// 端杯循环（全片时间）：2.4s 一轮——0.9s 举到嘴边、停 0.7s 喝、0.8s 放回
+// ---------- Shared choreography: 16 eras use same motion curves, each renders in own style ----------
+// lt = segment-local seconds. Returns 0..1 or angles for era code.
+// Cup cycle (global time): 2.4s — lift 0.9s, drink hold 0.7s, lower 0.8s
 P.cupCycle = (t, period = 2.4) => { const q = ((t % period) + period) % period;
   if (q < 0.9) return 0.5 - 0.5 * Math.cos(q / 0.9 * Math.PI); if (q < 1.6) return 1; return 0.5 + 0.5 * Math.cos((q - 1.6) / 0.8 * Math.PI); };
 P.choreo = (lt, t) => ({
-  cupG: P.cupCycle(t),                                         // 按全片时间的端杯（跨段连续：速通片换段时姿势不重置）
-  cup: 0.5 - 0.5 * Math.cos(Math.min(1, lt / 0.9) * Math.PI),   // 端杯：0=在桌上 1=在嘴边（约 0.9s 举起）
-  sip: Math.max(0, Math.sin(lt * 6)) * 0.15,                    // 喝时头部微仰
-  tail: Math.sin(t * 5.2) * 0.35 + Math.sin(t * 11) * 0.08,      // 猫尾摆（弧度）
-  blink: (t % 2.3) > 2.18 ? 1 : 0,                              // 眨眼
+  cupG: P.cupCycle(t),                                         // Global-time cup lift (continuous across segments; no speedrun pose reset)
+  cup: 0.5 - 0.5 * Math.cos(Math.min(1, lt / 0.9) * Math.PI),   // Cup: 0=table, 1=mouth (about 0.9s lift)
+  sip: Math.max(0, Math.sin(lt * 6)) * 0.15,                    // Slight head tilt while drinking
+  tail: Math.sin(t * 5.2) * 0.35 + Math.sin(t * 11) * 0.08,      // Cat-tail sway (radians)
+  blink: (t % 2.3) > 2.18 ? 1 : 0,                              // Blink
   ear: Math.max(0, Math.sin(t * 9)) > 0.97 ? 1 : 0,
   breathe: Math.sin(t * 4) * 0.012,
-  steam: t,                                                     // 热气用全局时间
+  steam: t,                                                     // Steam uses global time
 });
 
-// ---------- 通用元素 ----------
-// 热气：几条随时间上行的正弦曲线（风格化的 S 形可传 width/color）
+// ---------- Shared elements ----------
+// Steam: several upward-moving sinusoids (stylized S-curves accept width/color)
 P.steam = (c, t, x, y, { h = 80, n = 3, color = 'rgba(255,255,255,.8)', width = 4, spread = 16, wobble = 10, seed = 1 } = {}) => {
   c.save(); c.lineCap = 'round'; c.lineWidth = width;
   for (let k = 0; k < n; k++) {
@@ -190,7 +190,7 @@ P.steam = (c, t, x, y, { h = 80, n = 3, color = 'rgba(255,255,255,.8)', width = 
   }
   c.restore();
 };
-// 粒子：给定种子与时间，返回确定的粒子位置（飘落/上浮）
+// Particles: deterministic positions for seed and time (falling/rising)
 P.particles = (n, seed, t, { x0 = 0, x1 = W, y0 = -40, y1 = H + 40, speed = 80, drift = 30, life = 6 } = {}) => {
   const r = rng(seed), out = [];
   for (let i = 0; i < n; i++) { const bx = lerp(x0, x1, r()), ph = r() * life, sp = speed * (0.6 + r() * 0.8), q = ((t + ph) % life) / life;

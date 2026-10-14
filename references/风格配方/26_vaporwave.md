@@ -1,5 +1,7 @@
 # 26_vaporwave · 2011 蒸汽波 / 赛博霓虹
 
+**中文** · [English](../en/style-recipes/26_vaporwave.md)
+
 > 来源：迁移测试 B（只读 skill 的独立 agent 实做，2026-10-04）。场景代码由整合后移植到 `scripts/engine/scenes/26_vaporwave.js`。
 
 实验时的文件名：`scenes/c5_vaporwave.js`（约 210 行）。审片红灯：上衣第一版是粉色，和粉调肤色混成一片，读起来像没穿衣服。改成薰衣草紫风衣 `#8f7cf6`＋白三角领＋青色拉链线。每帧中位 49ms；帧差 25%（VHS 后期让全屏都在动）。

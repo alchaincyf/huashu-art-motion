@@ -1,5 +1,7 @@
 # Y3 · 白板手绘解说（RSA Animate 型）：视频动画语法卡
 
+**中文** · [English](../en/animation-grammars/y3_whiteboard.md)
+
 一句话：讲者说一句，手就在一张大白板上写一句、画一个图；相机跟着论证在板上移动，最后拉远，观众看到整场论证是一张图。
 
 示范片：`scripts/engine/demos/y3_whiteboard/`（渲染 `render.py --film demos/y3_whiteboard`）（8s，3 镜，转场 2 种＋收尾拉远），总览：`assets/动画语法/y3_whiteboard_总览.jpg`

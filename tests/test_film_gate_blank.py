@@ -1,12 +1,12 @@
-"""film_gate.py 的空画面硬伤：中段近乎纯色（整帧几乎没有边缘）连续 ≥0.3 秒红灯，报告给时间码。
+"""film_gate.py factual blank-scene failure: nearly solid mid-film content (almost no edges) lasting ≥0.3s is red with timestamps.
 
-只用 ffmpeg 的 lavfi 合成 6 秒小片（不需要引擎和 Playwright）：
-  orange  —— 有纹理的测试图，中间 0.6 秒切成纯橙色           → 红灯，时间码落在那 0.6 秒上
-  flash   —— 同上，但只有 0.2 秒全黑                         → 不算（短于 0.3 秒）
-  head    —— 开头 0.4 秒纯色，之后有纹理                       → 不算（首尾各 0.5 秒不查）
-  dark    —— 黑底、淡网格、两条细亮线（3b1b 那种）             → 不算
-  board   —— 白底、几个细黑框（白板那种）                       → 不算
-6 秒的片子短于 20 秒，快动门禁只会黄灯；退出码 2 只可能来自空画面这一条（它不受短片降级）。
+Synthesize 6s shorts using ffmpeg lavfi only (no engine/Playwright):
+  orange — textured test image, 0.6s solid-orange interval → red with timestamps within that 0.6s
+  flash  — same, but only 0.2s black → ignored (<0.3s)
+  head   — first 0.4s solid then textured → ignored (exclude 0.5s at each end)
+  dark   — black background, faint grid, two thin bright lines (3b1b-like) → ignored
+  board  — white background, thin black boxes (whiteboard-like) → ignored
+6s is below 20s, so fast-motion gate only yellow; exit 2 can come only from blank gate (no short-film downgrade).
 """
 import json
 import os
@@ -32,7 +32,7 @@ CLIPS = {
 }
 
 W = {}
-ENV = dict(os.environ, FILM_GATE_MIN_S='20')   # 别的测试模块会把它设成 0；这里要的就是默认的短片降级
+ENV = dict(os.environ, FILM_GATE_MIN_S='20')   # Other test modules set to 0; this needs default short-film downgrading
 
 
 def setUpModule():

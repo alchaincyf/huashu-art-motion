@@ -1,9 +1,9 @@
-// S03 · 8-bit 像素游戏「闯关」。风格卡 references/风格配方/14_8bit.md、标杆 scenes/14_8bit.js。
-// 管线：整幅在 240×135 低分辨率上逐像素画（1 低像素 = 8 屏幕像素），限 NES 色板 → 最近邻放大 8 倍；
-//      火箭＝RK.falcon1 的真实比例路径缩到低分辨率 → 阈值去抗锯齿＋量化＋1px 黑描边（spriteize）；
-//      动作按 20fps 步进（像素游戏的一顿一顿），HUD 用 PressStart2P 64/128px（1 字体像素 = 8/16 屏幕像素）；中文年份牌用普惠体在低分辨率上画再二值化（像素化中文）。
-// 剧情：太平洋小岛发射台（夸贾林环礁欧姆莱克岛：棕榈、海）→ FALCON 1 标题 → 2006/2007/2008年8月 三次 GAME OVER，右上 4 颗心一颗颗灭
-//      → 第四次 LAST TRY（最后一颗心）→ 升空、卷轴进太空 → 绕像素地球入轨 STAGE CLEAR → 对话框打出 1ST PRIVATE LIQUID-FUEL ROCKET IN ORBIT。
+// S03 · 8-bit platform game. Style references/风格配方/14_8bit.md, benchmark scenes/14_8bit.js.
+// Pipeline: pixel drawing at 240×135 (1 low-res pixel = 8 screen pixels), NES palette → 8× nearest-neighbor enlargement;
+//      Rocket: RK.falcon1 real-proportion path reduced → threshold AA removal + quantization + 1px black outline (spriteize);
+//      Motion steps at 20fps; HUD PressStart2P 64/128px (font pixel = 8/16 screen pixels); Chinese year labels draw PuHui at low res then binarize.
+// Story: Pacific island pad (Omelek, Kwajalein Atoll: palms, sea) → FALCON 1 → three GAME OVERs in 2006/2007/August 2008, four hearts at upper right extinguish
+//      → fourth LAST TRY (final heart) → launch/scroll into space → pixel Earth orbit, STAGE CLEAR → dialog types 1ST PRIVATE LIQUID-FUEL ROCKET IN ORBIT.
 (() => {
 const W = 1920, H = 1080, S = 8, LW = 240, LH = 135, ID = 's03';
 const { clamp, lerp, rng } = U, P = PAINT;
@@ -22,7 +22,7 @@ const cues = () => Q || (Q = (() => {
     f: [q('失败；2007'), q('失败；2008'), q('失败。')], ok: q('成了'), le: q('了，成为'), banner: q('成为第一枚'), voEnd: TM.vo(ID)[1] };
 })());
 
-// ---------- 精灵化：低分辨率 AA 路径 → 阈值＋量化到色板＋外描黑边 ----------
+// ---------- Spriteize: low-res AA paths → threshold + palette quantization + outer black border ----------
 function spriteize(g, w, h) {
   const im = g.getImageData(0, 0, w, h), d = im.data, op = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) {
@@ -34,7 +34,7 @@ function spriteize(g, w, h) {
     if ((x > 0 && op[i - 1]) || (x < w - 1 && op[i + 1]) || (y > 0 && op[i - w]) || (y < h - 1 && op[i + w])) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 0; d[i * 4 + 3] = 255; } }
   g.putImageData(im, 0, 0);
 }
-// 猎鹰1号精灵（RK.falcon1 真实比例，高 hpx 低像素），按角度缓存；锚点 = 箭底中心
+// Falcon 1 sprite (RK.falcon1 real proportions, hpx low-res pixels), angle-cached; anchor = base center.
 const F1 = RK.falcon1(), SPR = {};
 function rocketSprite(hpx, ang) {
   const a = Math.round(ang / 0.13) * 0.13, key = hpx + '|' + a.toFixed(2);
@@ -43,18 +43,18 @@ function rocketSprite(hpx, ang) {
   const g = cv.getContext('2d', { willReadFrequently: true }), s = hpx / F1.h;
   g.translate(N / 2, N / 2); g.rotate(a); g.translate(0, hpx * 0.45); g.scale(s, s);
   for (const q of F1.parts) { g.fillStyle = q.k === 'dark' ? C.k : q.k === 'engine' ? C.gd : C.w; g.fill(q.p); }
-  g.fillStyle = C.g; g.fillRect(F1.w * 0.12, -15.4, F1.w * 0.38, 15.2);                    // 右侧一道灰：圆柱的明暗
+  g.fillStyle = C.g; g.fillRect(F1.w * 0.12, -15.4, F1.w * 0.38, 15.2);                    // Gray strip at right shades cylinder.
   g.setTransform(1, 0, 0, 1, 0, 0); spriteize(g, N, N);
   return (SPR[key] = { cv, ox: N / 2 - Math.sin(a) * hpx * 0.45, oy: N / 2 + Math.cos(a) * hpx * 0.45 });
 }
 const drawRocket = (g, x, y, hpx, ang = 0) => { const s = rocketSprite(hpx, ang); g.drawImage(s.cv, Math.round(x - s.ox), Math.round(y - s.oy)); };
-// 像素尾焰：三帧交替（20fps）
+// Pixel exhaust: three alternating frames (20fps).
 const flamePx = (g, x, y, len, st, big = 1) => {
   const f = Math.floor(st * 20) % 3, L = len + [0, 2, 1][f];
   for (let j = 0; j < L; j++) { const q = j / L, w = Math.max(1, Math.round((3 - q * 2.5) * big)), col = q < 0.25 ? C.w : q < 0.55 ? C.y : q < 0.8 ? C.o : C.r;
     px(g, Math.round(x - w / 2 + ((j + f) % 3 === 0 && q > 0.5 ? 1 : 0)), y + j, w, 1, col); }
 };
-// 爆炸：种子粒子，颜色按年龄 白→黄→橙→红→灰
+// Explosion: seeded particles, age colors white→yellow→orange→red→gray.
 const boom = (g, x, y, age, seed, big = 1) => {
   if (age < 0 || age > 0.9) return;
   const r = rng(seed); if (age < 0.12) { const R = Math.round((3 + age * 60) * big); for (let j = -R; j <= R; j++) { const w = Math.round(Math.sqrt(R * R - j * j)); px(g, x - w, y + j, w * 2 + 1, 1, age < 0.06 ? C.w : C.y); } }
@@ -66,7 +66,7 @@ const boom = (g, x, y, age, seed, big = 1) => {
   }
 };
 
-// ---------- 静态背景：岛、海、天 ----------
+// ---------- Static background: island, sea, sky ----------
 function islandBg(g) {
   for (let y = 0; y < 78; y++) for (let x = 0; x < LW; x++) {
     const q = y / 78; let col = q < 0.35 ? C.sky0 : q < 0.7 ? C.sky1 : C.sky2;
@@ -75,18 +75,18 @@ function islandBg(g) {
   }
   px(g, 0, 78, LW, 1, C.sky2); px(g, 0, 79, LW, 56, C.sea);
   for (let y = 100; y < LH; y++) for (let x = 0; x < LW; x++) if ((y > 118 || (x + y) % 2 === 0 && y > 108)) px(g, x, y, 1, 1, C.seaDk);
-  // 远处的环礁小岛
+  // Distant atoll islet.
   for (const [cx, w] of [[26, 16], [58, 8]]) { px(g, cx - w / 2, 77, w, 2, C.sandDk); px(g, cx - w / 2 + 2, 76, w - 4, 1, C.leafDk); }
-  // 主岛（沙丘）
+  // Main island (sand dune).
   for (let x = 84; x <= 220; x++) { const u = (x - 152) / 68, h = Math.round(9 * Math.sqrt(Math.max(0, 1 - u * u))); if (h <= 0) continue;
     px(g, x, 104 - h, 1, h + 6, C.sand); px(g, x, 104 - h, 1, 1, '#fcfcfc'); px(g, x, 108, 1, 2, C.sandDk); }
-  // 发射台：混凝土台＋导流槽；勤务塔（桁架）
+  // Launch pad: concrete platform + flame trench; truss service tower.
   px(g, 158, 96, 28, 1, C.k); px(g, 158, 97, 28, 4, C.g); px(g, 158, 100, 28, 1, C.gd); px(g, 166, 97, 10, 2, C.gdd);
   px(g, 180, 46, 1, 51, C.k); px(g, 185, 46, 1, 51, C.k); px(g, 181, 46, 4, 51, C.gd);
   for (let y = 48; y < 96; y += 6) { for (let i = 0; i < 4; i++) { px(g, 181 + i, y + i, 1, 1, C.gdd); px(g, 184 - i, y + i + 3 > 95 ? 95 : y + i + 3, 1, 1, C.gdd); } px(g, 180, y, 6, 1, C.k); }
-  px(g, 179, 45, 8, 1, C.k); px(g, 182, 42, 2, 3, C.gdd); px(g, 177, 62, 3, 1, C.gdd); px(g, 177, 78, 3, 1, C.gdd);   // 塔顶避雷针、两根脐带臂
+  px(g, 179, 45, 8, 1, C.k); px(g, 182, 42, 2, 3, C.gdd); px(g, 177, 62, 3, 1, C.gdd); px(g, 177, 78, 3, 1, C.gdd);   // Tower-top lightning rod, two umbilical arms.
 }
-// 棕榈树：树干一段段弯，叶片 5 条弧，sway 整像素摆
+// Palm: segmented curved trunk, five leaf arcs, integer-pixel sway.
 function palm(g, x0, y0, h, lean, sway) {
   let x = x0; for (let j = 0; j < h; j++) { const xx = Math.round(x0 + lean * (j / h) ** 2 * h * 0.35 + (j > h * 0.7 ? sway * (j - h * 0.7) / (h * 0.3) : 0)); px(g, xx - 1, y0 - j, 3, 1, j % 3 ? C.trunk : C.trunkDk); px(g, xx - 2, y0 - j, 1, 1, C.k); px(g, xx + 2, y0 - j, 1, 1, C.k); x = xx; }
   const tx = x, ty = y0 - h;
@@ -97,7 +97,7 @@ function palm(g, x0, y0, h, lean, sway) {
     px(g, fx, fy, 1 + (i < 8 ? 1 : 0), 1, i % 2 ? C.leaf : C.leafHi); }
   px(g, tx - 1, ty, 3, 2, C.trunkDk);
 }
-// 会动的部分：云、浪、棕榈
+// Moving parts: clouds, waves, palms.
 function islandLive(g, st) {
   const cs = Math.floor(st * 6);
   for (const [x0, y, w] of [[30, 14, 22], [130, 26, 16], [210, 8, 18]]) { const x = ((x0 - cs) % (LW + 40) + LW + 40) % (LW + 40) - 20;
@@ -108,7 +108,7 @@ function islandLive(g, st) {
   const sw = [0, 1, 0, -1][Math.floor(st * 4) % 4];
   palm(g, 100, 101, 26, -1, sw); palm(g, 118, 99, 20, 1, -sw); palm(g, 206, 100, 22, 1, sw);
 }
-// ---------- 地球（入轨画面）：逐像素球面＋噪声大陆＋明暗交界抖动 ----------
+// ---------- Earth in orbit view: pixel sphere + noisy continents + terminator dithering ----------
 const ER = 105, ECX = 150, ECY = 206, ORB = 126;
 function earth(st) {
   const key = 'e' + Math.floor(st * 10), cv = P.cached('s03_earth', ER * 2 + 4, ER * 2 + 4, () => {});
@@ -128,12 +128,12 @@ function earth(st) {
   }
   g.putImageData(im, 0, 0); return cv;
 }
-// ---------- 字 ----------
+// ---------- Text ----------
 const ptext = (c, s, x, y, size, col, align = 'center', alpha = 1) => {
   c.save(); c.globalAlpha = alpha; c.font = `${size}px "PressStart2P-400"`; c.textBaseline = 'top'; c.textAlign = align;
   const o = size / 8; c.fillStyle = '#000'; c.fillText(s, x + o, y + o); c.fillStyle = col; c.fillText(s, x, y); c.restore();
 };
-// 像素化中文：普惠体在低分辨率上画 → 二值化 → 外描黑边
+// Pixel Chinese: draw PuHui at low res → binarize → outer black border.
 const LTX = {};
 function lowText(str, size = 13) {
   if (LTX[str]) return LTX[str];
@@ -149,8 +149,8 @@ const HEART = ['.kk.kk.', 'krrkrrk', 'krwrrrk', 'krrrrrk', '.krrrk.', '..krk..',
 const HEARTE = ['.kk.kk.', 'k..k..k', 'k.....k', 'k.....k', '.k...k.', '..k.k..', '...k...'];
 const heart = (c, rows, x, y, map) => rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') { c.fillStyle = map[ch]; c.fillRect(x + i * S, y + j * S, S, S); } }));
 
-// ---------- 每次尝试的火箭轨迹 ----------
-// 返回 {x, y(箭底), ang, flame, vis, alt(卷轴高度)}；u = 起飞后秒数（20fps 步进）
+// ---------- Rocket path per attempt ----------
+// Returns {x, y(base), ang, flame, vis, alt(scroll height)}; u = seconds after launch, 20fps steps.
 const PADX = 171, PADY = 96, RH = 48;
 function attempt(i, st) {
   const q = cues(), a = q.a[i], L = a + 0.42, u = Math.max(0, st - L);
@@ -158,8 +158,8 @@ function attempt(i, st) {
   if (i < 3) {
     const uf = q.f[i] - 0.03 - L, yf = [68, 60, 52][i], k = (PADY - yf) / (uf * uf);
     const uu = Math.min(u, uf); o.y = PADY - k * uu * uu;
-    if (i === 1 && u > uf) { const d = u - uf; o.flame = 0; o.ang = 2.6 * d + 0.6 * d * d; o.y = yf + 260 * d * d - 18 * d; o.x = PADX + 22 * d; }   // 2007：熄火、翻滚、掉下去
-    else if (u > uf) o.vis = false;                                                                               // 2006 / 2008.8：炸了
+    if (i === 1 && u > uf) { const d = u - uf; o.flame = 0; o.ang = 2.6 * d + 0.6 * d * d; o.y = yf + 260 * d * d - 18 * d; o.x = PADX + 22 * d; }   // 2007: flameout, tumble, fall.
+    else if (u > uf) o.vis = false;                                                                               // 2006 / 2008.8: explosion.
   } else {
     const alt = 120 * u * u + 200 * u * u * u; o.alt = alt;
     o.y = Math.max(PADY - alt, 60); o.alt = Math.max(0, alt - (PADY - 60));
@@ -176,31 +176,31 @@ SCENES[ID] = {
     const q = cues(), st = U.stepTime(lt, 20);
     const L = P.cached('s03_low', LW, LH, () => {}), g = L.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false;
     const tOrb = q.le - 0.08, inOrbit = st >= tOrb;
-    let k = 0; for (let i = 0; i < 4; i++) if (st >= q.a[i]) k = i;                    // 当前第几次（开场到 2006 之前算第 0 次的待机）
-    // 屏幕抖动：爆炸后 0.25s
+    let k = 0; for (let i = 0; i < 4; i++) if (st >= q.a[i]) k = i;                    // Current attempt (before 2006, idle attempt 0).
+    // Screen shake for 0.25s after explosion.
     let shake = 0; for (let i = 0; i < 3; i++) { const d = st - q.f[i]; if (d >= 0 && d < 0.25 && i !== 1) shake = [1, -1, 1, 0, -1][Math.floor(d * 20) % 5]; }
     if (!inOrbit) {
       const A = attempt(k, st), scroll = k === 3 ? Math.round(A.alt) : 0;
-      // 天：卷轴往上时，上面接深蓝→午夜蓝→黑（带星）
+      // Sky extends upward into deep blue→midnight blue→starry black as scrolling rises.
       px(g, 0, 0, LW, LH, C.k);
       g.drawImage(P.cached('s03_island', LW, LH, islandBg), shake, scroll);
       if (scroll > 0) for (let y = 0; y < Math.min(LH, scroll); y++) { const wy = y - scroll; const col = wy > -30 ? C.sky0 : wy > -70 ? C.seaDk : wy > -110 ? C.navy : C.k;
         if (col !== C.k) px(g, 0, y, LW, 1, col); else { const r = U.hash(y, 7); if (r < 0.12) px(g, Math.floor(U.hash(y, 3) * LW), y, 1, 1, C.w); } }
       g.save(); g.translate(shake, scroll); islandLive(g, st);
-      // 火箭：开场「火箭」时闪着刷出来；每次重来也闪着刷出
+      // Rocket flashes into view on opening rocket cue, and on each retry.
       const spawn = k === 0 && st < q.a[0] ? q.spawn : q.a[k] - 0.02, blink = st - spawn < 0.4 && Math.floor((st - spawn) * 15) % 2 === 1;
       if (st >= q.spawn && A.vis && !blink) {
         if (A.u > 0 && A.u < 0.7) for (let j = 0; j < 6; j++) { const r = Math.round(2 + A.u * 18 + j % 3), sx = PADX + (j - 2.5) * 6 * (0.4 + A.u); px(g, Math.round(sx - r / 2), PADY + 1 - Math.round(r / 3), r, Math.round(r / 2), j % 2 ? C.w : C.g); }
         if (A.flame > 0) flamePx(g, A.x, A.y + 2, Math.round(A.flame), st, A.u > 0 ? 1.2 : 0.8);
         drawRocket(g, A.x, A.y, RH, A.ang);
       }
-      // 三次失败的爆炸（2007 是熄火翻滚后在海面炸开一朵小的）
+      // Three failure explosions (2007: small sea-surface blast after flameout/tumble).
       for (let i = 0; i < 3; i++) { if (k !== i) continue; const Ai = attempt(i, q.f[i] - 0.03);
         if (i === 1) { const d = st - q.f[i]; if (d > 0.36) boom(g, PADX + 14, 92, d - 0.36, 21, 0.5); }
         else boom(g, Ai.x, Ai.y - RH * 0.55, st - q.f[i] + 0.03, 11 + i * 7, i === 2 ? 1.25 : 1); }
       g.restore();
     } else {
-      // 入轨：黑底、闪星、像素地球自转、火箭沿椭圆轨道飞
+      // Orbit: black sky, twinkling stars, rotating pixel Earth, rocket follows ellipse.
       px(g, 0, 0, LW, LH, C.k);
       const tw = Math.floor(st * 6);
       for (let i = 0; i < 90; i++) { const x = Math.floor(U.hash(i, 1) * LW), y = Math.floor(U.hash(i, 2) * 110), on = U.hash(i, tw) > 0.15; if (on) px(g, x, y, 1, 1, U.hash(i, 5) < 0.2 ? C.y : U.hash(i, 6) < 0.5 ? C.g : C.w); if (U.hash(i, 9) < 0.08 && U.hash(i, tw + 50) > 0.6) { px(g, x - 1, y, 3, 1, C.w); px(g, x, y - 1, 1, 3, C.w); } }
@@ -212,9 +212,9 @@ SCENES[ID] = {
       const fx = Math.round(ox - Math.cos(tang) * 3), fy = Math.round(oy - Math.sin(tang) * 3);
       if (Math.floor(st * 20) % 2) px(g, fx - Math.round(Math.cos(tang) * 13), fy - Math.round(Math.sin(tang) * 13), 3, 3, C.y);
     }
-    // 放大 8 倍（最近邻）
+    // Enlarge 8× (nearest neighbor).
     c.imageSmoothingEnabled = false; c.drawImage(L, 0, 0, LW, LH, 0, 0, W, H); c.imageSmoothingEnabled = true;
-    // 入轨白闪 2 帧
+    // Two-frame white flash on orbit entry.
     if (Math.abs(lt - tOrb) < 0.05) { c.fillStyle = '#fcfcfc'; c.fillRect(0, 0, W, H); }
 
     // ---------- HUD ----------
@@ -224,18 +224,18 @@ SCENES[ID] = {
       const x = 1544 + i * 72, y = 64;
       let full = i < 4 - lost;
       for (let j = 0; j < 3; j++) { const d = st - q.f[j] - 0.15; if (3 - j === i && d > -0.15 && d < 0.15) full = Math.floor(st * 20) % 2 === 0; }
-      if (i === 0 && lost === 3 && !inOrbit && st > q.a[3] - 0.02 && Math.floor(st * 10) % 2) full = false;   // 最后一颗心在闪
+      if (i === 0 && lost === 3 && !inOrbit && st > q.a[3] - 0.02 && Math.floor(st * 10) % 2) full = false;   // Last heart flashes.
       heart(c, full ? HEART : HEARTE, x, y, { k: '#000', r: C.red, w: C.w });
     }
-    // 年份牌（像素化中文）
+    // Year label (pixel Chinese).
     const PL = ['2006年', '2007年', '2008年8月', '2008年9月'];
     if (st >= q.a[0] - 0.02) { const tx = lowText(PL[k]), pop = st - q.a[k] < 0.15 && Math.floor(st * 20) % 2; if (!pop) c.drawImage(tx, 0, 0, tx.width, tx.height, Math.round((960 - tx.width * S / 2) / 8) * 8, 40, tx.width * S, tx.height * S); }
-    // 大字：FALCON 1 标题 / GAME OVER / LAST TRY / STAGE CLEAR!
+    // Large text: FALCON 1 / GAME OVER / LAST TRY / STAGE CLEAR!
     if (st >= q.title && st < q.a[0]) { const d = st - q.title, y = Math.round(lerp(-160, 176, MO.backOut(clamp(d / 0.3), 1.6)) / 8) * 8; ptext(c, 'FALCON 1', 960, y, 128, C.y); }
     for (let i = 0; i < 3; i++) { if (st > q.f[i] + 0.08 && st < q.a[i + 1] - 0.06) ptext(c, 'GAME OVER', 960, 320, 128, Math.floor(st * 10) % 4 === 0 ? C.w : C.red); }
     if (st >= q.a[3] && st < q.a[3] + 0.75 && (st - q.a[3] < 0.35 || Math.floor(st * 8) % 2 === 0)) ptext(c, 'LAST TRY', 960, 320, 128, C.y);
     if (st >= q.le) { const d = st - q.le, cols = [C.w, C.y, C.o, C.y]; ptext(c, 'STAGE CLEAR!', 960, Math.round(lerp(320, 168, MO.expoOut(clamp((st - q.banner) / 0.3))) / 8) * 8, 128, d < 0.6 ? cols[Math.floor(st * 20) % 4] : C.y); }
-    // 对话框：一行行打出来
+    // Dialog types line by line.
     if (st >= q.banner - 0.05) {
       const bx = 112, by = 336, bw = 1696, bh = 200, op = MO.expoOut(clamp((st - q.banner + 0.05) / 0.12));
       c.save(); c.fillStyle = '#000'; c.fillRect(bx, by + bh / 2 * (1 - op), bw, bh * op);

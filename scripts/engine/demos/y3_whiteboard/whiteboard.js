@@ -1,11 +1,11 @@
-// Y3 · 白板手绘解说（RSA Animate 型：一整块大白板＋相机移动）：「AI 是怎么学会认猫的」
-// 依据：语法卡 y3_whiteboard.md（RSA 实测：黑 #0A0503＋唯一强调色橙 #EB701F；写字≈16 字/秒、比口播晚 0.5s；
-//       平滑移动 easeInOutSine 中位 1.8s；远跳用 0.8s 带运动模糊的甩镜；手从右下入画、画完出画；结尾拉远看全图）
-// ①画一只猫、写「猫？」、写问题 → 转场 A「甩镜」：笔不离板，相机 0.8s 甩到板上远处，带运动模糊
-// ②画 1000 万张图的一摞（橙色数字直接弹出、不带手）、箭头、神经网络、「自己找规律」
-// → 转场 B「板上平滑移动」：相机 sine 缓入缓出 0.95s 斜移到旁边空白处，手在相机落定前就开始画
-// ③画花叔指着猫、打勾，橙色「是猫！」弹出 → 收尾「拉远看全图」（RSA / VideoScribe 默认的 Zoom at end），整板铺一层灰
-// 用到的库：DG.board（笔画时间线＋跟随的笔）、DG.pen、DG.revealMask/zigzag（人物 Reveal）、CAM（关键帧相机、运动模糊）。
+// Y3 · whiteboard explainer (RSA Animate: one large board and moving camera): “How AI Learned to Recognize Cats”
+// Basis: grammar y3_whiteboard.md (RSA measurements: black #0A0503 and single orange accent #EB701F; writing ≈16 characters/second, 0.5s behind voiceover;
+//       smooth easeInOutSine moves median 1.8s; distant jumps use 0.8s blurred whip; hand enters lower right, exits after drawing; ending pulls back to entire board)
+// ① draw cat, write “猫？” and question → transition A: whip pan, pen stays down as camera whips to distant board region over 0.8s with blur
+// ② draw stack of 10 million images (orange number pops directly, no hand), arrow, neural network, “自己找规律”
+// → transition B: smooth board move, sine ease-in/out diagonal track to adjacent blank region over 0.95s, hand starts before camera settles
+// ③ draw Huashu pointing at cat, checkmark, orange “是猫！” pops → ending full-board pullback (RSA / VideoScribe default Zoom at end), gray wash over board
+// Libraries: DG.board (stroke timeline and following pen), DG.pen, DG.revealMask/zigzag (character reveal), CAM (keyframe camera, motion blur).
 (() => {
 const W = 1920, H = 1080;
 const { clamp, lerp, rng } = U;
@@ -14,16 +14,16 @@ const Y3 = window.Y3 = {};
 const F0 = 0; Y3.F0 = F0;
 Y3.SHOTS = { s1: [0, 2.5], s2: [2.5, 4.75], s3: [4.75, 8.0] };
 const INK = '#0A0503', ORANGE = '#EF7226', WASH = 'rgba(239,114,38,.22)', BOARD = '#FBFBFB';
-const LW = 6.5;                                         // RSA 实测笔画约画高 0.6–0.7%（1080p≈6–7px）
+const LW = 6.5;                                         // Measured RSA stroke width ≈0.6–0.7% of image height (1080p≈6–7px)
 const R1 = [960, 540], R2 = [3000, 540], R3 = [3700, 1360], K3 = 0.8;
 const L3 = (x, y) => [R3[0] + (x - 960) * K3, R3[1] + (y - 540) * K3];
-const SPEED = 2600;                                    // 线条笔速：世界像素/秒（演示片比 RSA 实拍快约 2 倍，见卡片）
+const SPEED = 2600;                                    // Line drawing speed: world pixels/second (demo about twice RSA live-action speed, see card)
 
-// ---------- 笔画时间线：按顺序排，时长 = 长度 / 笔速 ----------
+// ---------- Stroke timeline: ordered, duration = length / drawing speed ----------
 const B = DG.board({ ink: INK, lw: LW, speed: SPEED, font: '"LXGWWenKai-500"' });
 const tr = DG.xform, arc = DG.arcPts, pathOf = pts => U.poly(pts);
 
-// 猫的笔画（本地坐标，原点 = 坐姿底部中心，约 400 高）
+// Cat strokes (local coordinates, origin=bottom center of seated pose, about 400 high)
 const catStrokes = (ox, oy, s, sp, w, whiskers = true) => {
   const P = (pts) => tr(pts, ox, oy, s);
   B.line(P([[-60, -250], [-92, -330], [-30, -300], [30, -300], [92, -330], [60, -250]]), { w, speed: sp });
@@ -37,19 +37,19 @@ const catStrokes = (ox, oy, s, sp, w, whiskers = true) => {
 };
 const catBody = (ox, oy, s) => pathOf(tr([[-80, -170], [-120, -60], [-110, 0], [110, 0], [120, -60], [80, -170], [60, -160], [0, -150], [-60, -160]], ox, oy, s));
 
-// ===== 第一块 =====
+// ===== First region =====
 B.at(0.12);
 catStrokes(760, 820, 1.0, SPEED * 0.75, LW + 1);
 B.fill(catBody(760, 820, 1.0), WASH);
-B.text('猫？', 1060, 560, 150, { col: ORANGE, rate: 7.5 });                                    // 标题级：7.5 字/秒
+B.text('猫？', 1060, 560, 150, { col: ORANGE, rate: 7.5 });                                    // Heading: 7.5 characters/second
 B.line([[1080, 610], [1020, 660], [930, 690]], { col: ORANGE });
 B.line([[960, 668], [928, 690], [966, 704]], { col: ORANGE, smooth: false });
-B.text('AI 怎么认出它？', 960, 960, 84, { align: 'center' });                                 // 正文：16 字/秒
-B.line([[1290, 590], [1500, 560], [1760, 540]], { col: ORANGE, speed: SPEED * 1.6 });           // 指向下一块的橙箭头：甩镜有了方向
+B.text('AI 怎么认出它？', 960, 960, 84, { align: 'center' });                                 // Body: 16 characters/second
+B.line([[1290, 590], [1500, 560], [1760, 540]], { col: ORANGE, speed: SPEED * 1.6 });           // Orange arrow toward next region gives whip direction
 B.line([[1725, 512], [1764, 540], [1728, 572]], { col: ORANGE, smooth: false });
 const END1 = B.cur;
-// 甩镜时笔不离板：笔尖在屏幕上从第一块的箭头头滑向第二块的起笔点，板在笔下飞过，留下一条橙色连线（笔一直在画，视线一直被它领着）。
-// 轨迹 = 屏幕上的笔位置按当时的相机反算成世界点（第一次画时算好）。
+// Pen stays on board during whip: onscreen tip slides from first arrowhead to second starting point, board flies underneath, leaving orange connector (pen keeps drawing and guiding gaze).
+// Trajectory = onscreen pen positions inverse-transformed by camera at each time into world points (computed at first draw).
 const trail = { kind: 'custom', from: [1764, 540], to: [2382, 278], t0: B.cur + 0.01, t1: 3.3, col: ORANGE, w: LW, wob: 14,
   draw(g, q) {
     const s = this;
@@ -63,7 +63,7 @@ const trail = { kind: 'custom', from: [1764, 540], to: [2382, 278], t0: B.cur + 
   start() { return this.from; }, end() { return this.pts ? this.pts[this.pts.length - 1] : this.to; } };
 B.push(trail);
 
-// ===== 第二块（相机 2.5→3.3 甩过来） =====
+// ===== Second region (camera whips in at 2.5→3.3) =====
 B.at(3.31);
 for (let i = 2; i >= 0; i--) { const x = 2330 + i * 26, y = 330 - i * 26; B.fill(pathOf([[x, y], [x + 260, y], [x + 260, y + 190], [x, y + 190]]), BOARD, 0.01); B.line([[x, y], [x + 260, y], [x + 260, y + 190], [x, y + 190], [x, y + 3]], { w: 6, speed: SPEED * 4.5, smooth: false, amp: 0 }); }
 B.line(tr([[-60, -250], [-92, -330], [-30, -300], [30, -300], [92, -330], [60, -250], ...arc(0, -230, 100, 82, -0.55, Math.PI + 0.55, 20).reverse(), [-60, -250]], 2460, 560, 0.4), { w: 5, speed: SPEED * 3, gap: 0 });
@@ -76,13 +76,13 @@ for (const [x, ys] of NET) for (const y of ys) B.line(arc(x, y, 26, 26, -Math.PI
 for (let a = 0; a < 2; a++) for (const y0 of NET[a][1]) for (const y1 of NET[a + 1][1]) B.segment([NET[a][0] + 26, y0], [NET[a + 1][0] - 26, y1], { w: 3 });
 B.at(B.cur + 0.05);
 B.text('自己找规律', 3090, 780, 64, { align: 'center' });
-// 橙色连线：从网络引向下一块（相机开始移动时画，手领着相机走）
+// Orange connector: network to next region (draws as camera starts moving, hand leads camera)
 B.at(4.62); B.line([[3250, 470], [3420, 560], [3480, 760], [3420, 900]], { col: ORANGE, speed: SPEED * 1.4 }); B.line([[3392, 868], [3420, 902], [3452, 872]], { col: ORANGE, smooth: false });
 const END2 = B.cur;
 
-// ===== 第三块（相机 5.1→6.05 平滑斜移；手在 5.8 就入画开画） =====
+// ===== Third region (camera smoothly tracks diagonally 5.1→6.05; hand enters and draws at 5.8) =====
 B.at(5.35);
-// VideoScribe 的 Reveal 画法——完整线稿藏在下面，笔尖从上往下走 8 行之字形，笔过之处揭开（笔尖永远在揭开的前沿上）
+// VideoScribe reveal: complete line art underneath, pen follows 8 zigzag rows downward, revealing beneath tip (tip always on reveal front)
 const huashu = () => { const [x, y] = L3(500, 1010); return HUASHU.build({ x, y, s: 0.95 * K3, face: 1, pose: HUASHU.pose('point', 0, { ua1: 1.25, mouth: 0.8 }) }); };
 const rigZig = (HSb) => { if (rigZig.c) return rigZig.c; const js = Object.values(HSb.J).filter(v => Array.isArray(v)); const xs = js.map(v => v[0]), ys = js.map(v => v[1]);
   const x0 = Math.min(...xs) - 70, x1 = Math.max(...xs) + 50, y0 = Math.min(...ys) - 20, y1 = Math.max(...ys) + 40, rows = 8;
@@ -91,7 +91,7 @@ const RIG3 = { t0: B.cur, t1: B.cur + 0.7 };
 B.push({ kind: 'custom', t0: RIG3.t0, t1: RIG3.t1,
   draw(g, q, ft) {
     const HSb = huashu(), { zz, cum } = rigZig(HSb), d = cum[cum.length - 1] * q;
-    g.save(); if (q < 1) g.clip(DG.revealMask(zz, cum, d, rigZig.rowH * 2.2)); g.lineJoin = 'round'; g.lineCap = 'round';   // 揭完就不再裁：之字形拐角处的三角会漏掉
+    g.save(); if (q < 1) g.clip(DG.revealMask(zz, cum, d, rigZig.rowH * 2.2)); g.lineJoin = 'round'; g.lineCap = 'round';   // Remove clip after reveal: zigzag corners miss triangles
     const [fx, fy] = L3(500, 1010);
     if (!HERO.y3(g, fx, fy, 0.95 * K3 * 740, ft)) {
       for (const p of HSb.parts) { g.fillStyle = p.role === 'hair' ? INK : BOARD; g.fill(p.path); g.strokeStyle = INK; g.lineWidth = LW * 0.9; g.stroke(p.path); }
@@ -105,7 +105,7 @@ B.at(RIG3.t1 + 0.03);
 catStrokes(...L3(1150, 900), K3 * 0.95, SPEED * 1.6, LW, false);
 B.line([L3(1000, 330), L3(1070, 400), L3(1240, 200)], { col: ORANGE, w: LW + 2, speed: SPEED * 1.5, smooth: false });
 B.pop('是猫！', ...L3(1500, 410), 150 * K3, { col: ORANGE, align: 'left' });
-// 收尾：拉远的同时圈住「是猫！」，全景停住时回到第一块，在问题下面划一道——问题和答案连上，笔停在最后一笔上
+// Ending: circle “是猫！” while pulling back; when wide shot stops, return to first region and underline question — connect question to answer, pen rests on final stroke
 B.at(Math.max(B.cur + 0.02, 6.95));
 B.line(DG.ellipsePts(...L3(1720, 360), 300 * K3, 120 * K3, -2.9, 1.08, 40), { col: ORANGE, w: LW, speed: SPEED * 1.1 });
 B.at(Math.max(B.cur + 0.06, 7.52));
@@ -114,29 +114,29 @@ const END3 = B.cur;
 Y3.timeline = { END1, END2, END3, RIG3 };
 Y3.board = B;
 
-// ---------- 相机 ----------
+// ---------- Camera ----------
 const OVER = { x: 2400, y: 930, z: 0.45 };
 const camAt = ft => CAM.at([
   { t: 0, x: R1[0], y: R1[1], z: 1.0 },
   { t: 2.5, x: R1[0] + 12, y: R1[1] + 6, z: 1.02, ease: MO.sineInOut },
-  // 甩镜：0.8s（RSA 实测远跳约 0.8s，带运动模糊）
+  // Whip: 0.8s (RSA measured distant jumps about 0.8s, with blur)
   { t: 3.3, x: R2[0], y: R2[1], z: 1.0, ease: MO.cubicInOut },
   { t: 4.7, x: R2[0] + 16, y: R2[1] + 6, z: 1.02, ease: MO.sineInOut },
-  // 板上平滑移动：easeInOutSine 0.9s（实测中位 1.8s，演示片压缩）
+  // Smooth board move: easeInOutSine 0.9s (measured median 1.8s, compressed for demo)
   { t: 5.6, x: R3[0], y: R3[1] - 20, z: 1.12, ease: MO.sineInOut },
   { t: 6.85, x: R3[0] + 10, y: R3[1] - 14, z: 1.14, ease: MO.sineInOut },
-  // 拉远看全图，停 0.5s
+  // Pull back to whole board, hold 0.5s
   { t: 7.5, ...OVER, ease: MO.sineInOut },
   { t: 8.0, ...OVER, z: OVER.z * 0.985, ease: MO.sineInOut },
 ], ft);
 Y3.camAt = camAt;
 
-// ---------- 画 ----------
+// ---------- Draw ----------
 const drawBoard = (c, cam, ft) => {
-  // 结尾整板铺一层灰（RSA 实测），在拉远时 0.5s 淡入
+  // Final gray wash over entire board (RSA measurement), fades in over 0.5s during pullback
   const gray = MO.sineInOut(seg(ft, 6.9, 7.4));
   c.fillStyle = gray > 0 ? PAINT.rgb(PAINT.mix(PAINT.hex(BOARD), [238, 238, 236], gray)) : BOARD; c.fillRect(0, 0, W, H);
-  // 极淡的擦痕：屏幕空间平铺、跟着相机平移走（不随缩放放大）
+  // Very faint erasure marks: screen-space tiling follows camera translation (does not enlarge with zoom)
   const sm = PAINT.cached('y3smudge', 1024, 1024, g => { const r = rng(5); for (let i = 0; i < 22; i++) { g.fillStyle = `rgba(120,120,130,${0.003 + r() * 0.005})`; g.beginPath(); g.ellipse(r() * 1024, r() * 1024, 80 + r() * 200, 14 + r() * 40, r() * 3, 0, 7); g.fill(); } });
   c.save(); const ox = -(((cam.x * cam.z) % 1024) + 1024) % 1024, oy = -(((cam.y * cam.z) % 1024) + 1024) % 1024; c.translate(ox, oy); c.fillStyle = c.createPattern(sm, 'repeat'); c.fillRect(0, 0, W + 1024, H + 1024); c.restore();
   c.save(); CAM.apply(c, cam);
@@ -150,10 +150,10 @@ const shot = (c, lt, t) => {
   const { tip, col } = drawBoard(g, cam, ft);
   const [vx, vy] = CAM.velocity(camAt, ft);
   c.fillStyle = BOARD; c.fillRect(0, 0, W, H);
-  const whip = ft > 2.5 && ft < 3.3;                    // 只有甩镜带模糊；板上平滑移动和结尾拉远都是清楚的（RSA 实测）
+  const whip = ft > 2.5 && ft < 3.3;                    // Only whip has blur; smooth board movement and final pullback stay sharp (RSA measurement)
   CAM.motionBlur(c, buf, whip ? vx * 0.8 : 0, whip ? vy * 0.8 : 0, 9);
   const [hx, hy] = B.penAt(ft, cam, tip);
-  DG.pen(c, hx, hy, col || B.penColor(ft), Math.sin(ft * 7) * 0.03);   // 只有一支马克笔，笔尾帽 = 墨色
+  DG.pen(c, hx, hy, col || B.penColor(ft), Math.sin(ft * 7) * 0.03);   // Only one marker, tail cap = ink color
 };
 Y3.shot1 = shot; Y3.shot2 = shot; Y3.shot3 = shot;
 SCENES['y3_s1'] = { draw: shot };

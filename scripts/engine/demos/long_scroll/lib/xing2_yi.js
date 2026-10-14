@@ -1,21 +1,21 @@
-// 一组段共用的小工具（完整片子里 06_renaissance / 32_rembrandt / 07_ukiyoe / 28_monet / 29_seurat / 09_postimp 共用；本示范只用到 28_monet）。
-// 不进 index.html：各段文件开头同步加载（if (!window.YI) …），哪一段先加载都行。
-//   YI.S(key)                         帧库（确保 XING 已算好 imgs/hat）
-//   YI.actor(c, key, i, o, mat)       画第 i 帧，mat = { name, fn(img)->canvas(可带 pad), atop(g, o, box) }：
-//                                     fn 是逐帧缓存的材质（滤镜、点彩重画…）；atop 每帧在精灵上 source-atop 叠（烛光、光斑）
-//   YI.toScreen(key, i, o, [px,py])   帧内像素坐标 → 屏幕坐标（手的位置、道具对齐）
-//   YI.hand(key, i, o, tbl)           tbl[i] = [px,py]（帧内像素）→ 屏幕坐标
-//   YI.fly(c, from, to, q, draw, o)   纪念品飞上帽子：抛物线＋放大＋旋转（落帽那一下由 world.js 的 pop 接住）
+// Shared helpers (full film: 06_renaissance / 32_rembrandt / 07_ukiyoe / 28_monet / 29_seurat / 09_postimp; demo only 28_monet).
+// Not in index.html: synchronous load at section start (if (!window.YI) …), any section can load first.
+//   YI.S(key)                         Frame set (ensure XING computed imgs/hat)
+//   YI.actor(c, key, i, o, mat)       Draw frame i, mat = { name, fn(img)->canvas(optional pad), atop(g, o, box) }:
+//                                     fn = per-frame cached texture (filter, pointillist repaint…); atop overlays source-atop on sprite every frame (candlelight, light spots)
+//   YI.toScreen(key, i, o, [px,py])   Frame pixels → screen coordinates (hands, prop alignment)
+//   YI.hand(key, i, o, tbl)           tbl[i] = [px,py] (frame pixels) → screen coordinates
+//   YI.fly(c, from, to, q, draw, o)   Souvenir flies onto hat: parabola + scale + rotation (world.js pop catches landing)
 (() => {
 const W = 1920, H = 1080, TAU = Math.PI * 2;
 const { clamp, lerp, ss } = U;
 const P = window.PAINT, X = window.XING;
 const Y = window.YI = {};
 
-// 帧库在不在（读目录列表，不发 404 请求——render.py 把 404 记成页面报错）
+// Frame set exists? (read directory listing, no 404 requests: render.py records them as page errors)
 let LIST = null;
 Y.has = k => { if (LIST == null) { const x = new XMLHttpRequest(); x.open('GET', 'demos/long_scroll/frames/', false); x.send(); LIST = x.status === 200 ? x.responseText : ''; } return LIST.includes(`"${k}/"`); };
-// 帽顶修正：举过头顶的手会骗过 XING 的「最上一行不透明像素」，用逐帧量出的白帽顶覆盖（帧内像素 [x,y]）
+// Hat-top correction: raised hands fool XING's topmost opaque row; override with measured white-hat tops per frame (frame pixels [x,y])
 Y.HATFIX = {};
 Y.fixHat = (key, arr) => { Y.HATFIX[key] = arr; };
 Y.S = key => { X.hatTop(key, 0, { x: 0, y: 0, h: 1 }); const S = X.SPR[key]; if (Y.HATFIX[key] && !S._yiFixed) { Y.HATFIX[key].forEach((p, i) => { if (p) S.hat[i] = p; }); S._yiFixed = true; } return S; };
@@ -49,30 +49,30 @@ Y.actor = (c, key, i, o, mat) => {
   c.restore();
 };
 
-// 生图爱把白帽白T画成米黄浅灰：低饱和的亮色拉回白（帽子定规是纯白）。lo = 起拉的亮度
+// Generated white hat/T-shirt often beige/gray: restore low-saturation highlights to white (hat specification: pure white). lo = starting brightness
 Y.whiten = (g, w, h, lo = 185, r = 251, gg = 249, b = 242, chroma = 52) => { const d = g.getImageData(0, 0, w, h), q = d.data;
   for (let k = 0; k < q.length; k += 4) { const mx = Math.max(q[k], q[k + 1], q[k + 2]), mn = Math.min(q[k], q[k + 1], q[k + 2]); if (q[k + 3] > 0 && mx > lo && mx - mn < chroma) { const f = Math.min(1, (mx - lo) / (255 - lo) * 1.15); q[k] = lerp(q[k], r, f); q[k + 1] = lerp(q[k + 1], gg, f); q[k + 2] = lerp(q[k + 2], b, f); } }
   g.putImageData(d, 0, 0); };
-// 段两端补边：画风边界是波浪线（±30px），会伸出段的 [0,w] 之外——把世界画布最边上 2px 拉宽铺到外面 80px，免得露黑
+// Extend section edges: wavy style boundary (±30px) exceeds [0,w]; stretch outermost 2px of world canvas 80px outward to avoid black gaps
 Y.edge = (c, cv, camX, w) => { c.drawImage(cv, 0, 0, 2, cv.height, -camX - 80, 0, 82, cv.height); c.drawImage(cv, w - 2, 0, 2, cv.height, w - camX, 0, 80, cv.height); };
-// 纪念品飞上帽子时的落点＝当前那摞的顶（不是帽顶）：在草稿画布上空画一遍 drawHatStack 拿顶端高度
+// Souvenir landing = current stack top (not hat top): call drawHatStack on scratch canvas for height
 Y.stackTop = (key, i, o, t) => { const [hx, hy] = Y.hatTop(key, i, o), g = P.scratch('yiStackProbe').getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 0; const top = WORLD.drawHatStack(g, hx, hy + 4, o.h || 300, t); g.globalAlpha = 1; return [hx, hy + 4 + top]; };
-// 帽子拉回纯白：直接改帧库里的原帧（只改上部帽子那几成高度的低饱和亮色），之后 XING 的材质都从白帽子算起
+// Restore pure white hat directly in source frames (low-saturation highlights in upper hat region); subsequent XING textures start from white hat
 Y.whitenHat = (key, { frac = 0.42, lo = 150, chroma = 110 } = {}) => { const S = Y.S(key); if (S._yiWhite) return; S.imgs = S.imgs.map(im => { const cv = P.canvas(im.width, im.height), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0);
   const hh = Math.round(im.height * frac); const d = g.getImageData(0, 0, im.width, hh), q = d.data;
   for (let k = 0; k < q.length; k += 4) { const mx = Math.max(q[k], q[k + 1], q[k + 2]), mn = Math.min(q[k], q[k + 1], q[k + 2]); if (q[k + 3] > 0 && mx > lo && mx - mn < chroma && q[k + 2] >= q[k] - 20) { const f = Math.min(1, (mx - lo) / (255 - lo) * 1.3); q[k] = lerp(q[k], 252, f); q[k + 1] = lerp(q[k + 1], 251, f); q[k + 2] = lerp(q[k + 2], 248, f); } }
   g.putImageData(d, 0, 0); return cv; }); S._yiWhite = true; };
-// 纪念品飞上帽子：from/to 屏幕坐标；q 0..1；draw(c, x, y, scale, rot)
+// Souvenir flight: from/to screen coordinates; q 0..1; draw(c, x, y, scale, rot)
 Y.fly = (c, from, to, q, draw, { arc = 160, grow = 0.8, spin = 0, s0 = 1, s1 = 1 } = {}) => {
   const e = U.ease ? q : q; const x = lerp(from[0], to[0], e), y = lerp(from[1], to[1], e) - Math.sin(e * Math.PI) * arc;
   const sc = lerp(s0, s1, e) * (1 + grow * Math.sin(e * Math.PI)); draw(c, x, y, sc, spin * e);
 };
 
-// 简单的抠精灵像素工具：返回精灵的 ImageData（缓存）
+// Simple sprite pixel tool: returns sprite ImageData (cached)
 const DATA = {};
 Y.data = (key, i) => { const k = key + i; if (DATA[k]) return DATA[k]; const im = Y.S(key).imgs[i], cv = P.canvas(im.width, im.height), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); return DATA[k] = { w: im.width, h: im.height, d: g.getImageData(0, 0, im.width, im.height).data }; };
 
-// 烛火（伦勃朗段纪念品与段内道具共用）：x,y = 烛芯底；s 缩放；t 时间。只画火苗＋内焰＋芯
+// Candle flame (Rembrandt souvenir and props): x,y = wick base; s scale; t time. Flame + inner flame + wick only
 Y.flame = (c, x, y, s, t, seed = 0) => {
   const fl = 0.5 * P.noise(t * 2.2 + seed, 3.1) + 0.25 * P.noise(t * 6.5 + seed, 7.7), lean = fl * 0.5, hgt = (30 + 8 * P.noise(t * 5 + seed, 1.3)) * s;
   c.save(); c.translate(x, y);
@@ -84,12 +84,12 @@ Y.flame = (c, x, y, s, t, seed = 0) => {
   c.strokeStyle = '#2a1a10'; c.lineWidth = 1.6 * s; c.beginPath(); c.moveTo(0, 2 * s); c.lineTo(lean * 3 * s, -5 * s); c.stroke();
   c.restore();
 };
-// 烛光晕（lighter）
+// Candle glow (lighter)
 Y.glow = (c, x, y, r, a, col = '255,190,100') => { c.save(); c.globalCompositeOperation = 'lighter'; const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(0.4, `rgba(${col},${a * 0.4})`); g.addColorStop(1, `rgba(${col},0)`); c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r); c.restore(); };
 Y.flick = (t, seed = 0) => 0.5 + 0.5 * (0.6 * P.noise(t * 2.2 + seed, 5.5) + 0.4 * P.noise(t * 7 + seed, 9.1));
 
-// ---------- 点彩（修拉）：P.pointillism 的「世界坐标版」——网格锚在世界上（相机横移时点不游动），任意尺寸画布，可只点不透明处 ----------
-// src 的 x=0 对应世界 x = gx0；alphaMin>0 时只在 src 不透明处下点（动态物件层）；rect=[x0,y0,x1,y1] 限定范围（src 坐标）
+// ---------- Seurat pointillism: world-coordinate P.pointillism, grid anchored in world (points do not swim during camera pan), any canvas size, optional opaque-only dots ----------
+// src x=0 corresponds to world x = gx0; alphaMin>0 dots only opaque src (dynamic layer); rect=[x0,y0,x1,y1] bounds (src coordinates)
 const PICK = new Map();
 Y.dots = (c, src, { pal, comp = {}, pitch = 10, rad = 4.5, posJitter = 2.4, colorJitter = 40, compRate = 0.08, flicker = 0.07, fps = 6, t = 0, shimmer, white = 12, dark = 0, bleed = 45, gx0 = 0, alphaMin = 0, rect, palKey = 'p' } = {}) => {
   const PAL = pal.map(v => typeof v === 'string' ? P.hex(v) : v);
@@ -123,7 +123,7 @@ Y.dots = (c, src, { pal, comp = {}, pitch = 10, rad = 4.5, posJitter = 2.4, colo
     } }
   paths.forEach((p, k) => { c.fillStyle = P.rgb(PAL[k]); c.fill(p); });
 };
-// 精灵 → 点阵（散开/聚回用）：按 pitch 采样不透明像素，返回 [{x,y,col,r1,r2,r3}]（帧内像素坐标）
+// Sprite → dot array (scatter/reassemble): sample opaque pixels at pitch, return [{x,y,col,r1,r2,r3}] (frame pixels)
 const DOTS = {};
 Y.spriteDots = (key, i, pitch, procCanvas) => { const k = key + i + '|' + pitch; if (DOTS[k]) return DOTS[k];
   const im = procCanvas || Y.S(key).imgs[i], cv = P.canvas(im.width, im.height), g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0); const d = g.getImageData(0, 0, im.width, im.height).data, out = [];
