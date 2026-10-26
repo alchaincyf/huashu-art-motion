@@ -62,7 +62,7 @@ P.film = (c, t, { fps = 24, flicker = [0.02, 0.07, 0.06], scratches = 3, dust = 
   if (r() < 0.5) { c.strokeStyle = `rgba(${ink},.6)`; c.lineWidth = 1.6; const x = r() * W, y = r() * H; c.beginPath(); c.moveTo(x, y); c.bezierCurveTo(x + 30, y - 20, x + 10, y + 40, x + 50, y + 30); c.stroke(); }
   if (grain) c.drawImage(P.grain(grain, grainDensity, ink.split(',').map(Number), 0.25), (r() - 0.5) * 40, (r() - 0.5) * 40);
   if (gate) c.drawImage(P.cached('film_gate', W, H, (g) => {
-    const vg = g.createRadialGradient(960, 540, 420, 960, 540, 1150); vg.addColorStop(0, 'rgba(10,8,5,0)'); vg.addColorStop(0.7, 'rgba(10,8,5,.18)'); vg.addColorStop(1, 'rgba(10,8,5,.85)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    const vg = g.createRadialGradient(W / 2, H / 2, 420, W / 2, H / 2, 1150); vg.addColorStop(0, 'rgba(10,8,5,0)'); vg.addColorStop(0.7, 'rgba(10,8,5,.18)'); vg.addColorStop(1, 'rgba(10,8,5,.85)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
     g.fillStyle = '#0c0a07'; g.beginPath(); g.rect(0, 0, W, H); g.roundRect(18, 14, W - 36, H - 28, 60); g.fill('evenodd');
   }), 0, 0);
 };
@@ -80,7 +80,7 @@ P.lensFlare = (c, sun, t, { core = 130, rays = 10, streak = 840, ghosts = [[0.45
   const sg = c.createRadialGradient(...sun, 0, ...sun, core); sg.addColorStop(0, 'rgba(255,255,250,.95)'); sg.addColorStop(0.18, 'rgba(255,248,220,.55)'); sg.addColorStop(1, 'rgba(255,230,180,0)'); c.fillStyle = sg; c.beginPath(); c.arc(...sun, core, 0, 7); c.fill();
   for (let k = 0; k < rays; k++) { const a = k / rays * Math.PI * 2 + t * 0.25, L = (k % 2 ? 90 : 170) * (0.9 + 0.1 * Math.sin(t * 5 + k)); c.strokeStyle = 'rgba(255,250,235,.28)'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(...sun); c.lineTo(sun[0] + Math.cos(a) * L, sun[1] + Math.sin(a) * L); c.stroke(); }
   const hz = c.createLinearGradient(sun[0] - streak / 2, 0, sun[0] + streak / 2, 0); hz.addColorStop(0, 'rgba(120,200,255,0)'); hz.addColorStop(0.5, 'rgba(200,235,255,.35)'); hz.addColorStop(1, 'rgba(120,200,255,0)'); c.fillStyle = hz; c.fillRect(sun[0] - streak / 2, sun[1] - 2, streak, 4);
-  const cxp = 960 + Math.sin(t * 0.7) * 20, cyp = 540;
+  const cxp = W / 2 + Math.sin(t * 0.7) * 20, cyp = H / 2;
   ghosts.forEach(([k, r, col, a]) => {
     const x = sun[0] + (cxp - sun[0]) * k, y = sun[1] + (cyp - sun[1]) * k; c.fillStyle = `rgba(${col},${a})`; c.beginPath(); for (let i = 0; i < 6; i++) { const aa = i / 6 * Math.PI * 2 + 0.3; i ? c.lineTo(x + Math.cos(aa) * r, y + Math.sin(aa) * r) : c.moveTo(x + Math.cos(aa) * r, y + Math.sin(aa) * r); } c.closePath(); c.fill(); });
   c.restore();

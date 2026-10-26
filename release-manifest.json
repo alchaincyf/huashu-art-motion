@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "files": {
-    ".github/workflows/tests.yml": "91b5797ea6f59b6e31e53de2a846194e33ab1dbe24b2efb8c0ed4367324f8fbe",
+    ".github/workflows/tests.yml": "fbc4b6cb24c7c8cafc4ab9baaf7f2b3e0af5f5b625176764376dabac9b3f38a8",
     ".gitignore": "28b7c75378a153807b8127362ba5e627b91870edf5170b7b3847fb19acf3d8a9",
     "CHANGELOG.md": "a3ad116f8641235915ab7d6379a6e8cc54cd95a4a98b0196e17dec4376f26a13",
-    "CONTRIBUTING.md": "742a1a6071f6be25e82f0524a520fd6d09961be3f87d7a85940cd816ce7309a1",
+    "CONTRIBUTING.md": "7613c2d12d2e74179959e68c5beb169f8c2cce9e7c8b42df7d679af8cef4a8f9",
     "LICENSE": "6d6a2a9caf2e6d2b76974050427053b2892d8aa4c33fd168ce63a537fcee9d96",
     "README.en.md": "1e8469f9df9e9676edd0a5193b177430c23b3483265035fd10b163ce9c0321e4",
     "README.md": "c20ffc9dc918f3b565fe1fd22a806b0b75e3a38f366a86a33b3a75f3fe42cd1e",
@@ -342,8 +342,8 @@
     "scripts/engine/lib/motion.js": "22762a3691464b7504da562b3761edc70f7c138721618639697df3a5a93c1b97",
     "scripts/engine/lib/paint.js": "95ccd1945a4a19b6e2d89a422d7ea7de96174acdbae1801090ca9ee48131f9a3",
     "scripts/engine/lib/palettes.js": "934acc426ebdada51f613d6e7b1cb693590d615a01d7a66d5461483bf79ff30a",
-    "scripts/engine/lib/post.js": "b63ce9e73929083b4e51cb1caa45f606c6556023b3024da45520386a3d5f6129",
-    "scripts/engine/lib/render.js": "d2855f044ddff579000d9f8b1abadc2b76f84875fc604bea79d10319e3fe92bf",
+    "scripts/engine/lib/post.js": "e61702d4d969086f312f8b3f06f4c63bc68d3ef81b1046c86e7588f713ef7467",
+    "scripts/engine/lib/render.js": "0ab16c56ff2726803994973ac6bd188d0922cfcf4631dcc8a7093914276f45e7",
     "scripts/engine/lib/rig.js": "62580706e14438c6b57289ce203d040c91d8a427e356f44084a65dfc53a13bbf",
     "scripts/engine/lib/rig_huashu.js": "6419306bb314f89848b0adf842db0c305c2f6bc931df34388eb5389f29c1d392",
     "scripts/engine/lib/three.min.js": "170c6789f43217c96b3170f4b42fafe135de7f7cd48497a4218f9757ee1d49fa",
@@ -508,6 +508,7 @@
     "tests/test_local_server.py": "b775a60c86c4a0914d67c4cfb7cb37256a447db700bfdba146a2db3704ea83ff",
     "tests/test_release.py": "a190d8825e23f6204263f3d00d6728bf709586bc178c980d53244a82ef198b41",
     "tests/test_storyboard_lint.py": "fa22b169d3766852171d3b401366797464e2dd5375bac486f5e1e824cc886096",
-    "tests/test_voice_review.py": "044576ad2b4d73dd745cbc63336bc7780a08fe5df566dcf69ada2f4a4136db99"
+    "tests/test_voice_review.py": "044576ad2b4d73dd745cbc63336bc7780a08fe5df566dcf69ada2f4a4136db99",
+    "tests/test_portrait_stage_centers.cjs": "17a63648a9fb9faa86f8607cbf242e1015e9a407c4b031656ad549f50c3cac4d"
   }
 }
