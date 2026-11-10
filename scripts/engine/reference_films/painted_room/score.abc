@@ -1,0 +1,74 @@
+X:1
+T:艺术史穿越 · 同一扇窗 (v2)
+M:2/4
+L:1/8
+Q:1/4=100
+K:C
+% 37 bars of 2/4. One motif (A D E F# | A . F# .) handed from instrument to instrument, one per way of painting:
+% 1-3 cave: flute, frame drum · 4-5 Egypt: harp · 6-7 Greek vase: ukulele as a lyre · 8-9 mosaic: bell over a fifth
+% 10-11 Song ink: dizi · 12-13 stained glass: glass over a pad · 14-15 Renaissance: guitar, violin · 16-17 ukiyo-e: guzheng
+% 18-19 Impressionism: piano · 20-21 pointillism: pizzicato, glockenspiel · 22-24 Van Gogh: the strings
+% 25-26 cubism: the motif knocked off the beat · 27-28 De Stijl: boogie-woogie · 29-30 cut-outs: vibes, walking bass
+% 31-32 pop: band · 33-34 pixels: chip · 35-37 all at once: harp run, the motif in octaves, D major.
+V:FL inst=flute role=melody gain=0.8
+!mark:cave! !mp! A2 d2 | e2 ^f2 | e4 | Z34 |
+V:FD inst=drums kit=folk gain=0.8
+!mp! C,,2 z C,, | C,,2 z C,, | C,,2 C,, C,, | Z34 |
+V:LO inst=celli gain=1.6
+Z3 | !mf! D,4 | D,4 | D,4 | D,4 | Z2 | D,4 | D,4 | Z2 | Z2 | D,4 | D,4 | D,4 | G,,4 | D,4 | A,,4 | Z16 |
+V:HP inst=harp gain=2.4
+Z3 | !mark:egypt! !f! A,/D/E/^F/ A/^F/E/D/ | A,/D/E/^F/ A/d/^f/a/ | Z29 | !mark:fin! !mf! !crescendo(! D,/A,/D/^F/ A/d/^f/a/ !crescendo)! | Z2 |
+V:UK inst=uke role=melody gain=1.3
+Z5 | !mark:greek! !f! A,/D/E/^F/ A/^F/E/D/ | E/A/d/A/ ^F2 | Z30 |
+V:BL inst=bell role=melody gain=0.4
+Z7 | !mark:mosaic! !mf! a2 ^f2 | e4 | Z28 |
+V:PD inst=warmpad gain=0.3
+Z7 | !mp! [D,A,DA]4 | [G,,D,G,B,]4 | Z2 | [D,A,DA]4 | [G,,D,G,B,]4 | Z24 |
+V:DZ inst=dizi role=melody gain=2.2
+Z9 | !mark:ink! !f! A2 d e | ^f2 e d | Z26 |
+V:GL inst=glass role=melody gain=0.4
+Z11 | !mark:glass! !mf! a/^f/d/A/ a/^f/d/A/ | b/g/d/B/ e'2 | Z24 |
+V:GT inst=guitar gain=0.75
+Z13 | !mark:ren! !mf! D,/A,/D/^F/ A/^F/D/A,/ | G,,/D,/G,/B,/ D/B,/A,/E,/ | Z15 | !mark:pop! !f! z [D^FA] z [D^FA] | z [G,B,D] z [A,^CE] | Z5 |
+V:VN inst=violin role=melody gain=0.6
+Z13 | !mp! ^f2 e2 | d4 | Z22 |
+V:GZ inst=guzheng role=melody gain=1.9
+Z15 | !mark:ukiyo! !f! A,/D/ E ^F A/B/ | d B/A/ ^F2 | Z20 |
+V:PN inst=piano gain=1.3
+Z17 | !mark:imp! !f! !ped! D,/A,/D/E/ ^F/A/d/e/ | ^f/d/A/^F/ E/D/A,/E,/ !ped-up! | Z7 | !mark:mond! !f! [D,A,] [D,B,] [D,C] [D,B,] | [G,,D,] [G,,E,] [A,,E,] [A,,^F,] | Z6 | z4 | !f! [A,A] [Dd] [Ee] [^F^f] | !ff! [D,A,D^FAd]4 |
+V:PB inst=piano gain=1.0
+Z26 | !f! [^Fa]/ z/ [^Fa]/ z/ d'/ z/ [^Fa] | [Gb]/ z/ [Gb]/ z/ [Ae']2 | Z9 |
+V:PZ inst=pizz gain=2.4
+Z19 | !mark:point! !f! A,/ z/ D/ z/ E/ z/ ^F/ z/ | A/ z/ ^F/ z/ E/ z/ D/ z/ | Z16 |
+V:GK inst=glock gain=1.2
+Z19 | !mp! a/ z/ d'/ z/ e'/ z/ ^f'/ z/ | a'/ z/ ^f'/ z/ e'/ z/ d'/ z/ | Z13 | z4 | !mf! a d' e' ^f' | a'4 |
+V:ST inst=strings gain=1.8
+Z21 | !mark:vg! !f! !crescendo(! [D^FA]4 | [GBd]4 | [A^ce]4 !crescendo)! | Z10 | z4 | !ff! [D^FA]4 | !ff! [D^FAd]4 |
+V:VS inst=violins role=melody gain=1.8
+Z21 | !f! A d e ^f | a2 b2 | !ff! a4 | Z13 |
+V:HN inst=horn gain=1.2
+Z21 | !f! [D,A,]4 | [G,,D,]4 | [A,,E,]4 | Z10 | z4 | !f! [A,,E,]4 | !ff! [D,A,D]4 |
+V:TM inst=trem gain=1.0
+Z21 | !mf! !crescendo(! [^fa]4 | [gb]4 | [a^c']4 !crescendo)! | Z13 |
+V:PV inst=piano gain=1.0
+Z21 | !f! !ped! D,/A,/D/^F/ A/d/^f/a/ | G,,/D,/G,/B,/ D/G/B/d/ | A,,/E,/A,/^C/ E/A/^c/e/ !ped-up! | Z13 |
+V:CE inst=celli gain=1.6
+Z21 | !mf! D,4 | G,,4 | A,,4 | Z10 | z4 | !f! A,,4 | D,4 |
+V:RH inst=rhodes gain=0.5
+Z24 | !mark:cub! !mf! z [D^FAc] z/ [D^FAc]/ z | z/ [G,B,D^F]/ z [A,^CEG] z | Z11 |
+V:CB inst=epiano role=melody gain=0.55
+Z24 | !mf! z A, z D | E z ^F z | Z11 |
+V:VB inst=vibes role=melody gain=1.6
+Z28 | !mark:cut! !mf! A,/D/ z/ E/ ^F A | z/ a/ ^f/ e/ d2 | Z7 |
+V:BS inst=sinebass gain=0.55
+Z28 | !mf! D,2 ^F,2 | G,2 A,2 | !f! D,2 D, A,, | G,,2 A,,2 | Z5 |
+V:DK inst=drums kit=pop gain=0.5
+Z30 | !f! [C,,^F,,] ^F,, [D,,^F,,] ^F,, | [C,,^F,,] C,, [D,,^F,,] [D,,^F,,] | Z5 |
+V:BR inst=brass role=melody gain=0.5
+Z30 | !f! A, D E ^F | A2 ^F2 | Z5 |
+V:CP inst=chip role=melody gain=0.32
+Z32 | !mark:pixel! !mf! A,/D/E/^F/ A/^F/E/D/ | A/d/e/^f/ a2 | Z3 |
+V:TR inst=tri gain=0.45
+Z32 | !mf! D,2 A,,2 | G,,2 A,,2 | Z3 |
+V:CK inst=drums kit=chip gain=0.4
+Z32 | !mf! C,,/^F,,/ ^F,,/^F,,/ D,,/^F,,/ ^F,,/^F,,/ | C,,/^F,,/ C,,/^F,,/ D,,/^F,,/ D,,/D,,/ | Z3 |

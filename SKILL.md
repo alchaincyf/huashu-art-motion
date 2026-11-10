@@ -5,7 +5,7 @@ metadata:
   author: "花叔"
   homepage: "https://github.com/alchaincyf"
   repository: "https://github.com/alchaincyf/huashu-art-motion"
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # 艺术动画
@@ -82,10 +82,11 @@ metadata:
 | 「配个乐」「卡节奏」 | BPM 网格、动机换乐器、结尾音效序列 | 05 |
 | 画面里要出现人（用户本人、真人、拟人角色、吉祥物） | AI 生帧＋代码合成（B/C 两法），过交付线；没有生图能力就只出手和背影 | 10 ＋ `角色精细度.md` |
 | 派 agent 画某个风格 / 自己写新风格 / 重做风格演示 | 先拉原作（`scripts/analyze/fetch_reference.py`）→ 按风格自己的构图规则定题材 → 形层过 `lib/medium.js` 媒介通道 → 并排对照打分 | **16** ＋ 15 ＋ 08 ＋ `风格配方/INDEX.md` |
+| 「同一个场景换很多种画法」「每一笔都要是画出来的」、已有角色帧要走进不同画风且不重新生图 | 场景交颜色图＋区域号图＋笔触方向，画法另一道工序逐笔画；角色帧当一个区域一起重画；转场做成角色的动作 | 18 ＋ `scripts/engine/reference_films/painted_room/` |
 | 「一个人穿过一幅幅名画」「一路走过几个世界」 | 长卷骨架：每个世界一个段文件，主角从左走到右，跨边界换画风 | 11 ＋ `scripts/engine/demos/long_scroll/` |
 | 「做解说/科技/财经视频的动画」「Kurzgesagt/Vox/3b1b/白板/发布会/财经图表那种」、口播管线要一段动画 | 按口播选语法 → 过语法卡「起手必查」→ 管线用 `render.py --spec` 出时长精确的片段 | 09 ＋ `动画语法/<语法>.md` ＋ `镜头语言.md` |
 
-口播整片先读`references/12-口播整片与经验回流.md`；讲解员风格再读`references/动画语法/y6_presenter_explainer.md`。艺术史速通、穿越这类「同一场景换风格」的片子，机制见 02 号（五层机制），只用于这类片子。
+口播整片先读`references/12-口播整片与经验回流.md`；讲解员风格再读`references/动画语法/y6_presenter_explainer.md`。艺术史速通、穿越这类「同一场景换风格」的片子，机制见 02 号（五层机制），只用于这类片子；画法那一层要做厚、要角色走进去，接着读 18 号。
 
 ## 可选口播：按需配置
 
@@ -113,7 +114,7 @@ metadata:
 
 ## 工程
 
-`scripts/engine/` 是可复制的完整工程（引擎、转场库、绘画库、角色骨架、风格场景（01–55）、渲染器；YouTube 解说语法的 8 个库、8 支示范 `demos/`、参数化片段 `clip.html`＋`clips/`，见 09；长卷穿越片示范 `demos/long_scroll/`，见 11；口播整片参考代码`reference_films/spacex/`需自备角色和音频，见目录README）。开新片：复制到项目的 `代码工程/`，改 `eras.js` 段落表，写 `scenes/<id>.js`。
+`scripts/engine/` 是可复制的完整工程（引擎、转场库、绘画库、角色骨架、风格场景（01–55）、渲染器；YouTube 解说语法的 8 个库、8 支示范 `demos/`、参数化片段 `clip.html`＋`clips/`，见 09；长卷穿越片示范 `demos/long_scroll/`，见 11；口播整片参考代码`reference_films/spacex/`需自备角色和音频，见目录README；同一个房间 16 种画法、角色帧被每种画法重画的参考实现 `reference_films/painted_room/`，自带画法引擎，角色帧自备，见 18）。开新片：复制到项目的 `代码工程/`，改 `eras.js` 段落表，写 `scenes/<id>.js`。
 
 ```sh
 E=<项目>/代码工程
