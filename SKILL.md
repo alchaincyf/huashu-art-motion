@@ -5,7 +5,7 @@ metadata:
   author: "花叔"
   homepage: "https://github.com/alchaincyf"
   repository: "https://github.com/alchaincyf/huashu-art-motion"
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # 艺术动画

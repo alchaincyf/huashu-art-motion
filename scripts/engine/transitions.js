@@ -323,12 +323,13 @@ const T = window.TRANSITIONS = {
   zigzag(c, A, B, p) {
     const halftone = (img, amt, key) => {
       const sc = 16;
-      const sm = once('ht_' + key, () => mkc(W / sc, H / sc));
-      const sg = sm.getContext('2d'); sg.drawImage(img, 0, 0, W / sc, H / sc);
-      const d = sg.getImageData(0, 0, W / sc, H / sc).data;
+      const hw = Math.ceil(W / sc), hh = Math.ceil(H / sc);   // 取整一次：1080/16=67.5，画布会截成 67 行而循环跑到第 68 行，底边一排点读到 undefined 画不出来
+      const sm = once('ht_' + key, () => mkc(hw, hh));
+      const sg = sm.getContext('2d'); sg.drawImage(img, 0, 0, hw, hh);
+      const d = sg.getImageData(0, 0, hw, hh).data;
       c.globalAlpha = 1; c.drawImage(img, 0, 0); c.fillStyle = 'rgba(244,236,216,.55)'; c.fillRect(0, 0, W, H);
-      for (let y = 0; y < H / sc; y++) for (let x = 0; x < W / sc; x++) {
-        const i = (y * W / sc + x) * 4, L = (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11) / 255;
+      for (let y = 0; y < hh; y++) for (let x = 0; x < hw; x++) {
+        const i = (y * hw + x) * 4, L = (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11) / 255;
         const r = sc * 0.62 * (0.35 + (1 - L) * 0.85) * amt + 1;
         c.fillStyle = `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`;
         c.beginPath(); c.arc(x * sc + sc / 2 + (y % 2) * sc / 2, y * sc + sc / 2, r, 0, Math.PI * 2); c.fill();
@@ -700,7 +701,7 @@ T.sunShaft = function (c, A, B, p) {
 //    水痕/亮晕的 α 跟着「这一团的扩张进度」淡出，否则长大后的水痕线会横穿新画面（第一版踩到）。
 T.bleed = function (c, A, B, p, o) {
   const cx = o.cx || sx(580), cy = o.cy || sy(330);
-  const blobs = [[cx, cy, 0, 1.0], [1300, 420, 0.14, 0.75], [520, 880, 0.24, 0.6], [1650, 860, 0.3, 0.6], [1050, 100, 0.34, 0.55]];
+  const blobs = [[cx, cy, 0, 1.0], [sx(1300), sy(420), 0.14, 0.75], [sx(520), sy(880), 0.24, 0.6], [sx(1650), sy(860), 0.3, 0.6], [sx(1050), sy(100), 0.34, 0.55]];
   const st = blobs.map(([x, y, t0, k]) => ({ x, y, q: ease.inOut(seg(p, t0, t0 + 0.66)), k }));
   const one = (i) => { const b = st[i], R = b.q * 1400 * b.k; if (R <= 0) return;
     for (let j = 0; j <= 90; j++) { const a = j / 90 * Math.PI * 2, n = PAINT.fbm(Math.cos(a) * 1.6 + i * 7, Math.sin(a) * 1.6 + p * 0.8, 3);
@@ -742,7 +743,7 @@ Object.assign(T, {
   inkBloom(c, A, B, p, o) {
     const cx = o.cx || sx(560), cy = o.cy || sy(740);
     c.save(); c.filter = `grayscale(${seg(p, 0, 0.5)}) brightness(${1 + 0.35 * seg(p, 0, 0.6)}) contrast(${1 - 0.3 * seg(p, 0, 0.6)})`; c.drawImage(A, 0, 0); c.restore();
-    const blobs = once('inkBloom', () => { const r = rng(17), out = [[cx, cy, 0, 1.0]]; for (let i = 0; i < 6; i++) out.push([200 + r() * 1520, 120 + r() * 840, 0.08 + r() * 0.3, 0.45 + r() * 0.4]); return out; });
+    const blobs = once('inkBloom', () => { const r = rng(17), out = [[cx, cy, 0, 1.0]]; for (let i = 0; i < 6; i++) out.push([sx(200 + r() * 1520), sy(120 + r() * 840), 0.08 + r() * 0.3, 0.45 + r() * 0.4]); return out; });
     const outline = (g, x, y, R) => { g.beginPath(); for (let j = 0; j <= 72; j++) { const a = j / 72 * TAU, n = PAINT.fbm(Math.cos(a) * 1.8 + x * 0.01, Math.sin(a) * 1.8 + y * 0.01, 3), rr = R * (1 + 0.35 * n); j ? g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); };
     const st = blobs.map(([x, y, t0, k]) => { const q = ease.out(seg(p, t0, t0 + 0.7)); return [x, y, q, q * 1500 * k]; });
     // 遮罩与墨边都在 1/4 分辨率上画再放大（边缘本来就是软的；全分辨率 blur 要 ~170ms）
