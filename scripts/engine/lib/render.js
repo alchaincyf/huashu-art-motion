@@ -111,7 +111,7 @@ P.kirbyShade = (g, path, { d1 = 14, d2 = 30, gap = 9, light = [-0.86, -0.5], ink
   g.save(); P.clipBeside(g, path, light[0] * d2, light[1] * d2);
   g.strokeStyle = ink; g.lineWidth = lw; g.lineCap = 'butt'; g.beginPath();
   const a = Math.atan2(light[1], light[0]), nx = -Math.sin(a), ny = Math.cos(a);
-  for (let k = -260; k < 260; k++) { const ox = 960 + nx * k * gap, oy = 540 + ny * k * gap; g.moveTo(ox - light[0] * 1400, oy - light[1] * 1400); g.lineTo(ox + light[0] * 1400, oy + light[1] * 1400); }
+  for (let k = -260; k < 260; k++) { const ox = W / 2 + nx * k * gap, oy = H / 2 + ny * k * gap; g.moveTo(ox - light[0] * 1400, oy - light[1] * 1400); g.lineTo(ox + light[0] * 1400, oy + light[1] * 1400); }
   g.stroke(); g.restore();
   g.save(); P.clipBeside(g, path, light[0] * d1, light[1] * d1); g.fillStyle = ink; g.fillRect(0, 0, W, H); g.restore();
 };

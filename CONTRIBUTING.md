@@ -7,6 +7,7 @@
 ```sh
 python -m pip install requests Pillow
 # 另需系统安装ffmpeg/ffprobe；不会在正常Skill激活时自动安装
+node tests/test_portrait_stage_centers.cjs
 python -m unittest discover -s tests -v
 ```
 
