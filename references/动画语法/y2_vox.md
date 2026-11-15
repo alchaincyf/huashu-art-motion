@@ -161,6 +161,17 @@
 2. **用模板语法冒充 Vox**：撕纸、每张图都弹入落下、纸纹逐帧抖。实测里这些都没出现，Vox 的照片随切点直接在、纸纹是死的、转场多是硬切和推进。花哨的入场越多，越不像「编辑部作品」。
 3. **用 Vox logo 黄当大面积底色、颜色铺太多**。片子里的黄是 `#DACF08` 一档的荧光笔，只用来划重点。主体是「黑、纸白、一种红」三色，另加一种强调色就够了。
 
+**参数化片段的 `highlight.rect` 别对着预览图目测。** rect 是相对这张图的 0..1 坐标，看缩小后的截图估值，整体偏 0.05–0.1 很常见，荧光笔和红圈会落在隔壁的词上。原尺寸图上量像素再除以宽高；素材是网页截图时，直接从 DOM 读目标文字的外框，换算成相对截图元素的比例（社区贡献的做法，见 issue #6）：
+
+```js
+const box = document.querySelector('#abs').getBoundingClientRect();   // 截图用的那个元素
+// 在正文里找到目标文字所在的 text node 和偏移 i
+const r = document.createRange(); r.setStart(node, i); r.setEnd(node, i + 'cat faces'.length);
+const q = r.getBoundingClientRect();
+[(q.x - box.x) / box.width, (q.y - box.y) / box.height, q.width / box.width, q.height / box.height];
+// → 填进 data.rect；填完用 render.py --stills 在 highlight 的 at 之后取一帧核一眼
+```
+
 ---
 
 ## 审片与修订（独立 agent 只看成片，8/10）
