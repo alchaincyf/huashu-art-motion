@@ -1,6 +1,6 @@
 <div align="center">
 
-[简体中文](README.md) | [English](README.en.md) | **Bahasa Indonesia**
+[简体中文](README.md) | [English](README.en.md) | **Bahasa Indonesia** | [日本語](README.ja.md)
 
 <img src="assets/showcase/hero.png" alt="Galeri film huashu-art-motion: 35 gaya seni, 9 tata bahasa video penjelasan" width="100%" />
 
