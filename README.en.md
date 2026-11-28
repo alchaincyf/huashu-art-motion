@@ -1,6 +1,6 @@
 <div align="center">
 
-[简体中文](README.md) | **English** | [Bahasa Indonesia](README.id.md)
+[简体中文](README.md) | **English** | [Bahasa Indonesia](README.id.md) | [日本語](README.ja.md)
 
 <img src="assets/showcase/hero.png" alt="huashu-art-motion film gallery: 35 art styles and 9 explainer animation grammars" width="100%" />
 

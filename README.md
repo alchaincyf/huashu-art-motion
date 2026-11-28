@@ -1,6 +1,6 @@
 <div align="center">
 
-**简体中文** | [English](README.en.md) | [Bahasa Indonesia](README.id.md)
+**简体中文** | [English](README.en.md) | [Bahasa Indonesia](README.id.md) | [日本語](README.ja.md)
 
 <img src="assets/showcase/hero.png" alt="huashu-art-motion电影画廊：35种艺术风格，9种解说语法" width="100%" />
 
